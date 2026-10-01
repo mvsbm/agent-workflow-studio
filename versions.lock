@@ -1,0 +1,7 @@
+COMFYUI_REPOSITORY="https://github.com/comfyanonymous/ComfyUI.git"
+COMFYUI_COMMIT="651ca296a73cd21c12a57eb8741d52e40dc6528f"
+NAYOSE_REPOSITORY="https://github.com/mvsbm/nayose.git"
+NAYOSE_COMMIT="93affa85cae286289c7a5c5b6b3aba52ea7e6369"
+PYTHON_VERSION="3.12"
+TORCH_VERSION="2.14.1"
+TORCHVISION_VERSION="0.29.1"

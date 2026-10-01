@@ -1,0 +1,399 @@
+{
+  "id": "3f7bb37b-49ad-4296-a486-04093f20735d",
+  "revision": 0,
+  "last_node_id": 6,
+  "last_link_id": 5,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "StringConcatenate",
+      "pos": [
+        20,
+        80
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "string_a",
+          "name": "string_a",
+          "type": "STRING",
+          "widget": {
+            "name": "string_a"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "string_b",
+          "name": "string_b",
+          "type": "STRING",
+          "widget": {
+            "name": "string_b"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "delimiter",
+          "name": "delimiter",
+          "type": "STRING",
+          "widget": {
+            "name": "delimiter"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StringConcatenate"
+      },
+      "widgets_values": [
+        "Create a small Nayose smoke-generation configuration.",
+        "Use profile smoke, realistic difficulty, seed 47. Return only the requested configuration.",
+        "\n"
+      ],
+      "widgets_values_named": {
+        "string_a": "Create a small Nayose smoke-generation configuration.",
+        "string_b": "Use profile smoke, realistic difficulty, seed 47. Return only the requested configuration.",
+        "delimiter": "\n"
+      }
+    },
+    {
+      "id": 2,
+      "type": "AgentWorkflowOpenCodeGoStructuredAgent",
+      "pos": [
+        360,
+        80
+      ],
+      "size": [
+        400,
+        244
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": 1
+        },
+        {
+          "localized_name": "output_schema_json",
+          "name": "output_schema_json",
+          "type": "STRING",
+          "widget": {
+            "name": "output_schema_json"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "temperature",
+          "name": "temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_tokens",
+          "name": "max_tokens",
+          "type": "INT",
+          "widget": {
+            "name": "max_tokens"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "system_prompt",
+          "name": "system_prompt",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "system_prompt"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "validated_result",
+          "name": "validated_result",
+          "type": "DICT",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AgentWorkflowOpenCodeGoStructuredAgent"
+      },
+      "widgets_values": [
+        "",
+        "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"profile\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"smoke\"\n      ]\n    },\n    \"difficulty\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"debug\",\n        \"realistic\",\n        \"severe\",\n        \"challenge\"\n      ]\n    },\n    \"seed\": {\n      \"type\": \"integer\",\n      \"minimum\": 0\n    }\n  },\n  \"required\": [\n    \"profile\",\n    \"difficulty\",\n    \"seed\"\n  ],\n  \"additionalProperties\": false\n}",
+        0,
+        256,
+        ""
+      ],
+      "widgets_values_named": {
+        "prompt": "",
+        "output_schema_json": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"profile\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"smoke\"\n      ]\n    },\n    \"difficulty\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"debug\",\n        \"realistic\",\n        \"severe\",\n        \"challenge\"\n      ]\n    },\n    \"seed\": {\n      \"type\": \"integer\",\n      \"minimum\": 0\n    }\n  },\n  \"required\": [\n    \"profile\",\n    \"difficulty\",\n    \"seed\"\n  ],\n  \"additionalProperties\": false\n}",
+        "temperature": 0,
+        "max_tokens": 256,
+        "system_prompt": ""
+      }
+    },
+    {
+      "id": 3,
+      "type": "AgentWorkflowNayoseValidateAgentControls",
+      "pos": [
+        760,
+        80
+      ],
+      "size": [
+        257.0025390625,
+        26
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "agent_result",
+          "name": "agent_result",
+          "type": "DICT",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "generation_config",
+          "name": "generation_config",
+          "type": "NAYOSE_GENERATION_CONFIG",
+          "links": [
+            3,
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AgentWorkflowNayoseValidateAgentControls"
+      }
+    },
+    {
+      "id": 4,
+      "type": "AgentWorkflowNayosePreviewGeneration",
+      "pos": [
+        1120,
+        30
+      ],
+      "size": [
+        230.7935546875,
+        26
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "generation_config",
+          "name": "generation_config",
+          "type": "NAYOSE_GENERATION_CONFIG",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "preview",
+          "name": "preview",
+          "type": "NAYOSE_GENERATION_PREVIEW",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AgentWorkflowNayosePreviewGeneration"
+      }
+    },
+    {
+      "id": 5,
+      "type": "AgentWorkflowNayoseGenerateDataset",
+      "pos": [
+        1120,
+        260
+      ],
+      "size": [
+        216.8755859375,
+        26
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "generation_config",
+          "name": "generation_config",
+          "type": "NAYOSE_GENERATION_CONFIG",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "generation",
+          "name": "generation",
+          "type": "NAYOSE_GENERATION",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AgentWorkflowNayoseGenerateDataset"
+      }
+    },
+    {
+      "id": 6,
+      "type": "AgentWorkflowNayoseTrainModel",
+      "pos": [
+        1500,
+        260
+      ],
+      "size": [
+        270,
+        130
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "generation",
+          "name": "generation",
+          "type": "NAYOSE_GENERATION",
+          "link": 5
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "device",
+          "name": "device",
+          "type": "COMBO",
+          "widget": {
+            "name": "device"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "model_family",
+          "name": "model_family",
+          "type": "STRING",
+          "widget": {
+            "name": "model_family"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "model_run",
+          "name": "model_run",
+          "type": "NAYOSE_MODEL_RUN",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "AgentWorkflowNayoseTrainModel"
+      },
+      "widgets_values": [
+        42,
+        "randomize",
+        "auto",
+        "off"
+      ],
+      "widgets_values_named": {
+        "seed": 42,
+        "control_after_generate": "randomize",
+        "device": "auto",
+        "model_family": "off"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "STRING"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "DICT"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      0,
+      "NAYOSE_GENERATION_CONFIG"
+    ],
+    [
+      4,
+      3,
+      0,
+      5,
+      0,
+      "NAYOSE_GENERATION_CONFIG"
+    ],
+    [
+      5,
+      5,
+      0,
+      6,
+      0,
+      "NAYOSE_GENERATION"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        416,
+        110
+      ]
+    }
+  },
+  "version": 0.4
+}

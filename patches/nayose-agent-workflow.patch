@@ -1,0 +1,194 @@
+diff --git a/src/api/infrastructure/process/admin_jobs.py b/src/api/infrastructure/process/admin_jobs.py
+index 09ca5cf..360a6a5 100644
+--- a/src/api/infrastructure/process/admin_jobs.py
++++ b/src/api/infrastructure/process/admin_jobs.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ import json
+ import logging
++import re
+ import sqlite3
+ import subprocess
+ import sys
+@@ -336,7 +337,21 @@ class AdminJobRunner:
+ 
+     def _run_train(self, params: dict[str, Any], job_id: str) -> dict[str, Any]:
+         models = Path(params.get("models_dir") or self.models_dir)
+-        data_dir = Path(params.get("data_dir") or (self.data_root / "current"))
++        generation_id = params.get("generation_id")
++        if generation_id is not None:
++            if not isinstance(generation_id, str) or not re.fullmatch(
++                r"gen_[A-Za-z0-9_-]{1,128}", generation_id
++            ):
++                raise ValueError("invalid generation_id")
++            generations_root = (self.data_root / "generations").resolve()
++            data_dir = (generations_root / generation_id).resolve()
++            if (
++                data_dir.parent != generations_root
++                or not (data_dir / "generation_manifest.json").is_file()
++            ):
++                raise ValueError("unknown generation_id")
++        else:
++            data_dir = Path(params.get("data_dir") or (self.data_root / "current"))
+         argv = [
+             sys.executable,
+             "-m",
+@@ -355,7 +370,10 @@ class AdminJobRunner:
+             str(params.get("model_family", "off")),
+             "--prune-aborted",
+         ]
++        device = str(params.get("device", "mps"))
+         env = {
++            "NAYOSE_DEVICE": device,
++            "_NAYOSE_RESOURCE_DEVICE": device,
+             "NAYOSE_MODEL_THREADS": str(int(params.get("threads", 2))),
+             "NAYOSE_MAX_FULL_RECORDS": str(int(params.get("max_records", 700_000))),
+         }
+diff --git a/src/api/infrastructure/process/admin_process.py b/src/api/infrastructure/process/admin_process.py
+index ddfff64..f85f0ba 100644
+--- a/src/api/infrastructure/process/admin_process.py
++++ b/src/api/infrastructure/process/admin_process.py
+@@ -77,9 +77,10 @@ class AdminProcessRunner:
+         on_stage(stage_label)
+         settings = load_config().performance
+         manager = ResourceManager(self.cwd / ".nayose-runtime")
++        requested_device = env_overrides.get("_NAYOSE_RESOURCE_DEVICE", "cpu")
+         plan = manager.plan(
+             workload="admin-subprocess",
+-            requested_device="cpu",
++            requested_device=requested_device,
+             settings=settings,
+         )
+         requested_model_threads = env_overrides.get("NAYOSE_MODEL_THREADS")
+@@ -91,11 +92,18 @@ class AdminProcessRunner:
+                 raise ValueError("NAYOSE_MODEL_THREADS must be a positive integer") from exc
+             if model_threads < 1:
+                 raise ValueError("NAYOSE_MODEL_THREADS must be positive")
++        plan_environment = plan.env()
++        # The resource planner's device choice is not application configuration.
++        # Preserve the caller's NAYOSE_DEVICE unless it explicitly requested one.
++        plan_environment.pop("NAYOSE_DEVICE", None)
++        subprocess_overrides = {
++            key: value for key, value in env_overrides.items() if key != "_NAYOSE_RESOURCE_DEVICE"
++        }
+         environment = {
+             **os.environ,
+-            **plan.env(),
++            **plan_environment,
+             "PYTHONUNBUFFERED": "1",
+-            **env_overrides,
++            **subprocess_overrides,
+             "NAYOSE_CPU_THREADS": str(plan.cpu_threads),
+             "NAYOSE_MODEL_THREADS": str(model_threads),
+         }
+diff --git a/tests/test_job_store.py b/tests/test_job_store.py
+index 4ac0bea..c95e581 100644
+--- a/tests/test_job_store.py
++++ b/tests/test_job_store.py
+@@ -95,3 +95,48 @@ def test_admin_job_idempotency_returns_existing_job(tmp_path, monkeypatch):
+         runner.close()
+ 
+     assert second["id"] == first["id"]
++
++
++def test_train_job_pins_to_safe_generation_id(tmp_path, monkeypatch):
++    data_root = tmp_path / "data"
++    generation = data_root / "generations" / "gen_smoke_123"
++    generation.mkdir(parents=True)
++    (generation / "generation_manifest.json").write_text("{}", encoding="utf-8")
++    runner = AdminJobRunner(data_root, tmp_path / "models", Audit())
++    captured = {}
++
++    def fake_spawn(argv, _stage, _job_id, _env, _stream_progress=False):
++        captured["argv"] = argv
++        run = tmp_path / "models" / "runs" / "run_smoke"
++        run.mkdir(parents=True)
++        (run / "run_manifest.json").write_text(
++            '{"data_fingerprint":"abc","query_metrics":{}}', encoding="utf-8"
++        )
++
++    monkeypatch.setattr(runner, "_spawn", fake_spawn)
++    try:
++        result = runner._run_train({"generation_id": "gen_smoke_123"}, "job-1")
++    finally:
++        runner.close()
++
++    data_dir_index = captured["argv"].index("--data-dir")
++    assert captured["argv"][data_dir_index + 1] == str(generation.resolve())
++    assert result["fingerprint"] == "abc"
++
++
++def test_train_job_rejects_path_like_generation_id(tmp_path, monkeypatch):
++    runner = AdminJobRunner(tmp_path / "data", tmp_path / "models", Audit())
++    called = False
++
++    def fake_spawn(*_args, **_kwargs):
++        nonlocal called
++        called = True
++
++    monkeypatch.setattr(runner, "_spawn", fake_spawn)
++    try:
++        with pytest.raises(ValueError, match="invalid generation_id"):
++            runner._run_train({"generation_id": "../outside"}, "job-1")
++    finally:
++        runner.close()
++
++    assert not called
+diff --git a/tests/test_telemetry.py b/tests/test_telemetry.py
+index a5bc180..bf5d397 100644
+--- a/tests/test_telemetry.py
++++ b/tests/test_telemetry.py
+@@ -43,6 +43,53 @@ def test_admin_subprocess_boundary_is_recorded():
+     assert rows["admin.subprocess"]["hits"] == 1
+ 
+ 
++def test_admin_subprocess_resource_plan_does_not_override_runtime_device(monkeypatch):
++    import io
++    from types import SimpleNamespace
++
++    import api.infrastructure.process.admin_process as admin_process
++
++    output = io.StringIO()
++    logger = logging.getLogger("test-admin-subprocess-device")
++    logger.handlers.clear()
++    logger.setLevel(logging.INFO)
++    logger.addHandler(logging.StreamHandler(output))
++    monkeypatch.setenv("NAYOSE_DEVICE", "mps")
++    monkeypatch.setattr(
++        admin_process,
++        "load_config",
++        lambda: SimpleNamespace(performance=object()),
++    )
++
++    class FakeResourceManager:
++        def __init__(self, _path):
++            pass
++
++        def plan(self, **kwargs):
++            assert kwargs["requested_device"] == "cpu"
++            return SimpleNamespace(
++                env=lambda: {"NAYOSE_DEVICE": "cpu", "NAYOSE_CPU_THREADS": "1"},
++                cpu_threads=1,
++                model_threads=1,
++            )
++
++    monkeypatch.setattr(admin_process, "ResourceManager", FakeResourceManager)
++    runner = AdminProcessRunner(Path.cwd(), logger)
++    runner.run(
++        [sys.executable, "-c", "import os; print(os.environ['NAYOSE_DEVICE'])"],
++        "test",
++        "job-device",
++        {},
++        threading.Event(),
++        lambda _stage: None,
++        lambda *_update: None,
++        lambda _process: None,
++        lambda: None,
++    )
++
++    assert output.getvalue().strip() == "admin subprocess mps"
++
++
+ def test_stats_reset_clears_samples_and_counters():
+     stats = Stats()
+     stats.record("health", 0.001, error=True)
