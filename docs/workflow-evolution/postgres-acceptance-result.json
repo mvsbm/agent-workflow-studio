@@ -1,0 +1,41 @@
+{
+  "accepted": true,
+  "case_ids": [
+    "postgres_integration_tests.PostgresIntegrationTests.test_competing_cas_has_one_winner",
+    "postgres_integration_tests.PostgresIntegrationTests.test_competing_publishers_claim_disjoint_events",
+    "postgres_integration_tests.PostgresIntegrationTests.test_completed_receipt_replay_survives_catalog_change",
+    "postgres_integration_tests.PostgresIntegrationTests.test_concurrent_same_request_create_replays",
+    "postgres_integration_tests.PostgresIntegrationTests.test_concurrent_same_request_save_replays",
+    "postgres_integration_tests.PostgresIntegrationTests.test_container_restart_preserves_data_not_approval",
+    "postgres_integration_tests.PostgresIntegrationTests.test_corrupt_identity_is_rejected",
+    "postgres_integration_tests.PostgresIntegrationTests.test_database_clock_expiry_and_foreign_owner_fencing",
+    "postgres_integration_tests.PostgresIntegrationTests.test_engine_reopen_preserves_copied_unapproved_history",
+    "postgres_integration_tests.PostgresIntegrationTests.test_migration_stamp_and_schema_agree",
+    "postgres_integration_tests.PostgresIntegrationTests.test_permissions_and_raw_context_fail_closed",
+    "postgres_integration_tests.PostgresIntegrationTests.test_revision_receipt_event_rollback_atomically",
+    "postgres_integration_tests.PostgresIntegrationTests.test_skip_locked_does_not_block_on_claimed_row",
+    "postgres_integration_tests.PostgresIntegrationTests.test_tenant_scope_and_composite_foreign_keys"
+  ],
+  "errors": 0,
+  "failures": 0,
+  "image": "postgres@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722",
+  "production_ready": false,
+  "schema_version": "WORKFLOW_POSTGRES_ACCEPTANCE_V1",
+  "skipped": 0,
+  "source_sha256": {
+    "ci/postgres-image.txt": "5068b70e18b0cb5ad64f6a77af96c67c648ced86020edf3f6905cad4f2f52426",
+    "ci/postgres_fixture.py": "172b833eecd08ace1f570eda0bb4d63cd244fdd22bf496221f8362dd2bd6ce68",
+    "ci/postgres_integration_tests.py": "70a43fff9a36ffefab017b55bfd3440f6b6be645fb39aa05217076ded65d82b0",
+    "ci/requirements-postgres.in": "e0735f17867cab43cdb03195a7cb7c38e357a173c01ffa2404b04755c630db3b",
+    "ci/requirements-postgres.lock": "682f1414d678a3d0e7b224a9335bc12c75fe84510b0850225d51d1b6229660a9",
+    "ci/run_postgres_integration.py": "6040f9a94030a72c7d6380fecc2c1dfa2084b0b6fd3a7cb370089eb87e84d656",
+    "custom_nodes/agent_workflow_studio/enterprise_contracts.py": "682c08e679b37f0ebda77c2617bf080af1aac63d132ff4d46de9983ababea7a0",
+    "custom_nodes/agent_workflow_studio/enterprise_migrations/versions/0001_control_plane.py": "d24f37a0e2cb2062b2dd1abe65837f0c8d58415361e869f5830704fccb030f9d",
+    "custom_nodes/agent_workflow_studio/enterprise_outbox.py": "7ed995886360051c4954328436cd042ed9ac9e8f9069da17d376c5f88ed32a73",
+    "custom_nodes/agent_workflow_studio/enterprise_projects.py": "b751e5ebb342ad22ba15b18b9cb4100fe3b6bfd64cb783cc4a3d88554b42aa24",
+    "custom_nodes/agent_workflow_studio/enterprise_schema.py": "7403436918b3662a7534e26766d3d86259736a7e9cc0ba4ea20e8a8d72ef0d52",
+    "custom_nodes/agent_workflow_studio/enterprise_storage.py": "5ec60a9adcc6e606ebd0181cb71778867a05b119d4c77e46039e67e95e647f86"
+  },
+  "synthetic": true,
+  "tests_run": 14
+}
