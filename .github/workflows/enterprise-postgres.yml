@@ -1,0 +1,66 @@
+name: Enterprise PostgreSQL acceptance
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/enterprise-postgres.yml'
+      - 'ci/*postgres*'
+      - 'custom_nodes/agent_workflow_studio/enterprise_*.py'
+      - 'custom_nodes/agent_workflow_studio/enterprise_migrations/**'
+      - 'docs/workflow-evolution/POSTGRES-VALIDATION.md'
+  push:
+    branches: [main, 'feat/**']
+    paths:
+      - '.github/workflows/enterprise-postgres.yml'
+      - 'ci/*postgres*'
+      - 'custom_nodes/agent_workflow_studio/enterprise_*.py'
+      - 'custom_nodes/agent_workflow_studio/enterprise_migrations/**'
+      - 'docs/workflow-evolution/POSTGRES-VALIDATION.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-postgres-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      COMFYUI_POSTGRES_TEST_ALLOWED: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Set up pinned uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: '0.9.27'
+          enable-cache: false
+      - name: Install hash-locked PostgreSQL dependencies
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --no-config --default-index https://pypi.org/simple --python .venv/bin/python --require-hashes --only-binary :all: -r ci/requirements-postgres.lock
+          uv pip check --python .venv/bin/python
+      - name: Verify fixture admission and source syntax
+        run: |
+          .venv/bin/python -m unittest discover -s ci -p test_postgres_fixture.py -v
+          .venv/bin/python -m py_compile ci/postgres_fixture.py ci/postgres_integration_tests.py ci/run_postgres_integration.py
+      - name: Run disposable PostgreSQL migration, race and restart acceptance
+        run: .venv/bin/python ci/run_postgres_integration.py --report "${{ runner.temp }}/postgres-acceptance.json"
+      - name: Upload synthetic database acceptance report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: postgres-synthetic-acceptance-${{ github.sha }}
+          path: ${{ runner.temp }}/postgres-acceptance.json
+          if-no-files-found: warn
+          retention-days: 7
