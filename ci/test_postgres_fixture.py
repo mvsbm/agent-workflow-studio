@@ -85,6 +85,26 @@ class PostgresFixturePolicyTests(unittest.TestCase):
                 docker.call_args.args[0], ["rm", "--force", "--volumes", fixture.name]
             )
 
+    def test_restart_refreshes_ephemeral_port_before_waiting(self) -> None:
+        fixture = PostgresFixture()
+        fixture.created = True
+        fixture.container_id = "a" * 64
+        fixture.port = 32123
+        with (
+            patch.object(
+                fixture,
+                "docker",
+                side_effect=[
+                    "restarted",
+                    '{"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"32124"}]}',
+                ],
+            ),
+            patch.object(fixture, "wait_ready") as wait,
+        ):
+            fixture.restart()
+            self.assertEqual(fixture.port, 32124)
+            wait.assert_called_once()
+
     def test_restart_requires_owned_container(self) -> None:
         fixture = PostgresFixture()
         with patch.object(fixture, "docker") as docker:

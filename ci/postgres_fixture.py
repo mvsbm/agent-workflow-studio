@@ -88,32 +88,38 @@ class PostgresFixture:
                 )
             if not re.fullmatch(r"[a-f0-9]{64}", self.container_id):
                 raise RuntimeError("postgres_fixture_container_invalid")
-            ports = json.loads(
-                self.docker(
-                    [
-                        "inspect",
-                        "--format",
-                        "{{json .NetworkSettings.Ports}}",
-                        self.container_id,
-                    ]
-                )
-            )
-            bindings = ports.get("5432/tcp", [])
-            if len(bindings) != 1 or bindings[0]["HostIp"] != "127.0.0.1":
-                raise RuntimeError("postgres_fixture_binding_invalid")
-            self.port = int(bindings[0]["HostPort"])
-            if not 1 <= self.port <= 65535:
-                raise RuntimeError("postgres_fixture_binding_invalid")
+            self.refresh_binding()
             self.wait_ready()
             return self
         except Exception:
             self.cleanup()
             raise
 
+    def refresh_binding(self) -> None:
+        if not self.created or self.container_id is None:
+            raise RuntimeError("postgres_fixture_not_owned")
+        ports = json.loads(
+            self.docker(
+                [
+                    "inspect",
+                    "--format",
+                    "{{json .NetworkSettings.Ports}}",
+                    self.container_id,
+                ]
+            )
+        )
+        bindings = ports.get("5432/tcp", [])
+        if len(bindings) != 1 or bindings[0]["HostIp"] != "127.0.0.1":
+            raise RuntimeError("postgres_fixture_binding_invalid")
+        self.port = int(bindings[0]["HostPort"])
+        if not 1 <= self.port <= 65535:
+            raise RuntimeError("postgres_fixture_binding_invalid")
+
     def restart(self) -> None:
         if not self.created or self.container_id is None:
             raise RuntimeError("postgres_fixture_not_owned")
         self.docker(["restart", "--time", "1", self.container_id])
+        self.refresh_binding()
         self.wait_ready()
 
     def cleanup(self) -> None:

@@ -244,6 +244,7 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.engine.dispose()
         self.admin.dispose()
         self.fixture.restart()
+        self.url = self.url.set(port=self.fixture.port)
         self.engine = self.make_engine()
         self.admin = create_engine(self.url)
         result = storage.ProjectRepository(self.engine, verify).read(
