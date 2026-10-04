@@ -79,8 +79,15 @@ existing environment or assume these commands authorize production setup.
 
 ## Remaining Git/CI/CD gates
 
-Scoped commit/push is now approved. GitHub/Linux execution remains unverified until
-the branch run completes; local checks alone are not remote-run evidence.
+Scoped commit `9a68ada` was pushed to `feat/enterprise-agent-runtime-ci` using the
+verified mvsbm account's GitHub noreply identity (repository-only Git configuration).
+[GitHub run 37177479359](https://github.com/mvsbm/agent-workflow-studio/actions/runs/37177479359)
+passed on Ubuntu/Python 3.12: hash-locked installation/consistency, ten policy tests,
+syntax validation and five real SDK fixtures without skips. Manual evidence upload
+was correctly skipped on push; no production delivery/deployment occurred.
+The run emitted nonblocking Node 20 Action deprecation and upcoming ubuntu-latest
+migration annotations; Action/runtime-image maintenance remains a follow-up.
+Unrelated work remains outside the scoped commit; no merge or PR was performed.
 A new manual-dispatch workflow must be available on the default branch before the
 GitHub UI can offer its dispatch; do not implicitly merge to enable it.
 
