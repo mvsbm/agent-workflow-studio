@@ -1,0 +1,26 @@
+{
+  "accepted": true,
+  "case_ids": [
+    "test_langgraph_spike.LangGraphSpikeTests.test_checkpoint_holds_data_not_permission",
+    "test_langgraph_spike.LangGraphSpikeTests.test_forged_approval_is_rejected_before_framework_resume",
+    "test_langgraph_spike.LangGraphSpikeTests.test_interrupted_node_reruns_but_completed_predecessor_does_not",
+    "test_langgraph_spike.LangGraphSpikeTests.test_rejection_never_becomes_execution",
+    "test_langgraph_spike.LangGraphSpikeTests.test_source_change_blocks_clarification_continuation"
+  ],
+  "errors": 0,
+  "failures": 0,
+  "fixture": "deterministic-no-model",
+  "production_ready": false,
+  "schema_version": "WORKFLOW_AGENT_RUNTIME_SPIKE_REPORT_V1",
+  "sdk": "langgraph",
+  "sdk_version": "1.2.12",
+  "skipped": 0,
+  "source_sha256": {
+    "ci/requirements-langgraph-spike.in": "344df9f1a9fe9e6180dc29c1cc41ccc9e296814666203846ede65fe9f6bb182b",
+    "ci/requirements-langgraph-spike.lock": "54120e7af1398f6e53b059c5e0b9348075a821893ee45ec06732be7a4f8fd179",
+    "ci/run_langgraph_spike.py": "8bf17e271071d484b55397ac1d5d154fcbdc242fdd3947f4b5c31106fd9f798d",
+    "custom_nodes/agent_workflow_studio/test_langgraph_spike.py": "a592474b0d1e464f06c92c2461c3bb9553ebdb0acb67dd404f54f78f0ad6aec4"
+  },
+  "synthetic": true,
+  "tests_run": 5
+}
