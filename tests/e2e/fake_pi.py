@@ -96,7 +96,9 @@ BUILD = [
 def build_and_run():
     tool("read", {})
     tool("catalog", {"class_types": ["PrimitiveString", "StringConcatenate", "PreviewAny"]})
-    tool("edit", {"operations": BUILD})
+    tool(
+        "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
+    )
     run = tool("run", {"reason": "build and verify"})
     if not run.get("prompt_id"):
         raise SystemExit("run returned no prompt_id")

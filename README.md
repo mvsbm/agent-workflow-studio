@@ -25,6 +25,10 @@ Four bundled skills guide it: **node creation, workflow debugging, connector/con
 - Chats are saved read-only per workflow (**History**). **Stop** aborts the agent; use ComfyUI's Interrupt for a job that is already queued.
 - Click the provider/model header in the chat to choose provider, model, thinking level and credential source per workflow.
 
+### Versions
+
+Every successful agent edit batch and every save of a workflow is recorded as a version in that workflow's own local git repository (under the ComfyUI user directory, in `agent-projects/`). The agent writes a one-line summary of each batch as the version message. The **Versions** sidebar lists them newest first, labelled *Agent* or *You*, shows what each changed (nodes added, removed or changed; links added or removed), and can restore any version. A restore is itself a new version and one native undo step; history is never rewritten. Files in the agent's workspace are not versioned yet.
+
 ### Boundaries
 
 - Shell and host search tools, `then_run`, and dependency installation are disabled.

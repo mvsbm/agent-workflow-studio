@@ -3,6 +3,7 @@ import {api} from '../../scripts/api.js';
 import {openPiSettings} from './pi_settings.js';
 import {createCanvasBridge} from './pi_canvas.js';
 import {saveChatHistory,listChatHistory,readChatHistory} from './pi_chat_history.js';
+import {commitWorkflow} from './project_versions.js';
 
 const host=app?.extensionManager?.sidebarTab?.registerSidebarTab ? app.extensionManager.sidebarTab : app?.extensionManager;
 const element=(tag,text,props={})=>Object.assign(document.createElement(tag),{textContent:text??'',...props});
@@ -170,7 +171,7 @@ function createChat() {
       }else if(record.type==='tool_execution_end'){
         const tool=toolRows.get(record.toolCallId);if(tool){tool.summary.textContent=`${record.isError?'Failed':'Done'} · ${record.toolName}`;tool.body.textContent=textOf(record.result).slice(0,16000);}scroll();
       }else if(record.type==='comfy_action'){
-        try{checkWorkflow();const result=await bridge.handle(record.action,record.args);if(current===generation&&busy&&!stopped){if(record.action==='run'&&result.submitted)turnSubmitted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.completed===true&&result.status?.status_str==='success')turnCompleted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.status_str==='error')turnFailed=true;if(record.action==='results')showNativeFiles(result);}if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,result});}
+        try{checkWorkflow();const result=await bridge.handle(record.action,record.args);if(record.action==='edit')await commitWorkflow(record.args?.summary||'Agent canvas edit','agent');if(current===generation&&busy&&!stopped){if(record.action==='run'&&result.submitted)turnSubmitted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.completed===true&&result.status?.status_str==='success')turnCompleted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.status_str==='error')turnFailed=true;if(record.action==='results')showNativeFiles(result);}if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,result});}
         catch(error){if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,error:error.message});}
       }else if(record.type==='extension_ui_request'){
         if(['confirm','select','input','editor'].includes(record.method))permission(record,(response,notify)=>{if(notify!==false&&current===generation&&socket.readyState===WebSocket.OPEN)send({type:'extension_ui_response',id:record.id,...response});});

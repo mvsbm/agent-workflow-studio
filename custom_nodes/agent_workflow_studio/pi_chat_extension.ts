@@ -84,7 +84,7 @@ export default async function (pi: ExtensionAPI) {
   }));
   pi.registerTool(defineTool({
     name:"comfy_edit_workflow", label:"Edit native canvas", description:"Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. New-node keys can be used by later operations in the batch. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
-    parameters:Type.Object({operations:Type.Array(operation,{minItems:1,maxItems:32})}),
+    parameters:Type.Object({operations:Type.Array(operation,{minItems:1,maxItems:32}),summary:Type.Optional(Type.String({maxLength:200,description:"One line saying what this batch does and why; recorded as the version message."}))}),
     execute:async (_id,args,signal) => {
       // The native browser verifies existing links and asks once for all
       // destructive changes, then refuses edits if the canvas changed meanwhile.

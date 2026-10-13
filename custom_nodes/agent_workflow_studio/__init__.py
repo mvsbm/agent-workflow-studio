@@ -20,10 +20,12 @@ class AgentWorkflowStudioExtension(ComfyExtension):
 
 async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
     from .pi_chat import install_pi_chat_routes
+    from .project_repo import install_project_routes
     from .routes import install_routes
 
     install_routes()
     install_pi_chat_routes()
+    install_project_routes()
     return AgentWorkflowStudioExtension()
 
 
