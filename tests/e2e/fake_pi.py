@@ -84,31 +84,52 @@ def tool(action, args):
     return result
 
 
-SPEC = {
-    "goal": "Show the text hello world.",
-    "inputs": [],
-    "outputs": [{"name": "text", "description": "The greeting", "type": "text"}],
+CONTRACT = {
+    "contract": 2,
+    "purpose": "Show the text hello world.",
+    "requests": [
+        {
+            "id": "R1",
+            "you_said": "build a hello world workflow",
+            "we_understood": "When run, the workflow shows hello world.",
+            "priority": "must",
+        }
+    ],
+    "examples": [{"id": "E1", "covers": ["R1"], "given": {}, "expect": {"text": "hello world"}}],
+    "promises": {
+        "inputs": [],
+        "outputs": [{"name": "text", "kind": "text", "example": "hello world"}],
+    },
     "steps": [
         {
             "id": "greet",
             "purpose": "Join hello and world into one greeting.",
-            "approach": "deterministic",
-            "nodes": ["PrimitiveString", "StringConcatenate"],
-            "success_gate": {
-                "description": "The greeting says hello world.",
-                "check": {"node_title": "Result", "kind": "contains", "value": "hello world"},
+            "approach": "fixed",
+            "covers": ["R1"],
+            "gate": {
+                "says": "The greeting says hello world.",
+                "check": {"node": "Result", "kind": "contains", "value": "hello world"},
             },
+            "nodes": ["PrimitiveString", "StringConcatenate"],
         },
         {
             "id": "show",
             "purpose": "Show the greeting.",
-            "approach": "deterministic",
+            "approach": "fixed",
+            "covers": ["R1"],
+            "gate": {"says": "The greeting is easy to read."},
             "nodes": ["PreviewAny"],
-            "success_gate": {"description": "The greeting is easy to read."},
         },
     ],
-    "assumptions": [],
-    "decisions": [{"question": "Which greeting?", "answer": "hello world"}],
+    "decisions": [
+        {
+            "id": "D1",
+            "decision": "Use hello world",
+            "why": "Which greeting? hello world",
+            "by": "user",
+        }
+    ],
+    "not_now": [],
     "open_questions": [],
 }
 
@@ -133,9 +154,21 @@ def ask(question, options):
 
 
 BUILD = [
-    {"op": "add", "key": "src", "class_type": "PrimitiveString", "position": [50, 100]},
+    {
+        "op": "add",
+        "key": "src",
+        "class_type": "PrimitiveString",
+        "position": [50, 100],
+        "step": "greet",
+    },
     {"op": "widget", "node": "src", "name": "value", "value": "hello"},
-    {"op": "add", "key": "cat", "class_type": "StringConcatenate", "position": [350, 100]},
+    {
+        "op": "add",
+        "key": "cat",
+        "class_type": "StringConcatenate",
+        "position": [350, 100],
+        "step": "greet",
+    },
     {"op": "widget", "node": "cat", "name": "string_b", "value": " world"},
     {
         "op": "add",
@@ -143,6 +176,7 @@ BUILD = [
         "class_type": "PreviewAny",
         "title": "Result",
         "position": [700, 100],
+        "step": "show",
     },
     {"op": "connect", "from": "src", "output": 0, "to": "cat", "input": "string_a"},
     {"op": "connect", "from": "cat", "output": 0, "to": "out", "input": "source"},
@@ -157,8 +191,8 @@ def build_and_run():
         != "hello world"
     ):
         raise SystemExit("unexpected answer")
-    if not tool("spec_propose", {"spec": SPEC}).get("approved"):
-        say("FAKE PI · plan not approved.")
+    if not tool("contract_propose", {"contract": CONTRACT}).get("approved"):
+        say("FAKE PI · contract not approved.")
         return
     tool(
         "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
@@ -173,9 +207,12 @@ def build_and_run():
         if (result.get("status") or {}).get("completed"):
             break
         time.sleep(0.5)
-    gates = tool("spec_gates", {})["gates"]
+    gates = tool("contract_gates", {})["gates"]
     summary = ", ".join(f"{gate['step']}={gate['status']}" for gate in gates)
-    say(f"FAKE PI · built source → concatenate → preview and ran it. Gates: {summary}.")
+    progress = tool("contract_status", {})["progress"]
+    say(
+        f"FAKE PI · built source → concatenate → preview and ran it. Gates: {summary}. Progress: {progress}."
+    )
 
 
 def structured_answer(record):
@@ -226,6 +263,7 @@ def comfy_tools_notice():
                 "comfyui-node-creation",
                 "comfyui-node-organization",
                 "comfyui-workflow-debugging",
+                "comfyui-workflow-contracts",
             ],
             "default_loaded": True,
         },

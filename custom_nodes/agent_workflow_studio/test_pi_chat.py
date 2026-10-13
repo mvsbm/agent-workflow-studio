@@ -16,7 +16,7 @@ from aiohttp import WSServerHandshakeError, web
 from aiohttp.test_utils import TestClient, TestServer
 
 from . import pi_chat
-from .test_workflow_spec import SPEC
+from .test_workflow_contract import CONTRACT
 
 
 class Socket:
@@ -188,7 +188,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(
             self.session, "canvas_action", AsyncMock(return_value={"ok": True})
         ) as canvas:
-            with self.assertRaisesRegex(ValueError, "approved workflow plan"):
+            with self.assertRaisesRegex(ValueError, "approved contract"):
                 await self.session.agent_action("edit", add)
             # Small fixes need no plan.
             await self.session.agent_action(
@@ -196,12 +196,12 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(canvas.await_count, 1)
             # The agent cannot call the approval card or gate checks directly.
-            for action in ("spec_approve", "gates"):
-                with self.assertRaisesRegex(ValueError, "comfy_workflow_spec"):
+            for action in ("contract_approve", "contract_evidence", "gates"):
+                with self.assertRaisesRegex(ValueError, "comfy_propose_contract"):
                     await self.session.agent_action(action, {})
 
     async def test_structural_edits_are_checked_automatically(self):
-        self.session.spec = SPEC
+        self.session.contract = CONTRACT
         analysis = {
             "summary": "2 node(s), 1 output node(s), 1 that will not run, 1 problem(s).",
             "problems": [
@@ -235,9 +235,50 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(notice["type"], "graph_check")
         self.assertIn("Will not run (reaches no output): Loose trim", notice["text"])
 
+    async def test_contract_status_follows_gates_and_structural_edits(self):
+        self.session.contract = CONTRACT
+        nodes = [
+            {"id": 1, "title": "Label", "step": "classify", "fuzzy": False},
+            {"id": 2, "title": "Loose", "step": None},
+        ]
+        answers = {
+            "contract_evidence": {"nodes": nodes},
+            "gates": {
+                "gates": [
+                    {"step": "classify", "status": "passed"},
+                    {"step": "tidy", "status": "needs_user_review"},
+                ]
+            },
+            "edit": {"ok": True},
+            "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
+        }
+        with patch.object(
+            self.session,
+            "canvas_action",
+            AsyncMock(side_effect=lambda action, _args: answers[action]),
+        ):
+            before = await self.session.agent_action("contract_status", {})
+            await self.session.agent_action("contract_gates", {})
+            after = await self.session.agent_action("contract_status", {})
+            await self.session.agent_action(
+                "edit",
+                {"operations": [{"op": "connect", "from": 1, "output": 0, "to": 2, "input": "x"}]},
+            )
+            changed = await self.session.agent_action("contract_status", {})
+        state = lambda status: {s["step"]: s["state"] for s in status["steps"]}  # noqa: E731
+        self.assertEqual(state(before), {"classify": "built", "tidy": "planned"})
+        self.assertEqual(state(after), {"classify": "verified", "tidy": "planned"})
+        self.assertEqual(after["progress"], "1/2 steps verified")
+        self.assertEqual(after["nodes_outside_steps"], ["Loose"])
+        self.assertEqual(
+            state(changed)["classify"],
+            "built",
+            "a structural edit invalidates earlier gate outcomes",
+        )
+
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
         answers = {
-            "spec_approve": {"approved": True},
+            "contract_approve": {"approved": True},
             "edit": {"ok": True},
             "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
         }
@@ -246,26 +287,29 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             "canvas_action",
             AsyncMock(side_effect=lambda action, _args: answers[action]),
         ) as canvas:
-            result = await self.session.agent_action("spec_propose", {"spec": SPEC})
+            result = await self.session.agent_action("contract_propose", {"contract": CONTRACT})
             self.assertTrue(result["approved"])
             approval = canvas.await_args_list[0].args
-            self.assertEqual(approval[0], "spec_approve")
-            self.assertIn("GOAL: Turn a product review", approval[1]["text"])
+            self.assertEqual(approval[0], "contract_approve")
+            self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
             await self.session.agent_action(
                 "edit", {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}
             )
         log = self.session.repo.log()
         self.assertEqual(
-            (log[0]["author"], log[0]["message"]), ("user", f"Plan approved: {SPEC['goal']}")
+            (log[0]["author"], log[0]["message"]),
+            ("user", f"Contract approved: {CONTRACT['purpose']}"),
         )
-        self.assertEqual(await self.session.agent_action("spec_get", {}), {"spec": SPEC})
+        self.assertEqual(
+            await self.session.agent_action("contract_get", {}), {"contract": CONTRACT}
+        )
         with patch.object(
             self.session, "canvas_action", AsyncMock(return_value={"gates": []})
         ) as canvas:
-            await self.session.agent_action("spec_gates", {})
+            await self.session.agent_action("contract_gates", {})
         action, args = canvas.await_args.args
         self.assertEqual(action, "gates")
-        self.assertEqual([g["step"] for g in args["gates"]], ["classify", "show"])
+        self.assertEqual([g["step"] for g in args["gates"]], ["classify", "tidy"])
         self.assertEqual(args["gates"][0]["check"]["kind"], "regex")
         # A later chat on the same workflow inherits the approved plan.
         later = pi_chat.PiChatSession(
@@ -274,21 +318,22 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             workflow_id=self.workspace_id,
             workspace_root=Path(self.workspace_temp.name) / "workspaces",
         )
-        self.assertEqual(later.spec, SPEC)
+        self.assertEqual(later.contract, CONTRACT)
 
     async def test_denied_plans_and_open_questions_are_not_approved(self):
         with patch.object(
             self.session, "canvas_action", AsyncMock(return_value={"approved": False})
         ):
-            result = await self.session.agent_action("spec_propose", {"spec": SPEC})
+            result = await self.session.agent_action("contract_propose", {"contract": CONTRACT})
         self.assertFalse(result["approved"])
-        self.assertIsNone(self.session.spec)
+        self.assertIsNone(self.session.contract)
         with (
             patch.object(self.session, "canvas_action", AsyncMock()) as canvas,
             self.assertRaisesRegex(ValueError, "open questions"),
         ):
             await self.session.agent_action(
-                "spec_propose", {"spec": {**SPEC, "open_questions": ["Which language?"]}}
+                "contract_propose",
+                {"contract": {**CONTRACT, "open_questions": ["Which language?"]}},
             )
         canvas.assert_not_awaited()
 

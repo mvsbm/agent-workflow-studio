@@ -57,6 +57,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           const node = globalThis.LiteGraph.createNode(op.class_type);
           if (!node) throw Error(`Cannot create native node: ${op.class_type}`);
           if (op.title != null) {if (typeof op.title !== 'string' || op.title.length > 200) throw Error('Invalid node title.'); node.title = op.title;}
+          // Tie the node to its contract step; the contract's step states are derived from these tags.
+          if (op.step != null) {if (typeof op.step !== 'string' || !/^[a-z][a-z0-9_]{0,31}$/.test(op.step)) throw Error('Invalid contract step id.'); node.properties = {...node.properties, aws_contract_step: op.step};}
           const right = nodes(app.graph).reduce((x,n) => Math.max(x,n.pos[0]+n.size[0]),0);
           const position = op.position ?? [right+80,80];
           if (!Array.isArray(position) || position.length !== 2 || !position.every(Number.isFinite)) throw Error('Invalid node position.');
@@ -165,7 +167,11 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (typeof args.from_type !== 'string' || typeof args.to_type !== 'string') throw Error('Give from_type and to_type.');
       return {paths: findConverterPaths(await catalog(), args.from_type, args.to_type)};
     }
-    if (action === 'spec_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow plan?'), String(args.text ?? '')) === true};
+    if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? '')) === true};
+    if (action === 'contract_evidence') return {nodes: nodes(app.rootGraph ?? app.graph).map(node => ({
+      id: node.id, title: node.title, class_type: node.type,
+      step: node.properties?.aws_contract_step ?? null, fuzzy: node.type === 'AgentWorkflowFuzzyNode',
+    }))};
     if (action === 'gates') {
       if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');
       const response = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`);
@@ -181,6 +187,12 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], byTitle)};
     }
     if (action === 'results') {
+      // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.
+      for (let waited = 0; latestPrompt && waited < 60000; waited += 1000) {
+        const finished = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`).then(r => (r.ok ? r.json() : {}));
+        if (finished[latestPrompt]) break;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
       const queue = await api.getQueue();
       const result = {submitted,prompt_id:latestPrompt??null,queue,validation_errors:app.extensionManager?.lastNodeErrors??null,execution_error:app.extensionManager?.lastExecutionError??null};
       if (latestPrompt) {

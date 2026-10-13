@@ -105,6 +105,7 @@ export async function hardenStep(node) {
     step.title = goal.slice(0, 80);
     if (step.subgraph) step.subgraph.name = goal.slice(0, 80);
     step.properties = {...step.properties, aws_step: {state: 'hardened', goal, plan}};
+    if (node.properties?.aws_contract_step) step.properties.aws_contract_step = node.properties.aws_contract_step;
     setState(step, 'hardened');
     return step;
   } catch (error) {

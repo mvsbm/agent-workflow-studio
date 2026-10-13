@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -72,17 +73,52 @@ class ProjectRepoTests(unittest.TestCase):
         self.repo.commit(graph((1, "B", [])), "two", "agent")
         self.assertFalse(marker.exists())
 
-    def test_plan_versions_have_no_canvas_snapshot(self) -> None:
-        plan_sha = self.repo.save_spec({"goal": "g", "steps": []})
-        self.assertIsNone(self.repo.show(plan_sha))
-        self.assertEqual(self.repo.plan(plan_sha), {"goal": "g", "steps": []})
-        self.assertEqual(self.repo.diff(plan_sha)["added"], [])
+    def test_contract_versions_and_conversion_of_old_plans(self) -> None:
+        from .test_workflow_contract import CONTRACT
+
+        sha = self.repo.save_contract(CONTRACT)
+        self.assertIsNone(self.repo.show(sha))  # a contract version has no canvas snapshot
+        self.assertEqual(self.repo.contract_at(sha), CONTRACT)
+        self.assertEqual(self.repo.load_contract(), CONTRACT)
+        self.assertEqual(self.repo.diff(sha)["added"], [])
         with self.assertRaisesRegex(ValueError, "no canvas snapshot"):
-            self.repo.restore(plan_sha)
-        sha = self.repo.commit(graph((1, "A", [])), "build", "agent")
-        self.assertEqual([n["id"] for n in self.repo.diff(sha)["added"]], [1])
-        self.assertIsNone(self.repo.plan(sha))
-        self.assertEqual(self.repo.load_spec(), {"goal": "g", "steps": []})
+            self.repo.restore(sha)
+        self.assertTrue(
+            (self.repo.tree / "contract.yaml").read_text().startswith("# yaml-language-server")
+        )
+        built = self.repo.commit(graph((1, "A", [])), "build", "agent")
+        self.assertIsNone(self.repo.contract_at(built))
+
+    def test_loads_a_plan_approved_before_contracts(self) -> None:
+        old = ProjectRepo(self.root, "older-workflow")
+        old.tree.mkdir(parents=True)
+        plan = {
+            "goal": "Say hi.",
+            "inputs": [],
+            "outputs": [{"name": "t", "description": "d", "type": "text"}],
+            "steps": [
+                {
+                    "id": "s",
+                    "purpose": "p",
+                    "approach": "deterministic",
+                    "success_gate": {"description": "ok"},
+                }
+            ],
+            "assumptions": [],
+            "decisions": [],
+            "open_questions": [],
+        }
+        (old.tree / "spec.json").write_text(json.dumps(plan))
+        self.assertEqual(old.load_contract()["purpose"], "Say hi.")
+        old._ensure()
+        old._git("add", "spec.json")
+        old._git("commit", "--quiet", "-m", "old plan")
+        from .test_workflow_contract import CONTRACT
+
+        old.save_contract(CONTRACT)
+        self.assertFalse(
+            (old.tree / "spec.json").exists(), "the old plan is replaced, not kept beside it"
+        )
 
     def test_rejects_bad_input(self) -> None:
         for bad in (None, {}, {"nodes": "x"}):

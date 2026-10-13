@@ -17,9 +17,16 @@ The **Pi** sidebar embeds Pi's persistent RPC agent. It works through these tool
 
 Four bundled skills guide it: **node creation, workflow debugging, connector/contract management, and node organization**.
 
-### Planning before building
+### Contracts: planning before building
 
-The agent plans with you before it builds. It asks multiple-choice questions (each with an "Other" free-text answer) until the requirements are clear, then proposes a **workflow plan** in a standard format: the goal, what you provide and get, each step in plain words, and how we know each step worked (its **success gate**), plus assumptions and decisions. Node names and connections are kept in a technical section at the end. You approve the plan in the chat; it is saved as a version, and the agent cannot add nodes to a workflow until a plan is approved (small fixes such as changing a value don't need one). After a run the agent checks each gate against the real outputs: gates with an automatic check pass or fail, the rest are listed for you to confirm.
+Every workflow the agent builds has one **contract**, agreed with you before any node is added and versioned as `contract.yaml` in the workflow's history. The agent first asks multiple-choice questions (each with an "Other" answer) until the requirements are clear, then proposes the contract in plain language:
+
+- **Purpose**, and **what you asked for**: each request in your own words next to the agent's restatement ("When …, the workflow …"), with a priority (must / should / could).
+- **Examples** of input and expected output, and the **promised** inputs and outputs.
+- **Steps**, each covering your requests, with how we know it worked (its **success gate**, checked automatically where an output can prove it).
+- **Decisions** (each with why, and whether you or the agent decided), what is **not now**, and **open questions**, which must be resolved before you can approve.
+
+You approve it in the chat; the agent cannot add nodes to a workflow without an approved contract, and changing it means proposing an amendment you approve again. Contracts are YAML checked against `contract.schema.json`, which editors such as VS Code use to validate hand edits. Each step's state (planned, built, fuzzy, verified, failing) is never written down: it is derived from the canvas and the latest gate check, so progress ("2 of 3 steps verified") always matches reality. Plans approved before contracts existed are converted automatically.
 
 ### Graph checks
 

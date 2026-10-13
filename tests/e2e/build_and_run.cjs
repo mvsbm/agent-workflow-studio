@@ -38,11 +38,12 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
 
     // Planning: the agent asks a multiple-choice question, then needs the plan approved.
     await page.getByRole('group', {name: 'Which greeting should the workflow show?'}).getByRole('button', {name: 'hello world'}).click();
-    const plan = page.getByRole('group', {name: 'Approve this workflow plan?'});
+    const plan = page.getByRole('group', {name: 'Approve this workflow contract?'});
     await plan.waitFor({timeout: 60000});
     const planText = await plan.textContent();
-    assert.match(planText, /GOAL: Show the text hello world\./);
-    assert.match(planText, /Done when: The greeting says hello world\. \(checked automatically/);
+    assert.match(planText, /PURPOSE: Show the text hello world\./);
+    assert.match(planText, /R1 \(must\) you said: “build a hello world workflow”/);
+    assert.match(planText, /Done when: The greeting says hello world\. \(checked automatically on “Result”\)/);
     assert.match(planText, /The greeting is easy to read\. \(you confirm this one\)/);
     await plan.getByRole('button', {name: 'Allow'}).click();
 
@@ -54,7 +55,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await run.waitFor({timeout: 60000});
     await run.getByRole('button', {name: 'Allow'}).click();
 
-    await page.getByText('FAKE PI · built source → concatenate → preview and ran it. Gates: greet=passed, show=needs_user_review.').waitFor({timeout: 90000});
+    await page.getByText('FAKE PI · built source → concatenate → preview and ran it. Gates: greet=passed, show=needs_user_review. Progress: 1/2 steps verified.').waitFor({timeout: 90000});
     const graph = await page.evaluate(comfy(app => ({
       types: app.graph.nodes.map(node => node.type).sort(),
       links: app.graph.links instanceof Map ? app.graph.links.size : Object.keys(app.graph.links ?? {}).length,
@@ -94,7 +95,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     const messages = await page.locator('.aw-versions-message').allTextContents();
     assert.match(messages[0], /^Save versions-e2e/);
     assert.equal(messages[1], 'Build hello world: source, concatenate, preview');
-    assert.equal(messages[2], 'Plan approved: Show the text hello world.');
+    assert.equal(messages[2], 'Contract approved: Show the text hello world.');
     assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.

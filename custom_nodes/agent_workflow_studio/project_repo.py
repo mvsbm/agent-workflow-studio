@@ -19,6 +19,7 @@ import time
 from pathlib import Path
 
 from .pi_chat_workspace import workspace_id_for_graph
+from .workflow_contract import from_plan_v1, from_yaml, render, to_yaml
 
 AUTHORS = {
     "agent": ("Pi agent", "agent@agent-workflow-studio"),
@@ -115,7 +116,11 @@ class ProjectRepo:
         return node_diff(before, self.show(sha) or empty)
 
     def _json_at(self, sha: str, wanted, *, all_files: bool = False) -> dict | None:
-        """A JSON file at a version: any file it contains, or only files that version changed."""
+        found = self._file_at(sha, wanted, all_files=all_files)
+        return json.loads(found[1]) if found else None
+
+    def _file_at(self, sha: str, wanted, *, all_files: bool = False) -> tuple[str, str] | None:
+        """(name, text) of a file at a version: any file it contains, or only files it changed."""
         if not SHA.fullmatch(sha):
             raise ValueError("invalid commit id")
         with self.lock:
@@ -125,7 +130,7 @@ class ProjectRepo:
                 else ("show", "--name-only", "--format=", sha)
             )
             name = next((n for n in self._git(*listing).split() if wanted(n)), None)
-            return json.loads(self._git("show", f"{sha}:{name}")) if name else None
+            return (name, self._git("show", f"{sha}:{name}")) if name else None
 
     def add_record(self, record: dict, message: str, workflow: dict) -> str:
         """Commit a run record under records/ together with the workflow that ran."""
@@ -142,23 +147,27 @@ class ProjectRepo:
             self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author="agent")
             return self._git("rev-parse", "HEAD").strip()
 
-    def save_spec(self, spec: dict) -> str:
-        """Commit the user-approved workflow plan as spec.json."""
-        data = json.dumps(spec, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+    def save_contract(self, contract: dict) -> str:
+        """Commit the user-approved contract as contract.yaml (replacing a pre-contract spec.json)."""
         with self.lock:
             self._ensure()
-            (self.tree / "spec.json").write_text(data)
-            self._git("add", "spec.json")
+            (self.tree / "contract.yaml").write_text(to_yaml(contract))
+            self._git("add", "contract.yaml")
+            if (self.tree / "spec.json").exists():
+                self._git("rm", "--quiet", "spec.json")
             if not self._git("status", "--porcelain").strip():
                 return self._git("rev-parse", "HEAD").strip()
-            message = " ".join(f"Plan approved: {spec.get('goal', '')}".split())[:500]
+            message = " ".join(f"Contract approved: {contract['purpose']}".split())[:500]
             self._git("commit", "--quiet", "-m", message, author="user")
             return self._git("rev-parse", "HEAD").strip()
 
-    def load_spec(self) -> dict | None:
-        """The latest approved plan, if any."""
-        path = self.tree / "spec.json"
-        return json.loads(path.read_text()) if path.is_file() else None
+    def load_contract(self) -> dict | None:
+        """The latest approved contract; a plan approved before contracts existed is converted."""
+        if (self.tree / "contract.yaml").is_file():
+            return from_yaml((self.tree / "contract.yaml").read_text())
+        if (self.tree / "spec.json").is_file():
+            return from_plan_v1(json.loads((self.tree / "spec.json").read_text()))
+        return None
 
     def record(self, sha: str) -> dict | None:
         """The run record a commit added, if any."""
@@ -166,9 +175,13 @@ class ProjectRepo:
             sha, lambda name: name.startswith("records/") and name.endswith(".json")
         )
 
-    def plan(self, sha: str) -> dict | None:
-        """The workflow plan a commit approved, if any."""
-        return self._json_at(sha, lambda name: name == "spec.json")
+    def contract_at(self, sha: str) -> dict | None:
+        """The contract (or pre-contract plan) a commit approved, if any."""
+        found = self._file_at(sha, lambda name: name in ("contract.yaml", "spec.json"))
+        if not found:
+            return None
+        name, text = found
+        return from_yaml(text) if name == "contract.yaml" else from_plan_v1(json.loads(text))
 
     def restore(self, sha: str) -> tuple[str | None, dict]:
         workflow = self.show(sha)
@@ -213,14 +226,12 @@ def node_diff(before: dict, after: dict) -> dict:
 
 
 def _detail(repo: ProjectRepo, sha: str) -> dict:
-    from .workflow_spec import render_spec
-
-    plan = repo.plan(sha)
+    contract = repo.contract_at(sha)
     return {
         "workflow": repo.show(sha),
         "diff": repo.diff(sha),
         "record": repo.record(sha),
-        "plan_text": render_spec(plan) if plan else None,
+        "plan_text": render(contract) if contract else None,
     }
 
 

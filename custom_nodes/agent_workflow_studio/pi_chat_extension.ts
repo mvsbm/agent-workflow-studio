@@ -10,7 +10,7 @@ const ref = Type.Union([Type.String(), Type.Number()]);
 // [x, y]. Not a TypeBox tuple: its array-form "items" is invalid JSON Schema 2020-12, which some providers enforce.
 const xy = Type.Array(Type.Number(), {minItems:2, maxItems:2});
 const operation = Type.Union([
-  Type.Object({ op: Type.Literal("add"), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(xy) }),
+  Type.Object({ op: Type.Literal("add"), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(xy), step: Type.Optional(Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$", description:"Id of the contract step this node belongs to."})) }),
   Type.Object({ op: Type.Literal("move"), node: ref, position: xy }),
   Type.Object({ op: Type.Literal("title"), node: ref, title: Type.String({maxLength:200}) }),
   Type.Object({ op: Type.Literal("widget"), node: ref, name: Type.String(), value: Type.Unknown() }),
@@ -19,33 +19,12 @@ const operation = Type.Union([
   Type.Object({ op: Type.Literal("disconnect"), node: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
 ]);
 
-// The standardized workflow plan (validated again server-side in workflow_spec.py).
-const text = Type.String({minLength:1,maxLength:500});
-const port = Type.Object({name:text,description:text,type:text});
-const gateKinds = ["non_empty","contains","equals","regex","image_count_at_least"] as const;
-const workflowSpec = Type.Object({
-  goal:text,
-  inputs:Type.Array(port,{maxItems:16}),
-  outputs:Type.Array(port,{minItems:1,maxItems:16}),
-  steps:Type.Array(Type.Object({
-    id:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}),
-    purpose:Type.String({minLength:1,maxLength:500,description:"What this step does, in plain words for a non-technical user."}),
-    approach:Type.Union([Type.Literal("deterministic"),Type.Literal("fuzzy"),Type.Literal("llm")]),
-    nodes:Type.Optional(Type.Array(text,{maxItems:16,description:"Technical: node class types for this step."})),
-    connections:Type.Optional(Type.String({maxLength:1000,description:"Technical: how this step connects to the others."})),
-    success_gate:Type.Object({
-      description:Type.String({minLength:1,maxLength:500,description:"How we know this step worked, in plain words."}),
-      check:Type.Optional(Type.Object({
-        node_title:Type.String({minLength:1,maxLength:500,description:"Title of the node whose output proves the gate; give that node this exact title."}),
-        kind:Type.Union(gateKinds.map(kind=>Type.Literal(kind))),
-        value:Type.Optional(Type.Union([Type.String(),Type.Integer()])),
-      })),
-    }),
-  }),{minItems:1,maxItems:32}),
-  assumptions:Type.Array(text,{maxItems:32}),
-  decisions:Type.Array(Type.Object({question:text,answer:text}),{maxItems:32}),
-  open_questions:Type.Array(text,{maxItems:16,description:"Must be empty before approval; ask with comfy_ask_user."}),
-});
+// The contract schema is one JSON Schema file shared with the server and editors. Tool schemas
+// get it with the $ref inlined and editor-only keys removed, which some providers reject.
+const contractSchema = (() => {
+  const {$schema: _s, $id: _i, title: _t, $defs, ...schema} = JSON.parse(readFileSync(fileURLToPath(new URL("./contract.schema.json",import.meta.url)),"utf8"));
+  return JSON.parse(JSON.stringify(schema).replaceAll('{"$ref":"#/$defs/port"}',JSON.stringify($defs.port)));
+})();
 const OTHER = "Other (I'll type my answer)";
 
 async function request(action: string, args: unknown, signal?: AbortSignal) {
@@ -73,7 +52,7 @@ export default async function (pi: ExtensionAPI) {
   // Only bundled, trusted skills: never discover instructions in editable workspaces.
   const skillDirectory=fileURLToPath(new URL("./skills/",import.meta.url));
   const loaded=loadSkillsFromDir({dir:skillDirectory,source:"comfyui-chat"});
-  if(loaded.diagnostics.length||loaded.skills.length!==4) throw new Error("Bundled ComfyUI skills could not be verified.");
+  if(loaded.diagnostics.length||loaded.skills.length!==5) throw new Error("Bundled ComfyUI skills could not be verified.");
   const skills={names:loaded.skills.map(skill=>skill.name).sort(),default_loaded:true};
   // The environment/tool guide lives in prompts/ so it can be read and reviewed as Markdown.
   const agentPrompt=readFileSync(fileURLToPath(new URL("./prompts/comfyui_agent.md",import.meta.url)),"utf8");
@@ -96,7 +75,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_workflow_spec","comfy_check_gates","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -129,7 +108,7 @@ export default async function (pi: ExtensionAPI) {
     },
   }));
   pi.registerTool(defineTool({
-    name:"comfy_execution_results", label:"Inspect execution", description:"Read native queue state and outputs/errors for the latest run submitted by this chat. If it is still running, report that; do not repeatedly poll in a tight loop.",
+    name:"comfy_execution_results", label:"Inspect execution", description:"Read native queue state and outputs/errors for the latest run submitted by this chat. Waits up to 60 s for that run to finish; if it is still running after that, call it again rather than stopping.",
     parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("results",args,signal),
   }));
   pi.registerTool(defineTool({
@@ -150,14 +129,14 @@ export default async function (pi: ExtensionAPI) {
     },
   }));
   pi.registerTool(defineTool({
-    name:"comfy_workflow_spec", label:"Propose workflow plan", description:"Propose the standardized workflow plan and wait for the user's approval in the chat. Required before adding nodes. Plain language for steps and gates; technical details go in nodes/connections. Every step needs a success gate; add a check where a node's output can prove it. open_questions must be empty.",
-    parameters:Type.Object({spec:workflowSpec}),
-    execute:async (_id,args,signal) => canvas("spec_propose",{spec:args.spec},signal),
+    name:"comfy_propose_contract", label:"Propose contract", description:"Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Intent only: purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps with gates, decisions, not-now, open questions (must be empty).",
+    parameters:Type.Object({contract:Type.Unsafe(contractSchema)}),
+    execute:async (_id,args,signal) => canvas("contract_propose",{contract:args.contract},signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_check_gates", label:"Check success gates", description:"After a run, check every step's success gate from the approved plan against the latest run's outputs. Gates without a check are listed for the user to confirm.",
+    name:"comfy_check_gates", label:"Check success gates", description:"After a run, check every step's success gate from the approved contract against the latest run's outputs. Gates without a check are listed for the user to confirm.",
     parameters:Type.Object({}),
-    execute:async (_id,_args,signal) => canvas("spec_gates",{},signal),
+    execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
   }));
   pi.registerTool(defineTool({
     name:"comfy_analyze_graph", label:"Analyze graph", description:"Check the live canvas without running it or calling a model: output nodes, nodes that will not run (they reach no output), unconnected required inputs, type mismatches, cycles, deprecated nodes, and per output the checkpoints every path must pass (good places for success gates). Runs automatically after structural edits.",
@@ -167,5 +146,9 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_find_converter", label:"Find converter", description:"Find the shortest chains of installed nodes that turn one data type into another (e.g. IMAGE to MASK), each step a node with one connected input.",
     parameters:Type.Object({from_type:Type.String({minLength:1,maxLength:80}),to_type:Type.String({minLength:1,maxLength:80})}),
     execute:async (_id,args,signal) => canvas("converters",args,signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_contract_status", label:"Contract status", description:"Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the canvas and the latest gate check, with the next action, plus nodes not tied to any step.",
+    parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("contract_status",args,signal),
   }));
 }

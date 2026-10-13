@@ -22,7 +22,7 @@ from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_g
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
 from .project_repo import ProjectRepo
-from .workflow_spec import render_spec, validate_spec
+from .workflow_contract import derive_states, gates, render, validate_for_approval
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
@@ -31,14 +31,15 @@ ACTIONS = {
     "edit",
     "run",
     "results",
-    "spec_approve",
+    "contract_approve",
+    "contract_evidence",
     "gates",
     "analyze",
     "converters",
 }
 # Edit operations that change what runs; after them the graph is checked automatically.
 STRUCTURAL = {"add", "remove", "connect", "disconnect"}
-SPEC_ACTIONS = {"spec_propose", "spec_get", "spec_gates"}
+CONTRACT_ACTIONS = {"contract_propose", "contract_get", "contract_gates", "contract_status"}
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
 REQUIRED_SKILLS = {
@@ -46,6 +47,7 @@ REQUIRED_SKILLS = {
     "comfyui-workflow-debugging",
     "comfyui-connector-management",
     "comfyui-node-organization",
+    "comfyui-workflow-contracts",
 }
 MAX_MESSAGE = 1_048_576
 
@@ -98,7 +100,8 @@ class PiChatSession:
         self.workspace = PiChatWorkspace(workspace_root, workspace_id_for_graph(workflow_id))
         # The approved plan lives in the workflow's project history, beside the workspaces.
         self.repo = ProjectRepo(Path(workspace_root).parent / "agent-projects", workflow_id)
-        self.spec = self.repo.load_spec()
+        self.contract = self.repo.load_contract()
+        self.gate_results = {}  # step -> latest gate outcome since the last structural change
         self.socket = socket
         self.id = secrets.token_urlsafe(24)
         self.token = secrets.token_urlsafe(32)
@@ -477,27 +480,31 @@ class PiChatSession:
         self.dialogs.clear()
 
     async def agent_action(self, action, arguments):
-        """Everything the agent's tools ask of the session, with the plan gate enforced here."""
+        """Everything the agent's tools ask of the session, with the contract gate enforced here."""
         if action in FILE_ACTIONS:
             return await self.workspace_action(action, arguments)
-        if action in SPEC_ACTIONS:
-            return await self.spec_action(action, arguments)
-        if action in {"spec_approve", "gates"}:
-            raise ValueError("Use comfy_workflow_spec or comfy_check_gates.")
+        if action in CONTRACT_ACTIONS:
+            return await self.contract_action(action, arguments)
+        if action in {"contract_approve", "contract_evidence", "gates"}:
+            raise ValueError(
+                "Use comfy_propose_contract, comfy_check_gates or comfy_contract_status."
+            )
         operations = arguments.get("operations") if isinstance(arguments, dict) else None
+        structural = action == "edit" and any(
+            isinstance(op, dict) and op.get("op") in STRUCTURAL for op in operations or []
+        )
         if (
             action == "edit"
-            and self.spec is None
+            and self.contract is None
             and any(isinstance(op, dict) and op.get("op") == "add" for op in operations or [])
         ):
             raise ValueError(
-                "Adding nodes needs an approved workflow plan. Clarify the requirements with "
-                "comfy_ask_user, then propose the plan with comfy_workflow_spec."
+                "Adding nodes needs an approved contract. Clarify the requirements with "
+                "comfy_ask_user, then propose the contract with comfy_propose_contract."
             )
         result = await self.canvas_action(action, arguments)
-        if action == "edit" and any(
-            isinstance(op, dict) and op.get("op") in STRUCTURAL for op in operations or []
-        ):
+        if structural:
+            self.gate_results = {}  # earlier gate outcomes no longer describe this graph
             result = {**result, "graph_check": await self.check_graph()}
         return result
 
@@ -513,34 +520,41 @@ class PiChatSession:
         await self.socket.send_json({"type": "graph_check", "text": "\n".join(lines)})
         return {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
 
-    async def spec_action(self, action, arguments):
-        if action == "spec_get":
-            return {"spec": self.spec}
-        if action == "spec_gates":
-            # Gates come from the approved plan, never from the agent's arguments.
-            if self.spec is None:
-                raise ValueError("This workflow has no approved plan yet.")
-            gates = [
-                {
-                    "step": s["id"],
-                    "description": s["success_gate"]["description"],
-                    "check": s["success_gate"].get("check"),
-                }
-                for s in self.spec["steps"]
-            ]
-            return await self.canvas_action("gates", {"gates": gates})
-        spec = validate_spec(arguments.get("spec") if isinstance(arguments, dict) else None)
+    async def contract_action(self, action, arguments):
+        if action == "contract_get":
+            return {"contract": self.contract}
+        if action != "contract_propose" and self.contract is None:
+            raise ValueError("This workflow has no approved contract yet.")
+        if action == "contract_gates":
+            # Gates come from the approved contract, never from the agent's arguments.
+            result = await self.canvas_action("gates", {"gates": gates(self.contract)})
+            self.gate_results = {g["step"]: g["status"] for g in result["gates"]}
+            return result
+        if action == "contract_status":
+            evidence = await self.canvas_action("contract_evidence", {})
+            states = derive_states(self.contract, evidence["nodes"], self.gate_results)
+            done = sum(s["state"] == "verified" for s in states)
+            untagged = [n["title"] for n in evidence["nodes"] if not n.get("step")]
+            return {
+                "progress": f"{done}/{len(states)} steps verified",
+                "steps": states,
+                "nodes_outside_steps": untagged,
+            }
+        contract = validate_for_approval(
+            arguments.get("contract") if isinstance(arguments, dict) else None
+        )
         # Approval is the user's click in the browser, never the agent's own tool call.
         answer = await self.canvas_action(
-            "spec_approve", {"title": "Approve this workflow plan?", "text": render_spec(spec)}
+            "contract_approve",
+            {"title": "Approve this workflow contract?", "text": render(contract)},
         )
         if not answer.get("approved"):
             return {
                 "approved": False,
-                "message": "The user did not approve the plan; ask what to change.",
+                "message": "The user did not approve the contract; ask what to change.",
             }
-        sha = await asyncio.to_thread(self.repo.save_spec, spec)
-        self.spec = spec
+        sha = await asyncio.to_thread(self.repo.save_contract, contract)
+        self.contract, self.gate_results = contract, {}
         return {"approved": True, "version": sha[:8]}
 
     async def canvas_action(self, action, arguments):
