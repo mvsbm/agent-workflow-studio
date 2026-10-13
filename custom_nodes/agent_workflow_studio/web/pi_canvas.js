@@ -7,14 +7,7 @@ const links = graph => graph.links instanceof Map ? [...graph.links.values()] : 
 const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?.findIndex(input => input.name === name || input.widget?.name === name);
 
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
-  let definitions, latestPrompt, awaitingStart = false, submitted = false;
-  const executionStart = event => {
-    if (awaitingStart && event.detail?.prompt_id) {
-      latestPrompt = event.detail.prompt_id;
-      awaitingStart = false;
-    }
-  };
-  api.addEventListener('execution_start', executionStart);
+  let definitions, latestPrompt, submitted = false;
   const catalog = async () => definitions ??= await api.getNodeDefs();
   const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? ref);
 
@@ -130,16 +123,18 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (!autoApproveRun() && !await confirm?.('Run the current ComfyUI workflow?', String(args.reason??''))) throw Error('Workflow execution was not authorized.');
       const queue = await api.getQueue();
       if (before !== JSON.stringify(app.rootGraph?.serialize?.() ?? app.graph.serialize())) throw Error('Workflow changed before submission; inspect it again before running.');
-      // ponytail: one chat-owned run at a time; correlate native client events.
-      // Use native request IDs if ComfyUI exposes queue IDs through app.queuePrompt.
       if (queue.Running?.length || queue.Pending?.length || app.processingQueue) throw Error('Native queue is busy; wait before starting a chat-owned run.');
-      latestPrompt = null; submitted = false; awaitingStart = true;
-      try {
-        const accepted = await app.queuePrompt(0,1);
-        if (accepted === false) throw Error('Native ComfyUI validation rejected the workflow. Inspect execution_results and the native error panel.');
-        submitted = true;
-        return {submitted:true,prompt_id:latestPrompt??null,message:'Submitted through native Run; inspect execution_results before claiming success.'};
-      } catch (error) {awaitingStart=false;throw error;}
+      latestPrompt = null; submitted = false;
+      // app.queuePrompt does not return the server's prompt_id, so record what
+      // api.queuePrompt returns while (and only while) this native Run is in flight.
+      const ids = [], queuePrompt = api.queuePrompt;
+      api.queuePrompt = async (...args) => {const response = await queuePrompt.apply(api,args); if (response?.prompt_id) ids.push(response.prompt_id); return response;};
+      let accepted;
+      try { accepted = await app.queuePrompt(0,1); } finally { api.queuePrompt = queuePrompt; }
+      if (accepted === false || !ids.length) throw Error('Native ComfyUI validation rejected the workflow. Inspect execution_results and the native error panel.');
+      if (ids.length !== 1) throw Error(`Expected one native submission but saw ${ids.length}; inspect the queue before continuing.`);
+      latestPrompt = ids[0]; submitted = true;
+      return {submitted:true,prompt_id:latestPrompt,message:'Submitted through native Run; inspect execution_results before claiming success.'};
     }
     if (action === 'results') {
       const queue = await api.getQueue();
@@ -169,5 +164,5 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     }
     throw Error('Unsupported native canvas action.');
   }
-  return {handle,dispose:()=>api.removeEventListener('execution_start',executionStart)};
+  return {handle,dispose:()=>{}};
 }

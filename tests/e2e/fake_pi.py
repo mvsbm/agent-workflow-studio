@@ -97,9 +97,13 @@ def build_and_run():
     tool("read", {})
     tool("catalog", {"class_types": ["PrimitiveString", "StringConcatenate", "PreviewAny"]})
     tool("edit", {"operations": BUILD})
-    tool("run", {})
+    run = tool("run", {"reason": "build and verify"})
+    if not run.get("prompt_id"):
+        raise SystemExit("run returned no prompt_id")
     for _ in range(60):
         result = tool("results", {})
+        if result.get("prompt_id") != run["prompt_id"]:
+            raise SystemExit("results tracked a different run")
         if (result.get("status") or {}).get("completed"):
             break
         time.sleep(0.5)
