@@ -200,8 +200,47 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ValueError, "comfy_workflow_spec"):
                     await self.session.agent_action(action, {})
 
+    async def test_structural_edits_are_checked_automatically(self):
+        self.session.spec = SPEC
+        analysis = {
+            "summary": "2 node(s), 1 output node(s), 1 that will not run, 1 problem(s).",
+            "problems": [
+                {
+                    "kind": "unconnected_input",
+                    "message": 'Required input "vae" (VAE) is not connected.',
+                }
+            ],
+            "will_not_run": [{"id": 4, "title": "Loose trim", "class_type": "StringTrim"}],
+        }
+        calls = []
+
+        async def canvas(action, args):
+            calls.append(action)
+            return analysis if action == "analyze" else {"node_count": 2}
+
+        with patch.object(self.session, "canvas_action", side_effect=canvas):
+            result = await self.session.agent_action(
+                "edit",
+                {"operations": [{"op": "connect", "from": 1, "output": 0, "to": 2, "input": "x"}]},
+            )
+            await self.session.agent_action(
+                "edit", {"operations": [{"op": "move", "node": 1, "position": [0, 0]}]}
+            )
+        self.assertEqual(calls, ["edit", "analyze", "edit"])
+        self.assertEqual(
+            result["graph_check"]["problems"], ['Required input "vae" (VAE) is not connected.']
+        )
+        self.assertEqual(result["graph_check"]["will_not_run"], ["Loose trim"])
+        notice = self.socket.events[-1]
+        self.assertEqual(notice["type"], "graph_check")
+        self.assertIn("Will not run (reaches no output): Loose trim", notice["text"])
+
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
-        answers = {"spec_approve": {"approved": True}, "edit": {"ok": True}}
+        answers = {
+            "spec_approve": {"approved": True},
+            "edit": {"ok": True},
+            "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
+        }
         with patch.object(
             self.session,
             "canvas_action",

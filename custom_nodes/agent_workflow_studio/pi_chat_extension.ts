@@ -96,7 +96,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_workflow_spec","comfy_check_gates"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_workflow_spec","comfy_check_gates","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -158,5 +158,14 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_check_gates", label:"Check success gates", description:"After a run, check every step's success gate from the approved plan against the latest run's outputs. Gates without a check are listed for the user to confirm.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("spec_gates",{},signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_analyze_graph", label:"Analyze graph", description:"Check the live canvas without running it or calling a model: output nodes, nodes that will not run (they reach no output), unconnected required inputs, type mismatches, cycles, deprecated nodes, and per output the checkpoints every path must pass (good places for success gates). Runs automatically after structural edits.",
+    parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("analyze",args,signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_find_converter", label:"Find converter", description:"Find the shortest chains of installed nodes that turn one data type into another (e.g. IMAGE to MASK), each step a node with one connected input.",
+    parameters:Type.Object({from_type:Type.String({minLength:1,maxLength:80}),to_type:Type.String({minLength:1,maxLength:80})}),
+    execute:async (_id,args,signal) => canvas("converters",args,signal),
   }));
 }

@@ -1,5 +1,6 @@
 // Native graph APIs, following Comfy-Org/ComfyUI_frontend's app.ts/API queue path.
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
+import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
 const secret = /(?:password|api.?key|token|credential|secret|authorization)/i;
 const nodes = graph => graph.nodes ?? graph._nodes ?? [];
 // The current frontend keeps links in a Map; older graphs used a plain object.
@@ -158,6 +159,11 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (ids.length !== 1) throw Error(`Expected one native submission but saw ${ids.length}; inspect the queue before continuing.`);
       latestPrompt = ids[0]; submitted = true;
       return {submitted:true,prompt_id:latestPrompt,message:'Submitted through native Run; inspect execution_results before claiming success.'};
+    }
+    if (action === 'analyze') return analyzeGraph((app.rootGraph ?? app.graph).serialize(), await catalog());
+    if (action === 'converters') {
+      if (typeof args.from_type !== 'string' || typeof args.to_type !== 'string') throw Error('Give from_type and to_type.');
+      return {paths: findConverterPaths(await catalog(), args.from_type, args.to_type)};
     }
     if (action === 'spec_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow plan?'), String(args.text ?? '')) === true};
     if (action === 'gates') {

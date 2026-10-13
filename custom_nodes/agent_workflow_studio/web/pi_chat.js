@@ -159,6 +159,7 @@ function createChat() {
       }else if(record.type==='workspace_files'||record.type==='workspace_file'){try{checkWorkflow();if(record.error)throw Error(record.error);if(record.type==='workspace_files')showFiles(record.result);else downloadFile(record.result);}catch(error){filesNote.textContent=error.message;}
       }else if(record.type==='model_config'){configuring=false;activeConfig=record.pi_config;model.textContent=[activeConfig.provider,activeConfig.model,activeConfig.credential_source].join(' · ');try{checkWorkflow();remember({pi_config:activeConfig});modelPicker.open=false;}catch(error){configNote.textContent=error.message;}status.textContent='Model updated';update();
       }else if(record.type==='extensions_status')showAddons(record.extensions);
+      else if(record.type==='graph_check')row('notice',record.text);
       else if(record.type==='agent_start'){busy=true;update();status.textContent='Pi is working…';}
       else if(record.type==='message_start'&&record.message?.role==='assistant'){archiveAssistant=null;assistant=row('assistant','');}
       else if(record.type==='message_update'&&record.assistantMessageEvent?.type==='text_delta'){

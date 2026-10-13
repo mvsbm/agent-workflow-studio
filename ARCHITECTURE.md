@@ -31,6 +31,7 @@ browser: web/pi_chat.js ──WebSocket /agent-workflow-studio/pi-chat/ws──�
 | `fuzzy_node.py` | Fuzzy · Plan with nodes: plan request, local plan validation against live node schemas, `GraphBuilder` expansion, run record. |
 | `web/fuzzy_steps.js` | Fuzzy step states on the canvas (Planned / Fuzzy / Hardened), the plan shown on the node, and **Harden this step**: plan → real nodes → native subgraph. |
 | `workflow_spec.py` | The standardized workflow plan: schema, validation (every step has a success gate; no open questions) and the plain-language approval view. `pi_chat.py` enforces it: adding nodes needs an approved plan, approval is the user's click in the browser, gates come from the approved plan. |
+| `web/graph_analysis.js` | Static graph analysis (pure functions): output nodes, reachability (what will not run), unconnected required inputs, type mismatches, cycles, deprecated nodes, dominator checkpoints per output, and breadth-first converter search between types. `pi_chat.py` runs it after every structural agent edit. |
 | `routes.py` | Loopback-only Pi model catalog, credential and auth-check routes. |
 | `project_repo.py`, `web/project_versions.js` | Per-workflow git history: `<user>/agent-projects/<uuid>/workflow.json` with its git directory beside it, auto-commits for agent edits and saves, and the Versions panel. Git runs with system/global config and hooks disabled. |
 | `web/` | Sidebar, canvas bridge, chat history, model picker, credentials panel. |

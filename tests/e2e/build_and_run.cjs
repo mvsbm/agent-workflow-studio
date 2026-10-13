@@ -46,6 +46,9 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     assert.match(planText, /The greeting is easy to read\. \(you confirm this one\)/);
     await plan.getByRole('button', {name: 'Allow'}).click();
 
+    // Structural edits are checked automatically and the user sees the result.
+    await page.getByText('Graph check: 3 node(s), 1 output node(s), 0 that will not run, 0 problem(s).').waitFor({timeout: 60000});
+
     // The bridge asks before a native Run; approve it.
     const run = page.getByRole('group', {name: 'Run the current ComfyUI workflow?'});
     await run.waitFor({timeout: 60000});

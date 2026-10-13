@@ -21,6 +21,10 @@ Four bundled skills guide it: **node creation, workflow debugging, connector/con
 
 The agent plans with you before it builds. It asks multiple-choice questions (each with an "Other" free-text answer) until the requirements are clear, then proposes a **workflow plan** in a standard format: the goal, what you provide and get, each step in plain words, and how we know each step worked (its **success gate**), plus assumptions and decisions. Node names and connections are kept in a technical section at the end. You approve the plan in the chat; it is saved as a version, and the agent cannot add nodes to a workflow until a plan is approved (small fixes such as changing a value don't need one). After a run the agent checks each gate against the real outputs: gates with an automatic check pass or fail, the rest are listed for you to confirm.
 
+### Graph checks
+
+After every agent edit that adds, removes or rewires nodes, the workflow is checked automatically, without running it or calling a model, and the result appears in the chat: nodes that will not run (they reach no output), required inputs left unconnected, type mismatches, cycles and deprecated nodes. The agent must fix what it finds before running. It can also run the check on demand, see the checkpoints every path to an output passes (natural places for success gates), and look up the shortest chain of installed nodes that converts one data type to another.
+
 ### Transparency
 
 - Tool calls expand inline in the chat; replies render through ComfyUI's sanitized Markdown.

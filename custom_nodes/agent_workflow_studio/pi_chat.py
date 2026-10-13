@@ -25,7 +25,19 @@ from .project_repo import ProjectRepo
 from .workflow_spec import render_spec, validate_spec
 
 PREFIX = "/agent-workflow-studio/pi-chat"
-ACTIONS = {"read", "catalog", "edit", "run", "results", "spec_approve", "gates"}
+ACTIONS = {
+    "read",
+    "catalog",
+    "edit",
+    "run",
+    "results",
+    "spec_approve",
+    "gates",
+    "analyze",
+    "converters",
+}
+# Edit operations that change what runs; after them the graph is checked automatically.
+STRUCTURAL = {"add", "remove", "connect", "disconnect"}
 SPEC_ACTIONS = {"spec_propose", "spec_get", "spec_gates"}
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
@@ -482,7 +494,24 @@ class PiChatSession:
                 "Adding nodes needs an approved workflow plan. Clarify the requirements with "
                 "comfy_ask_user, then propose the plan with comfy_workflow_spec."
             )
-        return await self.canvas_action(action, arguments)
+        result = await self.canvas_action(action, arguments)
+        if action == "edit" and any(
+            isinstance(op, dict) and op.get("op") in STRUCTURAL for op in operations or []
+        ):
+            result = {**result, "graph_check": await self.check_graph()}
+        return result
+
+    async def check_graph(self):
+        """The automatic check after a structural change: problems the agent must see, and the user too."""
+        analysis = await self.canvas_action("analyze", {})
+        problems = [p["message"] for p in analysis["problems"]]
+        idle = [n["title"] for n in analysis["will_not_run"]]
+        lines = [f"Graph check: {analysis['summary']}"]
+        lines += [f"• {p}" for p in problems[:8]]
+        if idle:
+            lines.append("• Will not run (reaches no output): " + ", ".join(idle[:8]))
+        await self.socket.send_json({"type": "graph_check", "text": "\n".join(lines)})
+        return {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
 
     async def spec_action(self, action, arguments):
         if action == "spec_get":
