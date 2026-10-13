@@ -1,51 +1,66 @@
 # Agent Workflow Studio
 
-ComfyUI is the workflow editor, serializer, queue, and run-button runtime. Nayose remains authoritative for dataset generation, training, fingerprints, and artifacts. This repository installs both applications locally and adds a small ComfyUI V3 custom-node package.
+A [ComfyUI](https://github.com/comfyanonymous/ComfyUI) extension that puts a **Pi-backed agent inside the node editor**. The agent sees the live canvas, searches every installed node schema, plans a workflow, builds and edits it with real nodes and typed links, runs it, and reads the results. Everything it does lands on the native canvas, so you can inspect, undo, or take over at any step.
 
-## Install (macOS / Linux)
+## What the agent can do
 
-The installer supports Apple Silicon macOS (PyTorch MPS) and Linux (NVIDIA CUDA or CPU). Requirements: Git, `curl`, and internet access for the pinned source/dependency downloads. It bootstraps `uv` and Python 3.12. Apple Silicon is recommended for Nayose's production F2LLM profile, which is locked to Apple MPS; CPU-only runs work for the smoke workflow but do not provide neural training.
+The **Pi** sidebar embeds Pi's persistent RPC agent. It works through these tools:
+
+| Tool | What it does |
+| --- | --- |
+| `comfy_read_workflow` | Reads the live canvas: nodes, widgets, links, selection. |
+| `comfy_node_catalog` | Searches all installed node schemas (names, descriptions, aliases, enum choices). |
+| `comfy_edit_workflow` | Adds, edits, connects, moves and retitles nodes, up to 32 operations per batch. Edits are applied atomically with native Undo/Redo, and a failed batch rolls back. |
+| `comfy_run_workflow` | Queues a native Run. Asks for confirmation unless you enabled auto-approve for that workflow. |
+| `comfy_execution_results` | Reads outputs and errors of the run it submitted. |
+| `comfy_workspace` + read/edit/write | A private per-workflow file workspace for notes and data files. |
+
+Four bundled skills guide it: **node creation, workflow debugging, connector/contract management, and node organization**.
+
+### Transparency
+
+- Tool calls expand inline in the chat; replies render through ComfyUI's sanitized Markdown.
+- The workflow is the plain ComfyUI graph: no hidden state, no separate workflow format.
+- The chat status separates *no workflow submitted*, *submitted but unverified*, *execution failed* and *native execution succeeded*. A chat reply alone never counts as proof that a node ran.
+- Chats are saved read-only per workflow (**History**). **Stop** aborts the agent; use ComfyUI's Interrupt for a job that is already queued.
+- Click the provider/model header in the chat to choose provider, model, thinking level and credential source per workflow.
+
+### Boundaries
+
+- Shell and host search tools, `then_run`, and dependency installation are disabled.
+- File tools are confined to the workflow's workspace (128 KiB per file, 8 MiB, 128 files, 32 subdirectories). Traversal, symlinks and special files are rejected.
+- The bridge is loopback-only, same-origin and token-authenticated. It is not a sandbox for third-party MCP servers or installed native nodes. Keep ComfyUI bound to `127.0.0.1`.
+- Native **Auto Queue** still applies to canvas edits; turn it off if edits must not execute anything.
+- Workspace files are data, never loaded as Pi configuration or executed.
+
+## Nodes
+
+- **Pi CLI · Model Config** (`PI_MODEL_CONFIG_V1`): provider, model, thinking level, credential source.
+- **Pi CLI · Structured LLM**: a single-turn Pi call that must fill a JSON-Schema-bound result tool. Action tools are disabled, output is validated locally, and the result goes out on a typed `DICT` socket.
+
+Use the **Pi provider credentials & model catalog** canvas menu to manage provider API keys in the OS keychain. Pi-managed auth stays Pi-managed. No credential is stored in node inputs, workflows, command arguments or logs.
+
+## Requirements
+
+- macOS or Linux, Git, `curl`; the installer bootstraps `uv` and Python 3.12.
+- The Pi CLI (`pi`, npm package `@earendil-works/pi-coding-agent`) on `PATH`, or set `AGENT_WORKFLOW_STUDIO_PI_CLI`.
+- **SoL-Pi and Ponytail** installed in your Pi profile. The chat currently refuses to start without them; see [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
+
+## Install and run
 
 ```bash
 git clone https://github.com/mvsbm/agent-workflow-studio.git
 cd agent-workflow-studio
-./install.sh
-./run-local.sh
+./install.sh      # pins ComfyUI (versions.lock), installs under ~/.local/share/agent-workflow-studio
+./run-local.sh    # http://127.0.0.1:8188
 ```
 
-The scripts use `versions.lock` for the ComfyUI and Nayose commits and install under `~/.local/share/agent-workflow-studio` by default. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME=/path/to/runtime`. Runtime data, logs, generated datasets, model bundles, and the ComfyUI user directory stay outside this repository. On macOS, allow the OS Keychain prompt when the credential dialog is first used.
+Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
-Open <http://127.0.0.1:8188>. Load **Nayose Agent Smoke** from ComfyUI's workflow list. The template shows the intended typed flow:
-
-`StringConcatenate → OpenCode Go Structured Agent (DICT) → Nayose Validate Agent Controls (NAYOSE_GENERATION_CONFIG) → Preview / Generate → Train`
-
-Use ComfyUI's **Run** button to execute. The LLM result must pass both its JSON Schema and Nayose's generation-preview gate before it can reach generation. The bundled workflow uses smoke data, `device=auto` (MPS on Apple Silicon), and `model_family=off` for a low-cost integration check; it is not a GPU neural-training benchmark.
-
-## OpenCode Go credential
-
-The installer creates a random local Nayose API bearer token in the host OS credential vault. It does not provision an OpenCode Go key. Configure a newly issued provider key from the ComfyUI canvas' **OpenCode Go Credentials** action when ready to use the hosted model. Keys stay on the server in the OS keyring and are never stored in node widgets, browser storage, or workflow JSON. Do not commit keys or paste them into workflows.
-
-The Studio fixes the requested model to `mimo-v2.6-flash`. No live provider call is performed during installation. Provider account access/model availability must be verified by the operator with their rotated key.
-
-## What is included
-
-- ComfyUI V3 nodes with native Comfy sockets: editable Nayose controls, Nayose domain validation, preview, generation, training, and OpenCode Go structured JSON.
-- A Nayose API client that passes artifact IDs and fingerprints—not dataset contents or arbitrary paths—over graph edges.
-- A server-side OS-keyring credential dialog and loopback-only credential routes.
-- A minimal Nayose patch that safely pins training to a validated generation ID and preserves the configured device across resource planning.
-- A ComfyUI-native smoke workflow and a single local installer/launcher.
-
-Promotion is intentionally not automatic. Any future promotion node must require explicit human approval. GPU availability at ComfyUI startup does not imply that Nayose's locked production neural-training profile supports CUDA.
-
-## Development checks
-
-Run node tests from the ComfyUI checkout so `comfy_api` is importable:
+## Development
 
 ```bash
-cd /path/to/ComfyUI
-.venv/bin/python -m pytest custom_nodes/agent_workflow_studio -q
-ruff check custom_nodes/agent_workflow_studio
-ruff format --check custom_nodes/agent_workflow_studio
+scripts/test.sh   # Python (unittest, via the installed ComfyUI venv) + JS (node --test)
 ```
 
-The Nayose source patch is `patches/nayose-agent-workflow.patch` and is applied only to the pinned checkout. The installer refuses to reset a modified runtime checkout.
+Tests are offline: no provider calls, no browser. Live-provider behavior and browser end-to-end flows are not covered by automated tests.

@@ -15,23 +15,18 @@ def _keyring():
     try:
         import keyring
     except ImportError as exc:
-        raise CredentialStoreError(
-            "Install the custom node's keyring requirements"
-        ) from exc
+        raise CredentialStoreError("Install the custom node's keyring requirements") from exc
     root = keyring.get_keyring()
     backends = getattr(root, "backends", [root])
     if not any(
-        type(item).__module__.rsplit(".", 1)[-1] in _SECURE
-        and getattr(item, "priority", 0) > 0
+        type(item).__module__.rsplit(".", 1)[-1] in _SECURE and getattr(item, "priority", 0) > 0
         for item in backends
     ):
         raise CredentialStoreError("No supported OS credential vault is available")
     return keyring
 
 
-def _operate(
-    action: str, value: str | None = None, account: str = ACCOUNT
-) -> str | None:
+def _operate(action: str, value: str | None = None, account: str = ACCOUNT) -> str | None:
     try:
         store = _keyring()
         if action == "read":

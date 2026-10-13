@@ -6,8 +6,9 @@ PACKAGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$PACKAGE_ROOT/versions.lock"
 APP_HOME="${AGENT_WORKFLOW_STUDIO_HOME:-$HOME/.local/share/agent-workflow-studio}"
 COMFYUI_DIR="$APP_HOME/ComfyUI"
-NAYOSE_DIR="$APP_HOME/Nayose"
+NODE_SRC="$PACKAGE_ROOT/custom_nodes/agent_workflow_studio"
 NODE_DIR="$COMFYUI_DIR/custom_nodes/agent_workflow_studio"
+PYTHON="$COMFYUI_DIR/.venv/bin/python"
 
 fail() { printf 'Agent Workflow Studio install failed: %s\n' "$*" >&2; exit 1; }
 
@@ -21,91 +22,59 @@ if ! command -v uv >/dev/null; then
 fi
 command -v uv >/dev/null || fail "uv installation did not complete."
 
-clone_pinned() {
-    local url="$1" destination="$2" commit="$3"
-    if [[ -e "$destination" ]]; then
-        git -C "$destination" rev-parse --git-dir >/dev/null 2>&1 || fail "$destination exists but is not a Git checkout."
-        local current
-        current="$(git -C "$destination" rev-parse HEAD)"
-        if [[ "$current" != "$commit" ]]; then
-            [[ -z "$(git -C "$destination" status --porcelain)" ]] || fail "$destination is modified; refusing to reset it."
-            git -C "$destination" fetch --depth 1 origin "$commit"
-            git -C "$destination" checkout --detach "$commit"
-        fi
-    else
-        mkdir -p "$(dirname "$destination")"
-        git clone --filter=blob:none "$url" "$destination"
-        git -C "$destination" fetch --depth 1 origin "$commit"
-        git -C "$destination" checkout --detach "$commit"
-    fi
-}
-
 install_torch() {
-    local python="$1"
     if [[ "$PLATFORM" == Darwin ]]; then
         # PyPI's macOS wheels include the Apple Silicon MPS backend.
-        uv pip install --python "$python" --reinstall \
+        uv pip install --python "$PYTHON" --reinstall \
             "torch==$TORCH_VERSION" "torchvision==$TORCHVISION_VERSION"
     elif [[ -e /dev/nvidia0 ]]; then
-        uv pip install --python "$python" --reinstall \
+        uv pip install --python "$PYTHON" --reinstall \
             --index-url https://download.pytorch.org/whl/cu130 \
             "torch==$TORCH_VERSION" "torchvision==$TORCHVISION_VERSION"
     else
-        uv pip install --python "$python" --reinstall \
+        uv pip install --python "$PYTHON" --reinstall \
             --index-url https://download.pytorch.org/whl/cpu \
             "torch==$TORCH_VERSION" "torchvision==$TORCHVISION_VERSION"
     fi
 }
 
-mkdir -p "$APP_HOME" "$APP_HOME/state" "$APP_HOME/logs"
-clone_pinned "$COMFYUI_REPOSITORY" "$COMFYUI_DIR" "$COMFYUI_COMMIT"
-clone_pinned "$NAYOSE_REPOSITORY" "$NAYOSE_DIR" "$NAYOSE_COMMIT"
+mkdir -p "$APP_HOME/state" "$APP_HOME/logs"
 
-# Apply only the Studio adapter patch, and only to the pinned Nayose revision.
-if git -C "$NAYOSE_DIR" apply --check "$PACKAGE_ROOT/patches/nayose-agent-workflow.patch"; then
-    git -C "$NAYOSE_DIR" apply "$PACKAGE_ROOT/patches/nayose-agent-workflow.patch"
-elif ! git -C "$NAYOSE_DIR" apply --reverse --check "$PACKAGE_ROOT/patches/nayose-agent-workflow.patch"; then
-    fail "the Nayose adapter patch does not match the pinned checkout."
+# Pin ComfyUI to the reviewed commit; never reset a modified checkout.
+if [[ -e "$COMFYUI_DIR" ]]; then
+    git -C "$COMFYUI_DIR" rev-parse --git-dir >/dev/null 2>&1 || fail "$COMFYUI_DIR exists but is not a Git checkout."
+    if [[ "$(git -C "$COMFYUI_DIR" rev-parse HEAD)" != "$COMFYUI_COMMIT" ]]; then
+        [[ -z "$(git -C "$COMFYUI_DIR" status --porcelain)" ]] || fail "$COMFYUI_DIR is modified; refusing to reset it."
+        git -C "$COMFYUI_DIR" fetch --depth 1 origin "$COMFYUI_COMMIT"
+        git -C "$COMFYUI_DIR" checkout --detach "$COMFYUI_COMMIT"
+    fi
+else
+    git clone --filter=blob:none "$COMFYUI_REPOSITORY" "$COMFYUI_DIR"
+    git -C "$COMFYUI_DIR" fetch --depth 1 origin "$COMFYUI_COMMIT"
+    git -C "$COMFYUI_DIR" checkout --detach "$COMFYUI_COMMIT"
 fi
 
 uv python install "$PYTHON_VERSION"
-if [[ ! -x "$COMFYUI_DIR/.venv/bin/python" ]]; then
-    uv venv --python "$PYTHON_VERSION" "$COMFYUI_DIR/.venv"
-fi
-uv pip install --python "$COMFYUI_DIR/.venv/bin/python" -r "$COMFYUI_DIR/requirements.txt"
-install_torch "$COMFYUI_DIR/.venv/bin/python"
-uv pip install --python "$COMFYUI_DIR/.venv/bin/python" \
-    -r "$PACKAGE_ROOT/custom_nodes/agent_workflow_studio/requirements.txt"
+[[ -x "$PYTHON" ]] || uv venv --python "$PYTHON_VERSION" "$COMFYUI_DIR/.venv"
+uv pip install --python "$PYTHON" -r "$COMFYUI_DIR/requirements.txt"
+install_torch
+# This official frontend release is verified against the pinned core; change no other dependency.
+uv pip install --python "$PYTHON" --no-deps "comfyui-frontend-package==$COMFYUI_FRONTEND_VERSION"
+FRONTEND_ROOT="$("$PYTHON" -c \
+    'import pathlib, comfyui_frontend_package; print(pathlib.Path(comfyui_frontend_package.__file__).parent / "static")')"
+"$PYTHON" "$PACKAGE_ROOT/scripts/provision_comfy_assets.py" \
+    --user-root "$APP_HOME/state/comfy-user" --frontend-root "$FRONTEND_ROOT"
+uv pip install --python "$PYTHON" -r "$NODE_SRC/requirements.txt"
 
 if [[ ! -e "$NODE_DIR" ]]; then
-    ln -s "$PACKAGE_ROOT/custom_nodes/agent_workflow_studio" "$NODE_DIR"
-elif [[ "$(cd "$NODE_DIR" && pwd -P)" != "$(cd "$PACKAGE_ROOT/custom_nodes/agent_workflow_studio" && pwd -P)" ]]; then
+    ln -s "$NODE_SRC" "$NODE_DIR"
+elif [[ "$(cd "$NODE_DIR" && pwd -P)" != "$(cd "$NODE_SRC" && pwd -P)" ]]; then
     fail "$NODE_DIR already exists and is not this package's node directory."
 fi
 
-if [[ ! -x "$NAYOSE_DIR/.venv/bin/python" ]]; then
-    uv venv --python "$PYTHON_VERSION" "$NAYOSE_DIR/.venv"
-fi
-install_torch "$NAYOSE_DIR/.venv/bin/python"
-uv pip install --python "$NAYOSE_DIR/.venv/bin/python" \
-    -e "$NAYOSE_DIR[matcher,performance,serve]"
-
-# The internal local API bearer token is kept in the OS vault, never in a file.
-PYTHONPATH="$PACKAGE_ROOT" "$COMFYUI_DIR/.venv/bin/python" - <<'PY'
-import secrets
-from custom_nodes.agent_workflow_studio.credential_store import (
-    credential_configured,
-    save_credential,
-)
-
-account = "nayose-api"
-if not credential_configured(account):
-    save_credential(secrets.token_urlsafe(32), account)
-PY
-
 mkdir -p "$APP_HOME/state/comfy-user/default/workflows"
-cp "$PACKAGE_ROOT/workflows/Nayose Agent Smoke.json" \
-    "$APP_HOME/state/comfy-user/default/workflows/Nayose Agent Smoke.json"
+cp -n "$PACKAGE_ROOT"/workflows/*.json "$APP_HOME/state/comfy-user/default/workflows/" || true
+
 printf '\nInstalled Agent Workflow Studio at: %s\n' "$APP_HOME"
+command -v pi >/dev/null || printf 'Note: the Pi CLI (`pi`) is not on PATH. Install it, or set AGENT_WORKFLOW_STUDIO_PI_CLI.\n'
 printf 'Start it with: %s/run-local.sh\n' "$PACKAGE_ROOT"
-printf 'OpenCode Go key is entered later from the ComfyUI canvas menu; it is not part of installation.\n'

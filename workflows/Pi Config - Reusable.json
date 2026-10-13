@@ -1,0 +1,98 @@
+{
+  "id": "73e8551e-b385-44f7-9dc9-acdeba5f0e85",
+  "revision": 0,
+  "last_node_id": 1,
+  "last_link_id": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "AgentWorkflowPiModelConfig",
+      "pos": [
+        60,
+        120
+      ],
+      "size": [
+        340,
+        190
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 2,
+      "inputs": [
+        {
+          "localized_name": "Provider ID",
+          "name": "provider",
+          "type": "COMBO",
+          "widget": {
+            "name": "provider"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "Model ID",
+          "name": "model",
+          "type": "COMBO",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "Thinking level",
+          "name": "thinking_level",
+          "type": "COMBO",
+          "widget": {
+            "name": "thinking_level"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "Credential source",
+          "name": "credential_source",
+          "type": "COMBO",
+          "widget": {
+            "name": "credential_source"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "pi_model_config",
+          "name": "pi_model_config",
+          "type": "PI_MODEL_CONFIG_V1",
+          "links": null
+        }
+      ],
+      "title": "Pi · Choose provider and model",
+      "properties": {
+        "Node name for S&R": "AgentWorkflowPiModelConfig"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "high",
+        "pi_managed"
+      ],
+      "widgets_values_named": {
+        "provider": "",
+        "model": "",
+        "thinking_level": "high",
+        "credential_source": "pi_managed"
+      }
+    }
+  ],
+  "links": [],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9,
+      "offset": [
+        0,
+        0
+      ]
+    }
+  },
+  "version": 0.4
+}

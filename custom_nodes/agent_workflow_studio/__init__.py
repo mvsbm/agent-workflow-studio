@@ -1,18 +1,13 @@
-"""Native ComfyUI V3 custom-node extension for Agent Workflow Studio."""
+"""Agent Workflow Studio: a Pi-backed agent that builds and edits ComfyUI workflows."""
 
 from __future__ import annotations
 
-from comfy_api.latest import ComfyExtension
-from typing_extensions import override
+from typing import override
 
-from .nodes import (
-    NayoseGenerateDataset,
-    NayoseGenerationControls,
-    NayosePreviewGeneration,
-    NayoseTrainModel,
-    NayoseValidateAgentControls,
-    OpenCodeGoStructuredAgent,
-)
+from comfy_api.latest import ComfyExtension
+
+from .agent_node import PiStructuredAgent
+from .pi_model_config import AgentWorkflowPiModelConfig
 
 WEB_DIRECTORY = "./web"
 
@@ -20,30 +15,21 @@ WEB_DIRECTORY = "./web"
 class AgentWorkflowStudioExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type]:
-        return [
-            NayoseGenerationControls,
-            NayosePreviewGeneration,
-            NayoseGenerateDataset,
-            NayoseTrainModel,
-            NayoseValidateAgentControls,
-            OpenCodeGoStructuredAgent,
-        ]
+        return [AgentWorkflowPiModelConfig, PiStructuredAgent]
 
 
 async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
+    from .pi_chat import install_pi_chat_routes
     from .routes import install_routes
 
     install_routes()
+    install_pi_chat_routes()
     return AgentWorkflowStudioExtension()
 
 
 __all__ = [
+    "AgentWorkflowPiModelConfig",
     "AgentWorkflowStudioExtension",
-    "NayoseGenerateDataset",
-    "NayoseGenerationControls",
-    "NayosePreviewGeneration",
-    "NayoseTrainModel",
-    "NayoseValidateAgentControls",
-    "OpenCodeGoStructuredAgent",
+    "PiStructuredAgent",
     "comfy_entrypoint",
 ]
