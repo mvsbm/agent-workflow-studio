@@ -17,6 +17,10 @@ The **Pi** sidebar embeds Pi's persistent RPC agent. It works through these tool
 
 Four bundled skills guide it: **node creation, workflow debugging, connector/contract management, and node organization**.
 
+### Planning before building
+
+The agent plans with you before it builds. It asks multiple-choice questions (each with an "Other" free-text answer) until the requirements are clear, then proposes a **workflow plan** in a standard format: the goal, what you provide and get, each step in plain words, and how we know each step worked (its **success gate**), plus assumptions and decisions. Node names and connections are kept in a technical section at the end. You approve the plan in the chat; it is saved as a version, and the agent cannot add nodes to a workflow until a plan is approved (small fixes such as changing a value don't need one). After a run the agent checks each gate against the real outputs: gates with an automatic check pass or fail, the rest are listed for you to confirm.
+
 ### Transparency
 
 - Tool calls expand inline in the chat; replies render through ComfyUI's sanitized Markdown.

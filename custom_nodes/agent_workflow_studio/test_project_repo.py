@@ -72,6 +72,18 @@ class ProjectRepoTests(unittest.TestCase):
         self.repo.commit(graph((1, "B", [])), "two", "agent")
         self.assertFalse(marker.exists())
 
+    def test_plan_versions_have_no_canvas_snapshot(self) -> None:
+        plan_sha = self.repo.save_spec({"goal": "g", "steps": []})
+        self.assertIsNone(self.repo.show(plan_sha))
+        self.assertEqual(self.repo.plan(plan_sha), {"goal": "g", "steps": []})
+        self.assertEqual(self.repo.diff(plan_sha)["added"], [])
+        with self.assertRaisesRegex(ValueError, "no canvas snapshot"):
+            self.repo.restore(plan_sha)
+        sha = self.repo.commit(graph((1, "A", [])), "build", "agent")
+        self.assertEqual([n["id"] for n in self.repo.diff(sha)["added"]], [1])
+        self.assertIsNone(self.repo.plan(sha))
+        self.assertEqual(self.repo.load_spec(), {"goal": "g", "steps": []})
+
     def test_rejects_bad_input(self) -> None:
         for bad in (None, {}, {"nodes": "x"}):
             with self.subTest(workflow=bad), self.assertRaises(ValueError):

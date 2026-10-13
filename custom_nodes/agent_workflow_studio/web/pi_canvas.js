@@ -6,6 +6,27 @@ const nodes = graph => graph.nodes ?? graph._nodes ?? [];
 const links = graph => graph.links instanceof Map ? [...graph.links.values()] : Object.values(graph.links ?? {});
 const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?.findIndex(input => input.name === name || input.widget?.name === name);
 
+/** Judge success gates against a run's outputs, grouped by the producing node's title. */
+export function evaluateGates(gates, outputsByTitle) {
+  return gates.map(({step, description, check}) => {
+    if (!check) return {step, description, status: 'needs_user_review'};
+    const outputs = outputsByTitle[check.node_title.trim().toLowerCase()];
+    if (!outputs) return {step, description, status: 'no_output', evidence: `No output from a node titled "${check.node_title}" in the latest run. Only output nodes (Preview, Save) produce outputs; point the check at one.`};
+    const texts = outputs.flatMap(output => output.text ?? []).map(String);
+    const images = outputs.reduce((count, output) => count + (output.images?.length ?? 0), 0);
+    const passed = {
+      non_empty: () => texts.some(text => text.trim()) || images > 0,
+      contains: () => texts.some(text => text.includes(String(check.value))),
+      equals: () => texts.some(text => text === String(check.value)),
+      regex: () => texts.some(text => new RegExp(String(check.value)).test(text)),
+      image_count_at_least: () => images >= Number(check.value),
+    }[check.kind]?.();
+    if (passed === undefined) return {step, description, status: 'no_output', evidence: `Unknown check ${check.kind}.`};
+    const evidence = check.kind === 'image_count_at_least' ? `${images} image(s)` : texts.join(' | ').slice(0, 300);
+    return {step, description, status: passed ? 'passed' : 'failed', evidence};
+  });
+}
+
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
   let definitions, latestPrompt, submitted = false;
   const catalog = async () => definitions ??= await api.getNodeDefs();
@@ -137,6 +158,21 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (ids.length !== 1) throw Error(`Expected one native submission but saw ${ids.length}; inspect the queue before continuing.`);
       latestPrompt = ids[0]; submitted = true;
       return {submitted:true,prompt_id:latestPrompt,message:'Submitted through native Run; inspect execution_results before claiming success.'};
+    }
+    if (action === 'spec_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow plan?'), String(args.text ?? '')) === true};
+    if (action === 'gates') {
+      if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');
+      const response = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`);
+      if (!response.ok) throw Error('Cannot read native execution history.');
+      const record = (await response.json())[latestPrompt];
+      if (!record?.status?.completed) throw Error('The latest run has not completed yet.');
+      const titles = Object.fromEntries(nodes(app.graph).map(node => [String(node.id), node.title]));
+      const byTitle = {};
+      for (const [id, output] of Object.entries(record.outputs ?? {})) {
+        const title = (titles[id] ?? record.prompt?.[2]?.[id]?._meta?.title ?? '').trim().toLowerCase();
+        if (title) (byTitle[title] ??= []).push(output);
+      }
+      return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], byTitle)};
     }
     if (action === 'results') {
       const queue = await api.getQueue();

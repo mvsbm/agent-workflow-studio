@@ -110,6 +110,7 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | **P4 Hardening** ✔ (slim: step states on canvas, plan shown on the node, Harden → native subgraph; pinned cases and offline replay not yet) | Materialize, pin cases, offline replay check. | A frozen subgraph reproduces its pinned cases with the LLM disabled. |
 | **P5 Agent-written tools** | Proposal branches, diff review, subprocess execution. | Unapproved code never runs; approved code runs out of process. |
 | **P6 Studio MCP server** | Publish the same canvas tools (read, catalog, edit, run, results, history) as an MCP server, bridged to the open browser session, so other MCP clients such as Claude Code can drive the studio with the same undo, rollback, confirmation and commit safeguards. Pi keeps using the tools natively. | An MCP client builds and runs a workflow, and the edit appears as one undo step and one commit. |
+| **P7a Planning** ✔ | `comfy_ask_user` (multiple choice), `comfy_workflow_spec` (standardized plan, approved by the user, versioned as `spec.json`, required before adding nodes), `comfy_check_gates` (success gates checked against real outputs). | Real model asks, plans with gates and checks them (eval). |
 | **P7 Orchestration** | Chat tools to create fuzzy nodes, inspect records and history, and propose hardening as a reviewable diff. | The user can go from request to a partially hardened workflow entirely in conversation. |
 
 ## Evaluation results

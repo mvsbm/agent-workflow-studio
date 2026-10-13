@@ -10,12 +10,13 @@ import unittest
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from aiohttp import WSServerHandshakeError, web
 from aiohttp.test_utils import TestClient, TestServer
 
 from . import pi_chat
+from .test_workflow_spec import SPEC
 
 
 class Socket:
@@ -181,6 +182,76 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         await self.session.close()
         self.patch.stop()
         self.workspace_temp.cleanup()
+
+    async def test_adding_nodes_requires_an_approved_plan(self):
+        add = {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}
+        with patch.object(
+            self.session, "canvas_action", AsyncMock(return_value={"ok": True})
+        ) as canvas:
+            with self.assertRaisesRegex(ValueError, "approved workflow plan"):
+                await self.session.agent_action("edit", add)
+            # Small fixes need no plan.
+            await self.session.agent_action(
+                "edit", {"operations": [{"op": "title", "node": 1, "title": "x"}]}
+            )
+            self.assertEqual(canvas.await_count, 1)
+            # The agent cannot call the approval card or gate checks directly.
+            for action in ("spec_approve", "gates"):
+                with self.assertRaisesRegex(ValueError, "comfy_workflow_spec"):
+                    await self.session.agent_action(action, {})
+
+    async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
+        answers = {"spec_approve": {"approved": True}, "edit": {"ok": True}}
+        with patch.object(
+            self.session,
+            "canvas_action",
+            AsyncMock(side_effect=lambda action, _args: answers[action]),
+        ) as canvas:
+            result = await self.session.agent_action("spec_propose", {"spec": SPEC})
+            self.assertTrue(result["approved"])
+            approval = canvas.await_args_list[0].args
+            self.assertEqual(approval[0], "spec_approve")
+            self.assertIn("GOAL: Turn a product review", approval[1]["text"])
+            await self.session.agent_action(
+                "edit", {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}
+            )
+        log = self.session.repo.log()
+        self.assertEqual(
+            (log[0]["author"], log[0]["message"]), ("user", f"Plan approved: {SPEC['goal']}")
+        )
+        self.assertEqual(await self.session.agent_action("spec_get", {}), {"spec": SPEC})
+        with patch.object(
+            self.session, "canvas_action", AsyncMock(return_value={"gates": []})
+        ) as canvas:
+            await self.session.agent_action("spec_gates", {})
+        action, args = canvas.await_args.args
+        self.assertEqual(action, "gates")
+        self.assertEqual([g["step"] for g in args["gates"]], ["classify", "show"])
+        self.assertEqual(args["gates"][0]["check"]["kind"], "regex")
+        # A later chat on the same workflow inherits the approved plan.
+        later = pi_chat.PiChatSession(
+            Socket(),
+            "http://127.0.0.1:8189",
+            workflow_id=self.workspace_id,
+            workspace_root=Path(self.workspace_temp.name) / "workspaces",
+        )
+        self.assertEqual(later.spec, SPEC)
+
+    async def test_denied_plans_and_open_questions_are_not_approved(self):
+        with patch.object(
+            self.session, "canvas_action", AsyncMock(return_value={"approved": False})
+        ):
+            result = await self.session.agent_action("spec_propose", {"spec": SPEC})
+        self.assertFalse(result["approved"])
+        self.assertIsNone(self.session.spec)
+        with (
+            patch.object(self.session, "canvas_action", AsyncMock()) as canvas,
+            self.assertRaisesRegex(ValueError, "open questions"),
+        ):
+            await self.session.agent_action(
+                "spec_propose", {"spec": {**SPEC, "open_questions": ["Which language?"]}}
+            )
+        canvas.assert_not_awaited()
 
     async def test_isolated_auth_keeps_operator_package_profile(self):
         config = {

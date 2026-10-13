@@ -7,15 +7,46 @@ import { loadChatAddons } from "./pi_chat_addons.ts";
 import { registerWorkspaceFiles } from "./pi_chat_files.ts";
 
 const ref = Type.Union([Type.String(), Type.Number()]);
+// [x, y]. Not a TypeBox tuple: its array-form "items" is invalid JSON Schema 2020-12, which some providers enforce.
+const xy = Type.Array(Type.Number(), {minItems:2, maxItems:2});
 const operation = Type.Union([
-  Type.Object({ op: Type.Literal("add"), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(Type.Tuple([Type.Number(), Type.Number()])) }),
-  Type.Object({ op: Type.Literal("move"), node: ref, position: Type.Tuple([Type.Number(), Type.Number()]) }),
+  Type.Object({ op: Type.Literal("add"), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(xy) }),
+  Type.Object({ op: Type.Literal("move"), node: ref, position: xy }),
   Type.Object({ op: Type.Literal("title"), node: ref, title: Type.String({maxLength:200}) }),
   Type.Object({ op: Type.Literal("widget"), node: ref, name: Type.String(), value: Type.Unknown() }),
   Type.Object({ op: Type.Literal("connect"), from: ref, output: Type.Integer({minimum:0}), to: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
   Type.Object({ op: Type.Literal("remove"), node: ref }),
   Type.Object({ op: Type.Literal("disconnect"), node: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
 ]);
+
+// The standardized workflow plan (validated again server-side in workflow_spec.py).
+const text = Type.String({minLength:1,maxLength:500});
+const port = Type.Object({name:text,description:text,type:text});
+const gateKinds = ["non_empty","contains","equals","regex","image_count_at_least"] as const;
+const workflowSpec = Type.Object({
+  goal:text,
+  inputs:Type.Array(port,{maxItems:16}),
+  outputs:Type.Array(port,{minItems:1,maxItems:16}),
+  steps:Type.Array(Type.Object({
+    id:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}),
+    purpose:Type.String({minLength:1,maxLength:500,description:"What this step does, in plain words for a non-technical user."}),
+    approach:Type.Union([Type.Literal("deterministic"),Type.Literal("fuzzy"),Type.Literal("llm")]),
+    nodes:Type.Optional(Type.Array(text,{maxItems:16,description:"Technical: node class types for this step."})),
+    connections:Type.Optional(Type.String({maxLength:1000,description:"Technical: how this step connects to the others."})),
+    success_gate:Type.Object({
+      description:Type.String({minLength:1,maxLength:500,description:"How we know this step worked, in plain words."}),
+      check:Type.Optional(Type.Object({
+        node_title:Type.String({minLength:1,maxLength:500,description:"Title of the node whose output proves the gate; give that node this exact title."}),
+        kind:Type.Union(gateKinds.map(kind=>Type.Literal(kind))),
+        value:Type.Optional(Type.Union([Type.String(),Type.Integer()])),
+      })),
+    }),
+  }),{minItems:1,maxItems:32}),
+  assumptions:Type.Array(text,{maxItems:32}),
+  decisions:Type.Array(Type.Object({question:text,answer:text}),{maxItems:32}),
+  open_questions:Type.Array(text,{maxItems:16,description:"Must be empty before approval; ask with comfy_ask_user."}),
+});
+const OTHER = "Other (I'll type my answer)";
 
 async function request(action: string, args: unknown, signal?: AbortSignal) {
   const url = process.env.COMFY_PI_BRIDGE_URL, token = process.env.COMFY_PI_BRIDGE_TOKEN;
@@ -65,7 +96,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_workflow_spec","comfy_check_gates"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -100,5 +131,32 @@ export default async function (pi: ExtensionAPI) {
   pi.registerTool(defineTool({
     name:"comfy_execution_results", label:"Inspect execution", description:"Read native queue state and outputs/errors for the latest run submitted by this chat. If it is still running, report that; do not repeatedly poll in a tight loop.",
     parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("results",args,signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_ask_user", label:"Ask the user", description:"Ask the user up to 4 multiple-choice questions and wait for the answers. Each question offers 2-4 short options plus a free-text 'Other'. Use while planning to settle requirements; ask everything you need at once.",
+    parameters:Type.Object({questions:Type.Array(Type.Object({question:Type.String({minLength:1,maxLength:300}),options:Type.Array(Type.String({minLength:1,maxLength:120}),{minItems:2,maxItems:4})}),{minItems:1,maxItems:4})}),
+    execute:async (_id,args,_signal,_update,ctx) => {
+      const answers:{question:string;answer:string}[]=[];
+      for (const {question,options} of args.questions) {
+        let answer=await ctx.ui.select(question,[...options,OTHER]);
+        if (answer===OTHER) answer=await ctx.ui.input(question,"Type your answer");
+        if (answer===undefined) {
+          const result={answers,dismissed:true,message:"The user dismissed the questions. Do not assume answers; ask in chat what they want."};
+          return {content:[{type:"text" as const,text:JSON.stringify(result)}],details:result};
+        }
+        answers.push({question,answer});
+      }
+      return {content:[{type:"text" as const,text:JSON.stringify({answers})}],details:{answers}};
+    },
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_workflow_spec", label:"Propose workflow plan", description:"Propose the standardized workflow plan and wait for the user's approval in the chat. Required before adding nodes. Plain language for steps and gates; technical details go in nodes/connections. Every step needs a success gate; add a check where a node's output can prove it. open_questions must be empty.",
+    parameters:Type.Object({spec:workflowSpec}),
+    execute:async (_id,args,signal) => canvas("spec_propose",{spec:args.spec},signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_check_gates", label:"Check success gates", description:"After a run, check every step's success gate from the approved plan against the latest run's outputs. Gates without a check are listed for the user to confirm.",
+    parameters:Type.Object({}),
+    execute:async (_id,_args,signal) => canvas("spec_gates",{},signal),
   }));
 }

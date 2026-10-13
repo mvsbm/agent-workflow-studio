@@ -101,20 +101,31 @@ class ProjectRepo:
             )
         return entries
 
-    def show(self, sha: str) -> dict:
-        if not SHA.fullmatch(sha):
-            raise ValueError("invalid commit id")
-        with self.lock:
-            return json.loads(self._git("show", f"{sha}:workflow.json"))
+    def show(self, sha: str) -> dict | None:
+        """The workflow snapshot at a version, or None if that version has none (e.g. a plan)."""
+        return self._json_at(sha, lambda name: name == "workflow.json", all_files=True)
 
     def diff(self, sha: str) -> dict:
         """Node and link changes the commit made relative to its parent."""
         entry = next((e for e in self.log() if e["sha"] == sha), None)
         if entry is None:
             raise ValueError("unknown commit")
-        after = self.show(sha)
-        before = self.show(entry["parent"]) if entry["parent"] else {"nodes": [], "links": []}
-        return node_diff(before, after)
+        empty = {"nodes": [], "links": []}
+        before = (self.show(entry["parent"]) if entry["parent"] else None) or empty
+        return node_diff(before, self.show(sha) or empty)
+
+    def _json_at(self, sha: str, wanted, *, all_files: bool = False) -> dict | None:
+        """A JSON file at a version: any file it contains, or only files that version changed."""
+        if not SHA.fullmatch(sha):
+            raise ValueError("invalid commit id")
+        with self.lock:
+            listing = (
+                ("ls-tree", "--name-only", "-r", sha)
+                if all_files
+                else ("show", "--name-only", "--format=", sha)
+            )
+            name = next((n for n in self._git(*listing).split() if wanted(n)), None)
+            return json.loads(self._git("show", f"{sha}:{name}")) if name else None
 
     def add_record(self, record: dict, message: str, workflow: dict) -> str:
         """Commit a run record under records/ together with the workflow that ran."""
@@ -131,19 +142,38 @@ class ProjectRepo:
             self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author="agent")
             return self._git("rev-parse", "HEAD").strip()
 
+    def save_spec(self, spec: dict) -> str:
+        """Commit the user-approved workflow plan as spec.json."""
+        data = json.dumps(spec, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+        with self.lock:
+            self._ensure()
+            (self.tree / "spec.json").write_text(data)
+            self._git("add", "spec.json")
+            if not self._git("status", "--porcelain").strip():
+                return self._git("rev-parse", "HEAD").strip()
+            message = " ".join(f"Plan approved: {spec.get('goal', '')}".split())[:500]
+            self._git("commit", "--quiet", "-m", message, author="user")
+            return self._git("rev-parse", "HEAD").strip()
+
+    def load_spec(self) -> dict | None:
+        """The latest approved plan, if any."""
+        path = self.tree / "spec.json"
+        return json.loads(path.read_text()) if path.is_file() else None
+
     def record(self, sha: str) -> dict | None:
         """The run record a commit added, if any."""
-        if not SHA.fullmatch(sha):
-            raise ValueError("invalid commit id")
-        with self.lock:
-            names = self._git("show", "--name-only", "--format=", sha).split()
-            name = next(
-                (n for n in names if n.startswith("records/") and n.endswith(".json")), None
-            )
-            return json.loads(self._git("show", f"{sha}:{name}")) if name else None
+        return self._json_at(
+            sha, lambda name: name.startswith("records/") and name.endswith(".json")
+        )
+
+    def plan(self, sha: str) -> dict | None:
+        """The workflow plan a commit approved, if any."""
+        return self._json_at(sha, lambda name: name == "spec.json")
 
     def restore(self, sha: str) -> tuple[str | None, dict]:
         workflow = self.show(sha)
+        if workflow is None:
+            raise ValueError("This version has no canvas snapshot to restore.")
         return self.commit(workflow, f"Restore {sha[:8]}", "user"), workflow
 
 
@@ -179,6 +209,18 @@ def node_diff(before: dict, after: dict) -> dict:
         ],
         "links_added": len(links(after) - links(before)),
         "links_removed": len(links(before) - links(after)),
+    }
+
+
+def _detail(repo: ProjectRepo, sha: str) -> dict:
+    from .workflow_spec import render_spec
+
+    plan = repo.plan(sha)
+    return {
+        "workflow": repo.show(sha),
+        "diff": repo.diff(sha),
+        "record": repo.record(sha),
+        "plan_text": render_spec(plan) if plan else None,
     }
 
 
@@ -218,11 +260,7 @@ def install_project_routes() -> None:
         sha = request.match_info["sha"]
         return await call(
             request,
-            lambda repo: {
-                "workflow": repo.show(sha),
-                "diff": repo.diff(sha),
-                "record": repo.record(sha),
-            },
+            lambda repo: _detail(repo, sha),
         )
 
     @routes.post(prefix + "/commits")

@@ -46,13 +46,19 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
     if (!await autoApprove.isChecked()) await autoApprove.check();
     await message.fill(task.prompt);
     await page.getByRole('button', {name: 'Send'}).click();
-    // Act as a user who approves the agent's permission requests (e.g. rewiring an occupied input).
+    // Act as a user: answer questions with the first option, approve plans and permission requests.
     result.approvals = 0;
+    result.cards = [];
     const deadline = Date.now() + 420000;
     while (!await page.evaluate(texts => texts.some(t => document.body.innerText.includes(t)), SETTLED)) {
       if (Date.now() > deadline) throw Error('Agent did not settle within 7 minutes.');
-      const allow = page.getByRole('button', {name: 'Allow'});
-      if (await allow.count()) { await allow.first().click(); result.approvals += 1; }
+      const card = page.locator('.aw-pi-permission').first();
+      if (await card.count()) {
+        result.cards.push((await card.innerText()).slice(0, 4000));
+        const allow = card.getByRole('button', {name: 'Allow'});
+        await (await allow.count() ? allow : card.getByRole('button').first()).click();
+        result.approvals += 1;
+      }
       await page.waitForTimeout(1000);
     }
     await page.waitForTimeout(1500);

@@ -36,12 +36,22 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await message.fill('build a hello world workflow and run it');
     await page.getByRole('button', {name: 'Send'}).click();
 
-    // The bridge asks before a native Run; approve it.
-    const allow = page.getByRole('button', {name: 'Allow'});
-    await allow.waitFor({timeout: 60000});
-    await allow.click();
+    // Planning: the agent asks a multiple-choice question, then needs the plan approved.
+    await page.getByRole('group', {name: 'Which greeting should the workflow show?'}).getByRole('button', {name: 'hello world'}).click();
+    const plan = page.getByRole('group', {name: 'Approve this workflow plan?'});
+    await plan.waitFor({timeout: 60000});
+    const planText = await plan.textContent();
+    assert.match(planText, /GOAL: Show the text hello world\./);
+    assert.match(planText, /Done when: The greeting says hello world\. \(checked automatically/);
+    assert.match(planText, /The greeting is easy to read\. \(you confirm this one\)/);
+    await plan.getByRole('button', {name: 'Allow'}).click();
 
-    await page.getByText('FAKE PI · built source → concatenate → preview and ran it.').waitFor({timeout: 90000});
+    // The bridge asks before a native Run; approve it.
+    const run = page.getByRole('group', {name: 'Run the current ComfyUI workflow?'});
+    await run.waitFor({timeout: 60000});
+    await run.getByRole('button', {name: 'Allow'}).click();
+
+    await page.getByText('FAKE PI · built source → concatenate → preview and ran it. Gates: greet=passed, show=needs_user_review.').waitFor({timeout: 90000});
     const graph = await page.evaluate(comfy(app => ({
       types: app.graph.nodes.map(node => node.type).sort(),
       links: app.graph.links instanceof Map ? app.graph.links.size : Object.keys(app.graph.links ?? {}).length,
@@ -77,18 +87,19 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
     const versions = page.locator('.aw-versions-item');
     const count = n => page.waitForFunction(n => document.querySelectorAll('.aw-versions-item').length === n, n, {timeout: 15000});
-    await count(2);
+    await count(3);
     const messages = await page.locator('.aw-versions-message').allTextContents();
     assert.match(messages[0], /^Save versions-e2e/);
     assert.equal(messages[1], 'Build hello world: source, concatenate, preview');
-    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent']);
+    assert.equal(messages[2], 'Plan approved: Show the text hello world.');
+    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.
     await versions.nth(1).locator('.aw-versions-toggle').click();
     await versions.nth(1).getByText('+3 nodes · +2 links').waitFor({timeout: 10000});
     await versions.nth(1).getByRole('button', {name: 'Restore this version'}).click();
     await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.length === 3, null, {timeout: 10000});
-    await count(3);
+    await count(4);
     assert.match(await page.locator('.aw-versions-message').first().textContent(), /^Restore [0-9a-f]{8}$/);
     await page.screenshot({path: path.join(artifacts, 'versions.png')});
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });

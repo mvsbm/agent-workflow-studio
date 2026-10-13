@@ -130,16 +130,21 @@ function createPanel() {
       toggle.setAttribute('aria-expanded', String(open));
       if (!open || details.childElementCount) return;
       try {
-        const {diff, record} = await request(`/commits/${commit.sha}`);
+        const {diff, record, plan_text: planText, workflow} = await request(`/commits/${commit.sha}`);
+        if (planText) {
+          const plan = el('div', null, {className: 'aw-versions-record'});
+          plan.append(el('strong', 'Approved plan'), el('pre', planText));
+          details.append(plan);
+        }
         if (record) details.append(recordSection(record));
         details.append(el('p', describe(diff)));
         for (const section of [nodeList('Added', diff.added), nodeList('Removed', diff.removed), nodeList('Changed', diff.changed)]) {
           if (section) details.append(section);
         }
-        const button = el('button', latest ? 'Current version' : 'Restore this version', {
+        const button = el('button', !workflow ? 'No canvas snapshot' : latest ? 'Current version' : 'Restore this version', {
           type: 'button',
           className: 'p-button p-component p-button-sm',
-          disabled: latest,
+          disabled: latest || !workflow,
         });
         button.addEventListener('click', () => restore(commit.sha).catch(error => { status.textContent = error.message; }));
         details.append(el('small', commit.sha.slice(0, 12)), button);

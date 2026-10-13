@@ -34,6 +34,10 @@ class AgentPromptTests(unittest.TestCase):
             with self.subTest(placeholder=placeholder):
                 self.assertIn(f'replaceAll("{placeholder}"', EXTENSION)
 
+    def test_tool_schemas_avoid_tuples(self) -> None:
+        # Type.Tuple emits array-form "items", invalid JSON Schema 2020-12; providers reject it.
+        self.assertNotIn("Type.Tuple", EXTENSION + FILES)
+
     def test_prompt_has_no_references_to_removed_features(self) -> None:
         for stale in ("node-development", "managed worker", "activation", "Nayose"):
             with self.subTest(stale=stale):

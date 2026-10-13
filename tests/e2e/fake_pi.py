@@ -84,12 +84,66 @@ def tool(action, args):
     return result
 
 
+SPEC = {
+    "goal": "Show the text hello world.",
+    "inputs": [],
+    "outputs": [{"name": "text", "description": "The greeting", "type": "text"}],
+    "steps": [
+        {
+            "id": "greet",
+            "purpose": "Join hello and world into one greeting.",
+            "approach": "deterministic",
+            "nodes": ["PrimitiveString", "StringConcatenate"],
+            "success_gate": {
+                "description": "The greeting says hello world.",
+                "check": {"node_title": "Result", "kind": "contains", "value": "hello world"},
+            },
+        },
+        {
+            "id": "show",
+            "purpose": "Show the greeting.",
+            "approach": "deterministic",
+            "nodes": ["PreviewAny"],
+            "success_gate": {"description": "The greeting is easy to read."},
+        },
+    ],
+    "assumptions": [],
+    "decisions": [{"question": "Which greeting?", "answer": "hello world"}],
+    "open_questions": [],
+}
+
+
+def ask(question, options):
+    """A select dialog, exactly as Pi's ctx.ui.select emits it; waits for the user's answer."""
+    request_id = "fake-ask-" + str(time.monotonic_ns())
+    emit(
+        {
+            "type": "extension_ui_request",
+            "id": request_id,
+            "method": "select",
+            "title": question,
+            "options": options,
+        }
+    )
+    while line := sys.stdin.readline():
+        record = json.loads(line)
+        if record.get("type") == "extension_ui_response" and record.get("id") == request_id:
+            return record.get("value")
+    raise SystemExit("stdin closed while waiting for an answer")
+
+
 BUILD = [
     {"op": "add", "key": "src", "class_type": "PrimitiveString", "position": [50, 100]},
     {"op": "widget", "node": "src", "name": "value", "value": "hello"},
     {"op": "add", "key": "cat", "class_type": "StringConcatenate", "position": [350, 100]},
     {"op": "widget", "node": "cat", "name": "string_b", "value": " world"},
-    {"op": "add", "key": "out", "class_type": "PreviewAny", "position": [700, 100]},
+    {
+        "op": "add",
+        "key": "out",
+        "class_type": "PreviewAny",
+        "title": "Result",
+        "position": [700, 100],
+    },
     {"op": "connect", "from": "src", "output": 0, "to": "cat", "input": "string_a"},
     {"op": "connect", "from": "cat", "output": 0, "to": "out", "input": "source"},
 ]
@@ -98,6 +152,14 @@ BUILD = [
 def build_and_run():
     tool("read", {})
     tool("catalog", {"class_types": ["PrimitiveString", "StringConcatenate", "PreviewAny"]})
+    if (
+        ask("Which greeting should the workflow show?", ["hello world", "good morning"])
+        != "hello world"
+    ):
+        raise SystemExit("unexpected answer")
+    if not tool("spec_propose", {"spec": SPEC}).get("approved"):
+        say("FAKE PI · plan not approved.")
+        return
     tool(
         "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
     )
@@ -111,7 +173,9 @@ def build_and_run():
         if (result.get("status") or {}).get("completed"):
             break
         time.sleep(0.5)
-    say("FAKE PI · built source → concatenate → preview and ran it.")
+    gates = tool("spec_gates", {})["gates"]
+    summary = ", ".join(f"{gate['step']}={gate['status']}" for gate in gates)
+    say(f"FAKE PI · built source → concatenate → preview and ran it. Gates: {summary}.")
 
 
 def structured_answer(record):
@@ -183,7 +247,7 @@ def comfy_tools_notice():
     }
 
 
-for line in sys.stdin:
+while line := sys.stdin.readline():
     record = json.loads(line)
     kind = record["type"]
     if kind == "set_model":

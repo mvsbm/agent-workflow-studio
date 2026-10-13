@@ -21,9 +21,12 @@ from .pi_auth import (
 from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_graph
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
+from .project_repo import ProjectRepo
+from .workflow_spec import render_spec, validate_spec
 
 PREFIX = "/agent-workflow-studio/pi-chat"
-ACTIONS = {"read", "catalog", "edit", "run", "results"}
+ACTIONS = {"read", "catalog", "edit", "run", "results", "spec_approve", "gates"}
+SPEC_ACTIONS = {"spec_propose", "spec_get", "spec_gates"}
 REQUIRED_SKILLS = {
     "comfyui-node-creation",
     "comfyui-workflow-debugging",
@@ -79,6 +82,9 @@ class PiChatSession:
             workspace_root = Path(folder_paths.get_user_directory()) / "pi-chat-workspaces"
         self.graph_id = workflow_id
         self.workspace = PiChatWorkspace(workspace_root, workspace_id_for_graph(workflow_id))
+        # The approved plan lives in the workflow's project history, beside the workspaces.
+        self.repo = ProjectRepo(Path(workspace_root).parent / "agent-projects", workflow_id)
+        self.spec = self.repo.load_spec()
         self.socket = socket
         self.id = secrets.token_urlsafe(24)
         self.token = secrets.token_urlsafe(32)
@@ -452,6 +458,56 @@ class PiChatSession:
                 future.cancel()
         self.dialogs.clear()
 
+    async def agent_action(self, action, arguments):
+        """Everything the agent's tools ask of the session, with the plan gate enforced here."""
+        if action in FILE_ACTIONS:
+            return await self.workspace_action(action, arguments)
+        if action in SPEC_ACTIONS:
+            return await self.spec_action(action, arguments)
+        if action in {"spec_approve", "gates"}:
+            raise ValueError("Use comfy_workflow_spec or comfy_check_gates.")
+        operations = arguments.get("operations") if isinstance(arguments, dict) else None
+        if (
+            action == "edit"
+            and self.spec is None
+            and any(isinstance(op, dict) and op.get("op") == "add" for op in operations or [])
+        ):
+            raise ValueError(
+                "Adding nodes needs an approved workflow plan. Clarify the requirements with "
+                "comfy_ask_user, then propose the plan with comfy_workflow_spec."
+            )
+        return await self.canvas_action(action, arguments)
+
+    async def spec_action(self, action, arguments):
+        if action == "spec_get":
+            return {"spec": self.spec}
+        if action == "spec_gates":
+            # Gates come from the approved plan, never from the agent's arguments.
+            if self.spec is None:
+                raise ValueError("This workflow has no approved plan yet.")
+            gates = [
+                {
+                    "step": s["id"],
+                    "description": s["success_gate"]["description"],
+                    "check": s["success_gate"].get("check"),
+                }
+                for s in self.spec["steps"]
+            ]
+            return await self.canvas_action("gates", {"gates": gates})
+        spec = validate_spec(arguments.get("spec") if isinstance(arguments, dict) else None)
+        # Approval is the user's click in the browser, never the agent's own tool call.
+        answer = await self.canvas_action(
+            "spec_approve", {"title": "Approve this workflow plan?", "text": render_spec(spec)}
+        )
+        if not answer.get("approved"):
+            return {
+                "approved": False,
+                "message": "The user did not approve the plan; ask what to change.",
+            }
+        sha = await asyncio.to_thread(self.repo.save_spec, spec)
+        self.spec = spec
+        return {"approved": True, "version": sha[:8]}
+
     async def canvas_action(self, action, arguments):
         if action not in ACTIONS or not isinstance(arguments, dict):
             raise ValueError("Invalid canvas action.")
@@ -590,12 +646,9 @@ def install_pi_chat_routes():
             record = json.loads(body)
             if not isinstance(record, dict) or set(record) != {"action", "args"}:
                 raise ValueError("Invalid bridge payload.")
-            if isinstance(record["action"], str) and record["action"] in FILE_ACTIONS:
-                result = await session.workspace_action(record["action"], record["args"])
-            else:
-                result = await session.canvas_action(record["action"], record["args"])
+            result = await session.agent_action(record["action"], record["args"])
             return web.json_response({"result": result})
-        except (ValueError, TypeError, TimeoutError) as error:
+        except (ValueError, TypeError, TimeoutError, RuntimeError) as error:
             return web.json_response(
                 {"error": str(error) or "Canvas action timed out."}, status=400
             )
