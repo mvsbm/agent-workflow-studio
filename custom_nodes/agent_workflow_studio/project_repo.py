@@ -9,11 +9,13 @@ history is never rewritten.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 from .pi_chat_workspace import workspace_id_for_graph
@@ -65,11 +67,7 @@ class ProjectRepo:
         """Commit a workflow snapshot; returns the new sha, or None if nothing changed."""
         if author not in AUTHORS:
             raise ValueError("author must be 'agent' or 'user'")
-        if not isinstance(workflow, dict) or not isinstance(workflow.get("nodes"), list):
-            raise ValueError("workflow must be a serialized ComfyUI graph")
-        data = json.dumps(workflow, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
-        if len(data.encode()) > MAX_WORKFLOW_BYTES:
-            raise ValueError("workflow is too large to version")
+        data = _snapshot(workflow)
         message = " ".join(str(message).split())[:500] or "Update workflow"
         with self.lock:
             self._ensure()
@@ -118,9 +116,44 @@ class ProjectRepo:
         before = self.show(entry["parent"]) if entry["parent"] else {"nodes": [], "links": []}
         return node_diff(before, after)
 
+    def add_record(self, record: dict, message: str, workflow: dict) -> str:
+        """Commit a run record under records/ together with the workflow that ran."""
+        data = json.dumps(record, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+        digest = hashlib.sha256(data.encode()).hexdigest()[:12]
+        name = f"records/{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{digest}.json"
+        snapshot = _snapshot(workflow)
+        with self.lock:
+            self._ensure()
+            (self.tree / "records").mkdir(exist_ok=True)
+            (self.tree / name).write_text(data)
+            (self.tree / "workflow.json").write_text(snapshot)
+            self._git("add", name, "workflow.json")
+            self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author="agent")
+            return self._git("rev-parse", "HEAD").strip()
+
+    def record(self, sha: str) -> dict | None:
+        """The run record a commit added, if any."""
+        if not SHA.fullmatch(sha):
+            raise ValueError("invalid commit id")
+        with self.lock:
+            names = self._git("show", "--name-only", "--format=", sha).split()
+            name = next(
+                (n for n in names if n.startswith("records/") and n.endswith(".json")), None
+            )
+            return json.loads(self._git("show", f"{sha}:{name}")) if name else None
+
     def restore(self, sha: str) -> tuple[str | None, dict]:
         workflow = self.show(sha)
         return self.commit(workflow, f"Restore {sha[:8]}", "user"), workflow
+
+
+def _snapshot(workflow: dict) -> str:
+    if not isinstance(workflow, dict) or not isinstance(workflow.get("nodes"), list):
+        raise ValueError("workflow must be a serialized ComfyUI graph")
+    data = json.dumps(workflow, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+    if len(data.encode()) > MAX_WORKFLOW_BYTES:
+        raise ValueError("workflow is too large to version")
+    return data
 
 
 def node_diff(before: dict, after: dict) -> dict:
@@ -149,16 +182,21 @@ def node_diff(before: dict, after: dict) -> dict:
     }
 
 
+def projects_root() -> Path:
+    import folder_paths
+
+    return Path(folder_paths.get_user_directory()) / "agent-projects"
+
+
 def install_project_routes() -> None:
     import asyncio
 
-    import folder_paths
     from aiohttp import web
     from server import PromptServer
 
     from .routes import _is_local_request
 
-    root = Path(folder_paths.get_user_directory()) / "agent-projects"
+    root = projects_root()
     prefix = "/agent-workflow-studio/projects/{workflow_id}"
     routes = PromptServer.instance.routes
 
@@ -179,7 +217,12 @@ def install_project_routes() -> None:
     async def commit_detail(request):
         sha = request.match_info["sha"]
         return await call(
-            request, lambda repo: {"workflow": repo.show(sha), "diff": repo.diff(sha)}
+            request,
+            lambda repo: {
+                "workflow": repo.show(sha),
+                "diff": repo.diff(sha),
+                "record": repo.record(sha),
+            },
         )
 
     @routes.post(prefix + "/commits")

@@ -29,6 +29,8 @@ Four bundled skills guide it: **node creation, workflow debugging, connector/con
 
 Every successful agent edit batch and every save of a workflow is recorded as a version in that workflow's own local git repository (under the ComfyUI user directory, in `agent-projects/`). The agent writes a one-line summary of each batch as the version message. The **Versions** sidebar lists them newest first, labelled *Agent* or *You*, shows what each changed (nodes added, removed or changed; links added or removed), and can restore any version. A restore is itself a new version and one native undo step; history is never rewritten. Files in the agent's workspace are not versioned yet.
 
+Each run of a **Pi CLI · Structured LLM** node is also recorded as a version, together with the exact workflow that ran: status, model, prompt, output schema, the validated output, duration and token usage. A failed run records only its error category, never provider error text. Credentials and the model's private reasoning are never recorded. Open the run's version in **Versions** to see its record. Records stay in the local repository; nothing is sent anywhere.
+
 ### Boundaries
 
 - Shell and host search tools, `then_run`, and dependency installation are disabled.

@@ -10,7 +10,7 @@ from pathlib import Path
 from fixture import REPO, ComfyFixture
 
 HERE = Path(__file__).resolve().parent
-TESTS = ["build_and_run.cjs"]
+TESTS = ["build_and_run.cjs", "llm_record.cjs"]
 
 
 def main() -> int:
@@ -30,10 +30,10 @@ def main() -> int:
             if result.returncode:
                 failures += 1
                 print(f"FAIL {test} (add-ons={addons})\n--- ComfyUI log ---\n{comfy.log_tail()}")
-            if result.returncode or os.environ.get("E2E_KEEP"):
-                kept = Path(os.environ.get("E2E_KEEP", "/tmp")) / f"aws-e2e-{comfy.port}"
-                subprocess.run(["cp", "-R", str(artifacts), str(kept)], check=False)
-                print(f"artifacts: {kept}")
+        if failures or os.environ.get("E2E_KEEP"):
+            kept = Path(os.environ.get("E2E_KEEP", "/tmp")) / f"aws-e2e-{comfy.port}"
+            subprocess.run(["cp", "-R", str(artifacts), str(kept)], check=False)
+            print(f"artifacts: {kept}")
     return 1 if failures else 0
 
 

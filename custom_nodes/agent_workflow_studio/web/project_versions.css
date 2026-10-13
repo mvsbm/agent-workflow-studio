@@ -13,3 +13,5 @@
 .aw-versions-details { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; }
 .aw-versions-details p { margin: 0; }
 .aw-versions-nodes { margin: 2px 0 0; padding-left: 18px; }
+.aw-versions-record { display: flex; flex-direction: column; gap: 4px; }
+.aw-versions-record pre { margin: 0; max-height: 240px; overflow: auto; font-size: 0.75rem; white-space: pre-wrap; background: var(--comfy-input-bg, #222); padding: 6px; border-radius: 4px; }

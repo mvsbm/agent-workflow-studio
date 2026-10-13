@@ -58,6 +58,20 @@ function nodeList(title, nodes) {
   return section;
 }
 
+function recordSection(record) {
+  const section = el('div', null, {className: 'aw-versions-record'});
+  const model = [record.model?.provider, record.model?.model].filter(Boolean).join(' · ') || 'Pi defaults';
+  section.append(
+    el('strong', `Run record · ${record.status}`),
+    el('p', `${model} · ${record.duration_seconds}s${record.error ? ` · ${record.error}` : ''}`),
+  );
+  if (record.output) section.append(el('pre', JSON.stringify(record.output, null, 2).slice(0, 2000)));
+  const full = el('details');
+  full.append(el('summary', 'Full record (prompt, schema, telemetry)'), el('pre', JSON.stringify(record, null, 2)));
+  section.append(full);
+  return section;
+}
+
 async function restore(sha) {
   if (!window.confirm(`Restore version ${sha.slice(0, 8)}? The canvas is replaced, and the restore is recorded as a new version. You can undo it.`)) return;
   const {workflow} = await request(`/restore/${sha}`, {method: 'POST'});
@@ -116,7 +130,8 @@ function createPanel() {
       toggle.setAttribute('aria-expanded', String(open));
       if (!open || details.childElementCount) return;
       try {
-        const {diff} = await request(`/commits/${commit.sha}`);
+        const {diff, record} = await request(`/commits/${commit.sha}`);
+        if (record) details.append(recordSection(record));
         details.append(el('p', describe(diff)));
         for (const section of [nodeList('Added', diff.added), nodeList('Removed', diff.removed), nodeList('Changed', diff.changed)]) {
           if (section) details.append(section);
@@ -151,6 +166,8 @@ app.registerExtension({
       if (name !== 'saveWorkflow') return;
       after(() => commitWorkflow(`Save ${app.extensionManager.workflow.activeWorkflow?.filename ?? 'workflow'}`, 'user'));
     });
+    // Runs can add record versions; refresh when one finishes.
+    for (const event of ['execution_success', 'execution_error']) api.addEventListener(event, () => window.dispatchEvent(new Event(CHANGED)));
     let panel;
     app.extensionManager.sidebarTab.registerSidebarTab({
       id: 'workflow-versions',

@@ -105,7 +105,7 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | --- | --- | --- |
 | **P0 Foundation** | Readable `pi_chat.js`; SoL-Pi and Ponytail optional; one browser end-to-end test where the agent builds and runs a small workflow. | The test passes without the two add-ons installed. |
 | **P1 Project repo** ✔ (slim: linear list, no lane graph or squashing; workspace files not yet versioned) | Per-workflow git repo with auto-commit of agent edits and saves; History panel with commit graph, diff and restore-as-new-commit. | Any agent or user change can be seen as a commit and reverted from the UI, and the canvas matches the restored commit. |
-| **P2 Run records** | `Structured LLM` writes records into the project repo; chat tools to list and read them. | A run commits a record with a stable hash and no credentials or reasoning text. |
+| **P2 Run records** ✔ (Structured LLM node; full prompt/output kept in the local record, no separate artifacts store) | `Structured LLM` writes records into the project repo; chat tools to list and read them. | A run commits a record with a stable hash and no credentials or reasoning text. |
 | **P3 Fuzzy node folders** | `node.json` / `graph.json` loader, plan validation, expansion; side-effect-free nodes only, no generated Python yet. | A goal produces a visible, type-valid inner graph; invalid plans fail locally before anything runs. |
 | **P4 Hardening** | Materialize, pin cases, offline replay check. | A frozen subgraph reproduces its pinned cases with the LLM disabled. |
 | **P5 Agent-written tools** | Proposal branches, diff review, subprocess execution. | Unapproved code never runs; approved code runs out of process. |

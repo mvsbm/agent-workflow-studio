@@ -13,6 +13,8 @@ import time
 from urllib.request import Request, urlopen
 
 ADDONS = os.environ.get("FAKE_PI_ADDONS", "1") != "0"
+# The Structured LLM node starts Pi with only the typed-output extension.
+STRUCTURED = any(arg.endswith("pi_structured_output_extension.ts") for arg in sys.argv)
 EXTENSIONS = (
     {
         "sol_pi": {"version": "fake", "actionFusion": False, "observationPack": False},
@@ -112,6 +114,35 @@ def build_and_run():
     say("FAKE PI · built source → concatenate → preview and ran it.")
 
 
+def structured_answer(record):
+    """Answer like a model filling the typed-output tool once."""
+    respond(record)
+    emit({"type": "message_start", "message": {"role": "assistant", "content": []}})
+    call = {
+        "id": "fake-call",
+        "name": "agent_workflow_submit_json",
+        "arguments": {"answer": "fake answer"},
+    }
+    emit(
+        {
+            "type": "message_update",
+            "assistantMessageEvent": {"type": "toolcall_start", "toolName": call["name"]},
+        }
+    )
+    emit(
+        {
+            "type": "message_update",
+            "assistantMessageEvent": {"type": "toolcall_end", "toolCall": call},
+        }
+    )
+    emit(
+        {
+            "type": "message_end",
+            "message": {"role": "assistant", "stopReason": "toolUse", "content": []},
+        }
+    )
+
+
 def comfy_tools_notice():
     return {
         "type": "comfy_tools",
@@ -171,6 +202,8 @@ for line in sys.stdin:
             }
         )
         respond(record, {"disposition": "handled"})
+    elif kind == "prompt" and STRUCTURED:
+        structured_answer(record)
     elif kind == "prompt":
         emit({"type": "agent_start"})
         if "build" in record["message"].lower():
