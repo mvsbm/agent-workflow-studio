@@ -32,6 +32,10 @@ The **Contract** sidebar tab shows the approved contract for the open workflow w
 
 After every change that adds, removes or rewires nodes, the canvas is also checked against the contract and the result appears in the chat and the Contract tab: **✓ aligned**, or **⚠ drift** with the reasons — nodes that are not part of any step, nodes left over from steps the contract no longer has, gates that point at a node that is not an output, a fixed step that uses a Fuzzy node, no output node at all, or graph problems. Steps not built yet are progress, not drift. The agent must fix drift, or propose a contract amendment for you to approve.
 
+### Agent tools
+
+When no installed node can do a step that needs real computation (generating a data set, matching records, statistics), the agent can write a small Python **tool** for it. You see the tool's full code in the chat and approve it; the approved copy is stored in the workflow's history, and only that exact code can run. An **Agent Tool** node runs it with the node's text and data inputs and returns a result and a text summary; files it writes are saved in a run folder under ComfyUI's output, and every run is recorded in Versions. Tools use the Python standard library only and run in a separate process with a time limit; on macOS they also run inside a sandbox with no network, no other programs, no access to your files, and writing only to their own run folder. On Linux only the time limit applies, which the approval card says. Changing a tool's code needs a new approval.
+
 ### Graph checks
 
 After every agent edit that adds, removes or rewires nodes, the workflow is checked automatically, without running it or calling a model, and the result appears in the chat: nodes that will not run (they reach no output), required inputs left unconnected, type mismatches, cycles and deprecated nodes. The agent must fix what it finds before running. It can also run the check on demand, see the checkpoints every path to an output passes (natural places for success gates), and look up the shortest chain of installed nodes that converts one data type to another.

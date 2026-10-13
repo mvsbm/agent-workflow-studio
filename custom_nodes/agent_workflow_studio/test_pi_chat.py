@@ -257,6 +257,36 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.session.contract = CONTRACT
         self.assertTrue((await self.session.agent_action("workspace_write", write)).get("sha256"))
 
+    async def test_tool_approval_shows_code_and_stores_the_approved_copy(self):
+        self.session.contract = CONTRACT
+        code = "def run(inputs):\n    return {'text': inputs['text'].upper()}\n"
+        await self.session.agent_action(
+            "workspace_write",
+            {
+                "path": "tools/upper.py",
+                "data": base64.b64encode(code.encode()).decode(),
+                "expected_sha256": None,
+            },
+        )
+        proposal = {
+            "name": "upper",
+            "description": "Uppercase text",
+            "inputs": [{"name": "text", "kind": "text"}],
+            "outputs": [{"name": "text", "kind": "text"}],
+        }
+        with patch.object(
+            self.session, "canvas_action", AsyncMock(return_value={"approved": True})
+        ) as canvas:
+            result = await self.session.agent_action("tool_propose", proposal)
+        action, args = canvas.await_args.args
+        self.assertEqual((action, args["title"]), ("tool_approve", "Approve tool upper?"))
+        self.assertTrue(args["text"].rstrip().endswith("return {'text': inputs['text'].upper()}"))
+        self.assertTrue(result["approved"])
+        self.assertEqual(self.session.repo.load_tool("upper")[0], code)
+        self.assertEqual(self.session.repo.log()[0]["message"], "Tool approved: upper")
+        with self.assertRaisesRegex(ValueError, "comfy_propose_contract"):
+            await self.session.agent_action("tool_approve", {})
+
     async def test_contract_status_comes_from_browser_evidence(self):
         self.session.contract = CONTRACT
         evidence = {

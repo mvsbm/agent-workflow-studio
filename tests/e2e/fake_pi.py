@@ -257,6 +257,104 @@ def structured_answer(record):
     )
 
 
+TOOL_CONTRACT = {
+    "contract": 2,
+    "purpose": "Shout the greeting with an agent tool.",
+    "requests": [
+        {
+            "id": "R1",
+            "you_said": "make it loud with a tool",
+            "we_understood": "When run, the tool uppercases the text.",
+            "priority": "must",
+        }
+    ],
+    "examples": [
+        {"id": "E1", "covers": ["R1"], "given": {"text": "hello"}, "expect": {"text": "HELLO!"}}
+    ],
+    "promises": {
+        "inputs": [{"name": "text", "kind": "text"}],
+        "outputs": [{"name": "text", "kind": "text"}],
+    },
+    "steps": [
+        {
+            "id": "shout",
+            "purpose": "Uppercase the text with an approved tool.",
+            "approach": "fixed",
+            "covers": ["R1"],
+            "gate": {
+                "says": "The text is shouted.",
+                "check": {"node": "Shout", "kind": "contains", "value": "HELLO!"},
+            },
+        }
+    ],
+    "decisions": [],
+    "not_now": [],
+    "open_questions": [],
+}
+SHOUT = "def run(inputs):\n    return {'text': inputs['text'].upper() + '!'}\n"
+
+
+def tool_workflow():
+    if not tool("contract_propose", {"contract": TOOL_CONTRACT}).get("approved"):
+        return say("FAKE PI · contract not approved.")
+    import base64
+
+    tool(
+        "workspace_write",
+        {
+            "path": "tools/shout.py",
+            "data": base64.b64encode(SHOUT.encode()).decode(),
+            "expected_sha256": None,
+        },
+    )
+    ports = [{"name": "text", "kind": "text"}]
+    approved = tool(
+        "tool_propose",
+        {
+            "name": "shout",
+            "description": "Uppercase and add an exclamation mark.",
+            "inputs": ports,
+            "outputs": ports,
+        },
+    )
+    if not approved.get("approved"):
+        return say("FAKE PI · tool not approved.")
+    tool(
+        "edit",
+        {
+            "summary": "Agent tool shout feeding a preview",
+            "operations": [
+                {
+                    "op": "add",
+                    "key": "shout",
+                    "class_type": "AgentWorkflowAgentTool",
+                    "position": [50, 100],
+                    "step": "shout",
+                },
+                {"op": "widget", "node": "shout", "name": "tool", "value": "shout"},
+                {"op": "widget", "node": "shout", "name": "text", "value": "hello"},
+                {
+                    "op": "add",
+                    "key": "show",
+                    "class_type": "PreviewAny",
+                    "title": "Shout",
+                    "position": [500, 100],
+                    "step": "shout",
+                },
+                {"op": "connect", "from": "shout", "output": 1, "to": "show", "input": "source"},
+            ],
+        },
+    )
+    tool("run", {"reason": "run the tool"})
+    tool("results", {})
+    gates = tool("contract_gates", {})["gates"]
+    say(
+        "FAKE PI · tool workflow ran. Gates: "
+        + ", ".join(f"{g['step']}={g['status']}" for g in gates)
+        + "."
+    )
+
+
 def comfy_tools_notice():
     return {
         "type": "comfy_tools",
@@ -321,7 +419,9 @@ while line := sys.stdin.readline():
         structured_answer(record)
     elif kind == "prompt":
         emit({"type": "agent_start"})
-        if "build" in record["message"].lower():
+        if "tool" in record["message"].lower():
+            tool_workflow()
+        elif "build" in record["message"].lower():
             build_and_run()
         else:
             say("FAKE PI · no scripted action for this message.")

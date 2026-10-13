@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import ipaddress
 import json
@@ -14,6 +15,7 @@ from urllib.parse import urlsplit
 
 from aiohttp import WSMsgType, web
 
+from .agent_tools import NAME, approval_text, code_hash
 from .pi_auth import (
     all_provider_api_key_env_names,
     provider_credential_environment,
@@ -32,6 +34,7 @@ ACTIONS = {
     "run",
     "results",
     "contract_approve",
+    "tool_approve",
     "contract_evidence",
     "gates",
     "analyze",
@@ -39,7 +42,13 @@ ACTIONS = {
 }
 # Edit operations that change what runs; after them the graph is checked automatically.
 STRUCTURAL = {"add", "remove", "connect", "disconnect"}
-CONTRACT_ACTIONS = {"contract_propose", "contract_get", "contract_gates", "contract_status"}
+CONTRACT_ACTIONS = {
+    "contract_propose",
+    "contract_get",
+    "contract_gates",
+    "contract_status",
+    "tool_propose",
+}
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
 REQUIRED_SKILLS = {
@@ -496,7 +505,7 @@ class PiChatSession:
             return await self.workspace_action(action, arguments)
         if action in CONTRACT_ACTIONS:
             return await self.contract_action(action, arguments)
-        if action in {"contract_approve", "contract_evidence", "gates"}:
+        if action in {"contract_approve", "tool_approve", "contract_evidence", "gates"}:
             raise ValueError(
                 "Use comfy_propose_contract, comfy_check_gates or comfy_contract_status."
             )
@@ -558,6 +567,8 @@ class PiChatSession:
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
             return await self.canvas_action("gates", {"gates": gates(self.contract)})
+        if action == "tool_propose":
+            return await self.propose_tool(arguments if isinstance(arguments, dict) else {})
         if action == "contract_status":
             evidence = await self.canvas_action(
                 "contract_evidence", {"gates": gates(self.contract)}
@@ -580,6 +591,42 @@ class PiChatSession:
         sha = await asyncio.to_thread(self.repo.save_contract, contract)
         self.contract = contract
         return {"approved": True, "version": sha[:8]}
+
+    async def propose_tool(self, arguments):
+        """Show the user the exact code of a workspace tool; on approval, store it in the project."""
+        name = arguments.get("name")
+        if not isinstance(name, str) or not NAME.fullmatch(name):
+            raise ValueError("A tool name is a short lowercase identifier, e.g. match_names.")
+        ports = {key: arguments.get(key) for key in ("inputs", "outputs")}
+        if not all(
+            isinstance(v, list)
+            and all(isinstance(p, dict) and {"name", "kind"} <= p.keys() for p in v)
+            for v in ports.values()
+        ):
+            raise ValueError("Describe inputs and outputs as lists of {name, kind}.")
+        description = str(arguments.get("description", "")).strip()[:500]
+        if not description:
+            raise ValueError("Say what the tool does.")
+        file = await self.workspace_action("workspace_read", {"path": f"tools/{name}.py"})
+        code = base64.b64decode(file["data"]).decode("utf-8")
+        if "def run(" not in code:
+            raise ValueError(f"tools/{name}.py must define run(inputs) returning a dict.")
+        text = approval_text(name, description, ports["inputs"], ports["outputs"], code)
+        answer = await self.canvas_action(
+            "tool_approve", {"title": f"Approve tool {name}?", "text": text}
+        )
+        if not answer.get("approved"):
+            return {
+                "approved": False,
+                "message": "The user did not approve this tool; ask what to change.",
+            }
+        manifest = {"name": name, "description": description, **ports, "sha256": code_hash(code)}
+        sha = await asyncio.to_thread(self.repo.save_tool, name, code, manifest)
+        return {
+            "approved": True,
+            "version": sha[:8],
+            "next": f"Add an Agent Tool node with tool={name!r}; connect its inputs and run.",
+        }
 
     async def canvas_action(self, action, arguments):
         if action not in ACTIONS or not isinstance(arguments, dict):

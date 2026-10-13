@@ -68,6 +68,7 @@ class PiStructuredAgentTests(unittest.TestCase):
                 "AgentWorkflowPiModelConfig",
                 "AgentWorkflowPiStructuredAgent",
                 "AgentWorkflowFuzzyNode",
+                "AgentWorkflowAgentTool",
             },
         )
 

@@ -75,7 +75,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -150,5 +150,10 @@ export default async function (pi: ExtensionAPI) {
   pi.registerTool(defineTool({
     name:"comfy_contract_status", label:"Contract status", description:"Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the canvas and the latest gate check, with the next action, plus nodes not tied to any step.",
     parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("contract_status",args,signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_propose_tool", label:"Propose tool", description:"Ask the user to approve a Python tool you wrote at tools/<name>.py in this workflow's workspace. The user sees the full code; once approved, the Agent Tool node can run that exact code (stdlib only, confined, time-limited). Any later change to the code needs a new approval.",
+    parameters:Type.Object({name:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}),description:Type.String({minLength:1,maxLength:500}),inputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16}),outputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16})}),
+    execute:async (_id,args,signal) => canvas("tool_propose",args,signal),
   }));
 }

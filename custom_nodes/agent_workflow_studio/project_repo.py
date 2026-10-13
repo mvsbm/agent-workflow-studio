@@ -169,6 +169,35 @@ class ProjectRepo:
             return from_plan_v1(json.loads((self.tree / "spec.json").read_text()))
         return None
 
+    def save_tool(self, name: str, code: str, manifest: dict) -> str:
+        """Commit a user-approved agent tool: its exact code and a manifest with the code's hash."""
+        with self.lock:
+            self._ensure()
+            folder = self.tree / "tools"
+            folder.mkdir(exist_ok=True)
+            (folder / f"{name}.py").write_text(code)
+            (folder / f"{name}.json").write_text(
+                json.dumps(manifest, indent=1, ensure_ascii=False) + "\n"
+            )
+            self._git("add", f"tools/{name}.py", f"tools/{name}.json")
+            if not self._git("status", "--porcelain").strip():
+                return self._git("rev-parse", "HEAD").strip()
+            self._git("commit", "--quiet", "-m", f"Tool approved: {name}", author="user")
+            return self._git("rev-parse", "HEAD").strip()
+
+    def load_tool(self, name: str) -> tuple[str, dict]:
+        """The approved code of a tool; refuses if it differs from what the user approved."""
+        from .agent_tools import code_hash
+
+        folder = self.tree / "tools"
+        if not (folder / f"{name}.json").is_file():
+            raise ValueError(f"No approved tool named {name!r} in this workflow.")
+        manifest = json.loads((folder / f"{name}.json").read_text())
+        code = (folder / f"{name}.py").read_text()
+        if code_hash(code) != manifest["sha256"]:
+            raise ValueError(f"Tool {name!r} changed since it was approved; propose it again.")
+        return code, manifest
+
     def record(self, sha: str) -> dict | None:
         """The run record a commit added, if any."""
         return self._json_at(
