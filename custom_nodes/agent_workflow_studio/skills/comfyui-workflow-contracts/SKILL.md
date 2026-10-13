@@ -41,6 +41,9 @@ Any structural edit resets gate outcomes, so verified steps return to built unti
 
 ## When the work and the contract disagree
 
+Every structural edit's `graph_check` also reports the contract: `aligned`, or `drift` with reasons (nodes outside any step, nodes of removed steps, gates on non-output nodes, a fixed step using a Fuzzy node, no output node, graph problems). Resolve every drift before running: tag or remove stray nodes, fix titles, or amend the contract.
+
+
 If a request turns out to be impossible, wrong or incomplete, do not silently build something else. Explain it, ask if needed, and propose an amended contract with `comfy_propose_contract` (the whole contract again, with a decision recording the change). The user approves amendments like the first version.
 
 ## Working efficiently

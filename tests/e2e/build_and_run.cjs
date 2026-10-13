@@ -76,10 +76,11 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
     const contractStatus = page.locator('.aw-contract-status');
     await page.waitForFunction(() => /steps verified/.test(document.querySelector('.aw-contract-status')?.textContent ?? ''), null, {timeout: 15000});
-    assert.equal(await contractStatus.textContent(), '1/2 steps verified · Based on the latest run of this exact graph.');
+    assert.equal(await contractStatus.textContent(), '✓ Aligned with the contract · 1/2 steps verified · Based on the latest run of this exact graph.');
     assert.deepEqual(await page.locator('.aw-contract-chip').allTextContents(), ['Verified', 'Built']);
     assert.match(await page.locator('.aw-contract pre').textContent(), /PURPOSE: Show the text hello world\./);
     await page.screenshot({path: path.join(artifacts, 'contract-tab.png')});
+
 
     // The agent's own view of the canvas must include the connections.
     const seen = await page.evaluate(async () => {
@@ -128,6 +129,14 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.waitForTimeout(600);
     assert.equal(await page.evaluate(comfy(app => app.graph.nodes.length)), 0, 'one undo reverts a restore');
 
+    // Work outside the contract is drift: an untagged node turns the tab to a warning.
+    await page.evaluate(comfy(app => { const node = window.LiteGraph.createNode('PrimitiveString'); node.title = 'Stray note'; node.pos = [50, 500]; app.graph.add(node); }));
+    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
+    await page.locator('.aw-contract').getByRole('button', {name: 'Refresh'}).click();
+    await page.waitForFunction(() => /Stray note/.test(document.querySelector('.aw-contract-warning')?.textContent ?? ''), null, {timeout: 15000});
+    assert.match(await page.locator('.aw-contract-status').textContent(), /^⚠ 2 drift\(s\) from the contract/);
+    assert.equal(await page.locator('.aw-contract-warning').textContent(), 'Not part of any step: Stray note.Nothing will run: the graph has no output node.');
+    await page.evaluate(comfy(app => app.graph.remove(app.graph.nodes.find(n => n.title === 'Stray note'))));
     assert.deepEqual(errors, []);
     console.log('PASS build_and_run');
   } catch (error) {

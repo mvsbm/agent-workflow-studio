@@ -518,8 +518,25 @@ class PiChatSession:
         lines += [f"• {p}" for p in problems[:8]]
         if idle:
             lines.append("• Will not run (reaches no output): " + ", ".join(idle[:8]))
+        result = {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
+        if self.contract is not None:
+            evidence = await self.canvas_action(
+                "contract_evidence", {"gates": gates(self.contract)}
+            )
+            status = report(self.contract, evidence)
+            result["contract"] = {
+                "aligned": status["aligned"],
+                "drift": status["drift"],
+                "progress": status["progress"],
+            }
+            lines.append(
+                "Contract: ✓ aligned · " + status["progress"]
+                if status["aligned"]
+                else f"Contract: ⚠ {len(status['drift'])} drift(s) · {status['progress']}"
+            )
+            lines += [f"• {d}" for d in status["drift"][:6]]
         await self.socket.send_json({"type": "graph_check", "text": "\n".join(lines)})
-        return {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
+        return result
 
     async def contract_action(self, action, arguments):
         if action == "contract_get":

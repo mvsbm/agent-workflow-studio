@@ -30,6 +30,8 @@ You approve it in the chat; the agent cannot add nodes to a workflow without an 
 
 The **Contract** sidebar tab shows the approved contract for the open workflow with live progress: each step's state as a colored chip with its next action, which nodes are not part of any step, and whether the progress is based on the latest run of exactly this graph or the graph has changed since. On the canvas each step is a native group titled with its number and purpose, around the nodes the agent built for it.
 
+After every change that adds, removes or rewires nodes, the canvas is also checked against the contract and the result appears in the chat and the Contract tab: **✓ aligned**, or **⚠ drift** with the reasons — nodes that are not part of any step, nodes left over from steps the contract no longer has, gates that point at a node that is not an output, a fixed step that uses a Fuzzy node, no output node at all, or graph problems. Steps not built yet are progress, not drift. The agent must fix drift, or propose a contract amendment for you to approve.
+
 ### Graph checks
 
 After every agent edit that adds, removes or rewires nodes, the workflow is checked automatically, without running it or calling a model, and the result appears in the chat: nodes that will not run (they reach no output), required inputs left unconnected, type mismatches, cycles and deprecated nodes. The agent must fix what it finds before running. It can also run the check on demand, see the checkpoints every path to an output passes (natural places for success gates), and look up the shortest chain of installed nodes that converts one data type to another.

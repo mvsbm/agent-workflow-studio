@@ -200,6 +200,35 @@ def step_titles(contract: dict) -> list[dict]:
     ]
 
 
+def alignment(contract: dict, evidence: dict) -> list[str]:
+    """Where the canvas disagrees with the contract (empty when aligned). Not-yet-built steps are
+    progress, not drift. evidence["analysis"] holds the graph check: output titles and problems."""
+    steps = {s["id"]: s for s in contract["steps"]}
+    nodes = evidence["nodes"]
+    analysis = evidence.get("analysis") or {}
+    outputs = {t.strip().lower() for t in analysis.get("outputs", [])}
+    drift = []
+    if stray := [n.get("title") or "untitled" for n in nodes if not n.get("step")]:
+        drift.append(f"Not part of any step: {', '.join(stray[:6])}.")
+    if orphans := sorted({n["step"] for n in nodes if n.get("step") and n["step"] not in steps}):
+        drift.append(f"Nodes belong to steps the contract no longer has: {', '.join(orphans)}.")
+    for step in contract["steps"]:
+        built = [n for n in nodes if n.get("step") == step["id"]]
+        if not built:
+            continue
+        if step["approach"] == "fixed" and any(n.get("fuzzy") for n in built):
+            drift.append(f"Step {step['id']} is fixed in the contract but uses a Fuzzy node.")
+        check = step["gate"].get("check")
+        if check and check["node"].strip().lower() not in outputs:
+            drift.append(
+                f"Step {step['id']}'s gate checks “{check['node']}”, which is not an output node on the canvas."
+            )
+    if nodes and not outputs:
+        drift.append("Nothing will run: the graph has no output node.")
+    drift += [f"Graph problem: {problem}" for problem in analysis.get("problems", [])[:6]]
+    return drift
+
+
 def report(contract: dict, evidence: dict) -> dict:
     """Where the work stands, from browser evidence: one function for the agent and the Contract tab.
 
@@ -215,9 +244,12 @@ def report(contract: dict, evidence: dict) -> dict:
         if run.get("current")
         else "The graph changed since the last run; run it again to check gates."
     )
+    drift = alignment(contract, evidence)
     return {
         "progress": f"{sum(s['state'] == 'verified' for s in states)}/{len(states)} steps verified",
         "freshness": freshness,
+        "aligned": not drift,
+        "drift": drift,
         "steps": states,
         "nodes_outside_steps": [
             n.get("title") or "untitled" for n in evidence["nodes"] if not n.get("step")
@@ -293,6 +325,7 @@ __all__ = [
     "from_yaml",
     "gates",
     "render",
+    "alignment",
     "report",
     "step_titles",
     "to_yaml",

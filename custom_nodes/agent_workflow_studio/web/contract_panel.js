@@ -47,7 +47,7 @@ function createPanel() {
       }
       const evidence = await contractEvidence(app, api, gates);
       const result = await request('/contract/status', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)});
-      status.textContent = `${result.progress} · ${result.freshness}`;
+      status.textContent = `${result.aligned ? '✓ Aligned with the contract' : `⚠ ${result.drift.length} drift(s) from the contract`} · ${result.progress} · ${result.freshness}`;
       const steps = el('ol', null, {className: 'aw-contract-steps'});
       for (const step of result.steps) {
         const [label, color] = STATE[step.state];
@@ -57,10 +57,13 @@ function createPanel() {
         item.append(chip, el('strong', step.purpose), el('small', step.next));
         steps.append(item);
       }
-      const parts = [steps];
-      if (result.nodes_outside_steps.length) {
-        parts.push(el('p', `Not part of any step: ${result.nodes_outside_steps.join(', ')}`, {className: 'aw-contract-warning'}));
+      const parts = [];
+      if (result.drift.length) {
+        const drift = el('ul', null, {className: 'aw-contract-warning'});
+        for (const item of result.drift) drift.append(el('li', item));
+        parts.push(drift);
       }
+      parts.push(steps);
       const full = el('details', null, {open: true});
       full.append(el('summary', 'Full contract'), el('pre', result.text));
       parts.push(full);

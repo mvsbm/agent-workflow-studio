@@ -54,6 +54,9 @@ export async function contractEvidence(app, api, gates) {
     nodes: nodes(graph).map(node => ({id: node.id, title: node.title, class_type: node.type, step: node.properties?.aws_contract_step ?? null, fuzzy: node.type === 'AgentWorkflowFuzzyNode'})),
     gate_results: {}, run: null,
   };
+  const analysis = analyzeGraph(graph.serialize(), await api.getNodeDefs());
+  // "No output node" is judged by the contract check itself: on an empty canvas it is progress, not drift.
+  evidence.analysis = {outputs: analysis.outputs.map(o => o.title), problems: analysis.problems.filter(p => p.kind !== 'no_output_node').map(p => p.message)};
   const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
   const match = latestMatchingRun(history, graph.id, JSON.stringify((await app.graphToPrompt()).output));
   if (match) {

@@ -214,9 +214,16 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         }
         calls = []
 
+        evidence = {
+            "nodes": [{"title": "Loose trim", "step": None}],
+            "analysis": {"outputs": [], "problems": []},
+        }
+
         async def canvas(action, args):
             calls.append(action)
-            return analysis if action == "analyze" else {"node_count": 2}
+            return {"analyze": analysis, "contract_evidence": evidence}.get(
+                action, {"node_count": 2}
+            )
 
         with patch.object(self.session, "canvas_action", side_effect=canvas):
             result = await self.session.agent_action(
@@ -226,7 +233,9 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             await self.session.agent_action(
                 "edit", {"operations": [{"op": "move", "node": 1, "position": [0, 0]}]}
             )
-        self.assertEqual(calls, ["edit", "analyze", "edit"])
+        self.assertEqual(calls, ["edit", "analyze", "contract_evidence", "edit"])
+        self.assertFalse(result["graph_check"]["contract"]["aligned"])
+        self.assertIn("Contract: ⚠", self.socket.events[-1]["text"])
         self.assertEqual(
             result["graph_check"]["problems"], ['Required input "vae" (VAE) is not connected.']
         )
@@ -274,6 +283,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             "contract_approve": {"approved": True},
             "edit": {"ok": True},
             "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
+            "contract_evidence": {"nodes": [], "analysis": {"outputs": [], "problems": []}},
         }
         with patch.object(
             self.session,

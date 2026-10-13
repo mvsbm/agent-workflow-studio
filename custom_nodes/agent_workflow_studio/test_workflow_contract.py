@@ -241,6 +241,42 @@ class ContractTests(unittest.TestCase):
             "1 · Concatenate the two words with the hyphen separator and…",
         )
 
+    def test_alignment_reports_drift_not_progress(self) -> None:
+        from .workflow_contract import alignment
+
+        good = {
+            "nodes": [{"title": "Label", "step": "classify"}],
+            "analysis": {"outputs": ["Label"], "problems": []},
+        }
+        self.assertEqual(alignment(CONTRACT, good), [], "an unbuilt step is progress, not drift")
+        self.assertEqual(alignment(CONTRACT, {"nodes": []}), [])
+        drift = alignment(
+            CONTRACT,
+            {
+                "nodes": [
+                    {"title": "Label", "step": "classify", "fuzzy": False},
+                    {"title": "Cleaner", "step": "tidy", "fuzzy": True},
+                    {"title": "Stray", "step": None},
+                    {"title": "Old", "step": "removed_step"},
+                ],
+                "analysis": {
+                    "outputs": [],
+                    "problems": ['Required input "vae" (VAE) is not connected.'],
+                },
+            },
+        )
+        self.assertEqual(
+            drift,
+            [
+                "Not part of any step: Stray.",
+                "Nodes belong to steps the contract no longer has: removed_step.",
+                "Step classify's gate checks “Label”, which is not an output node on the canvas.",
+                "Step tidy is fixed in the contract but uses a Fuzzy node.",
+                "Nothing will run: the graph has no output node.",
+                'Graph problem: Required input "vae" (VAE) is not connected.',
+            ],
+        )
+
     def test_schema_file_is_valid_and_shared(self) -> None:
         from jsonschema import Draft202012Validator
 
