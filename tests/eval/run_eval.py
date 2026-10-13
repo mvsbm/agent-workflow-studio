@@ -56,6 +56,24 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
     return not failures, failures
 
 
+def process(r: dict) -> dict[str, bool]:
+    """Did the agent follow the studio's procedure? Reported beside the outcome score."""
+    versions = r.get("versions", [])  # newest first
+    approved = [i for i, v in enumerate(versions) if v.startswith("user: Contract approved")]
+    agent_work = [i for i, v in enumerate(versions) if v.startswith("agent:")]
+    tools = [t.split(" · ", 1)[1] for t in r.get("tools", []) if t.startswith("Done · ")]
+    built = bool(r.get("node_ids")) or any(t in ("write", "edit") for t in tools)
+    checks = {
+        "contract": bool(approved) or not built,
+        "plan_first": not agent_work or (bool(approved) and max(agent_work) < max(approved)),
+        "tagged": not r.get("untagged"),
+        "aligned": (r.get("contract") or {}).get("aligned", not built),
+        "ran": "success" in r.get("run_statuses", []),
+        "gates": "comfy_check_gates" in tools,
+    }
+    return checks
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider", required=True)
@@ -103,11 +121,17 @@ def main() -> int:
             )
         result = json.loads((out / f"{task['id']}.json").read_text())
         passed, failures = score(task, result)
-        results.append({**result, "passed": passed, "failures": failures})
+        steps = process(result)
+        results.append({**result, "passed": passed, "failures": failures, "process": steps})
         print(
             f"{'PASS' if passed else 'FAIL'} {task['id']} ({result.get('seconds')}s) {'; '.join(failures)}",
             flush=True,
         )
+        contract = result.get("contract") or {}
+        marks = " · ".join(f"{name} {'✓' if ok else '✗'}" for name, ok in steps.items())
+        print(f"     process: {marks} · {contract.get('progress', 'no contract')}", flush=True)
+        for drift in contract.get("drift") or []:
+            print(f"     drift: {drift}", flush=True)
     (out / "summary.json").write_text(json.dumps(results, indent=1))
     print(f"{sum(r['passed'] for r in results)}/{len(results)} passed · details: {out}")
     return 0

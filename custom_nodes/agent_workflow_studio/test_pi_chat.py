@@ -244,6 +244,19 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(notice["type"], "graph_check")
         self.assertIn("Will not run (reaches no output): Loose trim", notice["text"])
 
+    async def test_workspace_writes_need_a_contract_except_scratch(self):
+        write = {"path": "solution.py", "data": "cHJpbnQoMSkK", "expected_sha256": None}
+        with self.assertRaisesRegex(ValueError, "needs an approved contract"):
+            await self.session.agent_action("workspace_write", write)
+        scratch = await self.session.agent_action(
+            "workspace_write", {**write, "path": "tmp/notes.md"}
+        )
+        self.assertTrue(scratch.get("sha256"))
+        info = await self.session.agent_action("workspace_info", {})  # reading stays open
+        self.assertIn("tmp/notes.md", json.dumps(info))
+        self.session.contract = CONTRACT
+        self.assertTrue((await self.session.agent_action("workspace_write", write)).get("sha256"))
+
     async def test_contract_status_comes_from_browser_evidence(self):
         self.session.contract = CONTRACT
         evidence = {
@@ -651,7 +664,7 @@ class PiChatRouteTests(unittest.IsolatedAsyncioTestCase):
                 url = environment["COMFY_PI_BRIDGE_URL"].removeprefix(origin)
                 headers = {"Authorization": "Bearer " + environment["COMFY_PI_BRIDGE_TOKEN"]}
                 payload = {
-                    "path": "script.py",
+                    "path": "tmp/script.py",  # scratch: writable before any contract
                     "data": base64.b64encode(b"safe data").decode(),
                     "expected_sha256": None,
                 }
@@ -663,17 +676,17 @@ class PiChatRouteTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(response.status, 200)
                 self.assertEqual(
                     await socket.receive_json(),
-                    {"type": "workspace_saved", "path": "script.py"},
+                    {"type": "workspace_saved", "path": "tmp/script.py"},
                 )
                 await socket.send_json({"type": "workspace_files"})
                 self.assertEqual(
                     (await socket.receive_json())["result"]["files"],
-                    [{"path": "script.py", "size": 9}],
+                    [{"path": "tmp/script.py", "size": 9}],
                 )
                 response = await client.post(
                     url,
                     headers=headers,
-                    json={"action": "workspace_read", "args": {"path": "script.py"}},
+                    json={"action": "workspace_read", "args": {"path": "tmp/script.py"}},
                 )
                 self.assertEqual(
                     base64.b64decode((await response.json())["result"]["data"]),
@@ -684,7 +697,7 @@ class PiChatRouteTests(unittest.IsolatedAsyncioTestCase):
                     headers=headers,
                     json={
                         "action": "workspace_write",
-                        "args": {**payload, "path": "../escape.py"},
+                        "args": {**payload, "path": "tmp/../escape.py"},
                     },
                 )
                 self.assertEqual(response.status, 400)

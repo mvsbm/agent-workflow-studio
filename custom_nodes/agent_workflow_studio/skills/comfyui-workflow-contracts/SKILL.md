@@ -4,7 +4,7 @@ description: Write, follow and amend the workflow contract (requests, examples, 
 ---
 # Workflow contracts
 
-Every workflow you build or extend has one contract, approved by the user and versioned as `contract.yaml`. It records intent only; step status and technical details are derived from the canvas and runs. The user may be non-technical: write every plain field so they can check it at a glance.
+Every workflow you build or extend, and every set of files you produce for the user, has one contract, approved by the user and versioned as `contract.yaml`. It records intent only; step status and technical details are derived from the canvas and runs. The user may be non-technical: write every plain field so they can check it at a glance.
 
 ## Writing the contract (`comfy_propose_contract`)
 

@@ -483,6 +483,16 @@ class PiChatSession:
     async def agent_action(self, action, arguments):
         """Everything the agent's tools ask of the session, with the contract gate enforced here."""
         if action in FILE_ACTIONS:
+            path = arguments.get("path") if isinstance(arguments, dict) else None
+            if (
+                action == "workspace_write"
+                and self.contract is None
+                and not str(path).startswith("tmp/")
+            ):
+                raise ValueError(
+                    "Writing workspace files needs an approved contract (scratch files may go in tmp/). "
+                    "Plan first: comfy_ask_user, then comfy_propose_contract."
+                )
             return await self.workspace_action(action, arguments)
         if action in CONTRACT_ACTIONS:
             return await self.contract_action(action, arguments)

@@ -68,7 +68,23 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       const outputs = Object.values(history).flatMap(h => Object.values(h.outputs ?? {}));
       const statuses = Object.values(history).map(h => h.status?.status_str);
       const log = await (await fetch(`/agent-workflow-studio/projects/${encodeURIComponent(app.rootGraph.id)}/log`)).json();
+      // The final contract report, as the Contract tab computes it.
+      let contract = null;
+      try {
+        const base = `/agent-workflow-studio/projects/${encodeURIComponent(app.rootGraph.id)}`;
+        const {contract: current, gates} = await (await fetch(`${base}/contract`)).json();
+        if (current) {
+          const {contractEvidence} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+          const evidence = await contractEvidence(app, window.comfyAPI.api.api, gates);
+          const status = await (await fetch(`${base}/contract/status`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)})).json();
+          contract = {aligned: status.aligned, drift: status.drift, progress: status.progress, freshness: status.freshness};
+        }
+      } catch (error) { contract = {error: String(error)}; }
+      const tools = [...document.querySelectorAll('.aw-pi-host summary, .aw-pi-host details > summary')].map(s => s.textContent.trim()).filter(t => /^(Done|Failed) · /.test(t));
+      // Why tool calls failed (the agent sees this; useful for spotting recurring mistakes).
+      const failures = [...document.querySelectorAll('.aw-pi-host details')].filter(d => /^Failed · /.test(d.querySelector('summary')?.textContent.trim() ?? '')).map(d => d.textContent.trim().slice(0, 400));
       return {
+        contract, tools, failures,
         node_types: app.rootGraph.nodes.map(n => n.type), node_ids: app.rootGraph.nodes.map(n => n.id),
         step_groups: (app.rootGraph._groups ?? app.rootGraph.groups ?? []).map(g => g.title),
         untagged: app.rootGraph.nodes.filter(n => !n.properties?.aws_contract_step).map(n => n.title),
