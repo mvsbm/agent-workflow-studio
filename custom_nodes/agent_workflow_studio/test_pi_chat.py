@@ -79,7 +79,7 @@ class Transport:
                 }
             )
 
-        if record.get("message") == "/ponytail full":
+        if record.get("message") == "/ponytail ultra":
             self.records.put(
                 {
                     "type": "response",
@@ -111,7 +111,7 @@ class Transport:
                                     "evidencePreservingReducer": False,
                                     "onlineContextCompact": False,
                                 },
-                                "ponytail": {"version": "fixture", "mode": "full"},
+                                "ponytail": {"version": "fixture", "mode": "ultra"},
                             }
                             if self.addons
                             else {},
@@ -281,7 +281,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(session.environment["PI_CODING_AGENT_DIR"], session.profile.name)
             self.assertNotEqual(session.environment["PI_CODING_AGENT_DIR"], "/tmp/operator-pi")
             await session.start()
-            self.assertEqual(session.socket.events[-1]["extensions"]["ponytail"]["mode"], "full")
+            self.assertEqual(session.socket.events[-1]["extensions"]["ponytail"]["mode"], "ultra")
         finally:
             await session.close()
 
@@ -303,7 +303,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(ready["type"], "ready")
                 self.assertEqual(ready["extensions"], {})
                 sent = [command.get("message") for command in session.transport.commands]
-                self.assertNotIn("/ponytail full", sent)
+                self.assertNotIn("/ponytail ultra", sent)
                 self.assertIn("/comfy --check", sent)
             finally:
                 await session.close()

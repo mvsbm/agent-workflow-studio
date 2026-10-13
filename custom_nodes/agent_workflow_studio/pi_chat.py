@@ -27,6 +27,8 @@ from .workflow_spec import render_spec, validate_spec
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {"read", "catalog", "edit", "run", "results", "spec_approve", "gates"}
 SPEC_ACTIONS = {"spec_propose", "spec_get", "spec_gates"}
+# Ponytail ultra also questions the request before building, which suits planning first.
+PONYTAIL_MODE = "ultra"
 REQUIRED_SKILLS = {
     "comfyui-node-creation",
     "comfyui-workflow-debugging",
@@ -311,7 +313,11 @@ class PiChatSession:
                     # Ponytail is optional; when installed, use its own command, not copied prompt text.
                     self.ponytail = "ponytail" in names
                     await self.send(
-                        {"type": "prompt", "id": "chat_ponytail", "message": "/ponytail full"}
+                        {
+                            "type": "prompt",
+                            "id": "chat_ponytail",
+                            "message": f"/ponytail {PONYTAIL_MODE}",
+                        }
                         if self.ponytail
                         else {
                             "type": "prompt",
@@ -325,7 +331,7 @@ class PiChatSession:
                         not event.get("success")
                         or event.get("data", {}).get("disposition") != "handled"
                     ):
-                        raise PiCLIError("Pi could not activate Ponytail full mode.")
+                        raise PiCLIError(f"Pi could not activate Ponytail {PONYTAIL_MODE} mode.")
                     await self.send(
                         {
                             "type": "prompt",
@@ -359,9 +365,9 @@ class PiChatSession:
                         if (
                             not self.initialized.is_set()
                             and self.ponytail
-                            and extensions.get("ponytail", {}).get("mode") != "full"
+                            and extensions.get("ponytail", {}).get("mode") != PONYTAIL_MODE
                         ):
-                            raise PiCLIError("Ponytail full mode was not verified.")
+                            raise PiCLIError(f"Ponytail {PONYTAIL_MODE} mode was not verified.")
                         skills = tools.get("skills", {})
                         if (
                             not skills.get("default_loaded")

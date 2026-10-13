@@ -57,7 +57,7 @@ Use the **Pi provider credentials & model catalog** canvas menu to manage provid
 
 - macOS or Linux, Git, `curl`; the installer bootstraps `uv` and Python 3.12.
 - The Pi CLI (`pi`, npm package `@earendil-works/pi-coding-agent`) on `PATH`, or set `AGENT_WORKFLOW_STUDIO_PI_CLI`.
-- Optional: **SoL-Pi** and **Ponytail** in your Pi profile. When installed, the chat loads them (Ponytail in `full` mode) and shows them in its header; without them it shows "No Pi add-ons".
+- Optional: **SoL-Pi** and **Ponytail** in your Pi profile. When installed, the chat loads them (Ponytail in `ultra` mode, which also questions requests before building) and shows them in its header; without them it shows "No Pi add-ons".
 
 ## Install and run
 

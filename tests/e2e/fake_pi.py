@@ -18,7 +18,7 @@ STRUCTURED = any(arg.endswith("pi_structured_output_extension.ts") for arg in sy
 EXTENSIONS = (
     {
         "sol_pi": {"version": "fake", "actionFusion": False, "observationPack": False},
-        "ponytail": {"version": "fake", "mode": "full"},
+        "ponytail": {"version": "fake", "mode": "ultra"},
     }
     if ADDONS
     else {}
@@ -263,7 +263,7 @@ while line := sys.stdin.readline():
     elif kind == "get_commands":
         names = [{"name": "comfy"}] + ([{"name": "ponytail"}] if ADDONS else [])
         respond(record, {"commands": names})
-    elif kind == "prompt" and record["message"] == "/ponytail full":
+    elif kind == "prompt" and record["message"] == "/ponytail ultra":
         respond(record, {"disposition": "handled"})
     elif kind == "prompt" and record["message"].startswith("/comfy"):
         emit(
