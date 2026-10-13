@@ -1,5 +1,18 @@
 [
-  {"id": "nayose_insurance",
-   "timeout_minutes": 15,
-   "prompt": "Create a Japanese entity matching (nayose) solution for a general insurance company, with synthetic data creation and a near state of the art name matching solution. It should find whether customers are the same person across three different data models: one stores policy data (auto, medical, fire, etc.), one stores claims data, and one stores payment data. Each data model can contain the same person's records, but they are scattered across them, and each data model is corrupted in its own ways. This simulates the databases of old Japanese insurance companies, which struggle with the nayose problem."}
+ {
+  "id": "nayose_insurance",
+  "timeout_minutes": 15,
+  "prompt": "Create a Japanese entity matching (nayose) solution for a general insurance company, with synthetic data creation and a near state of the art name matching solution. It should find whether customers are the same person across three different data models: one stores policy data (auto, medical, fire, etc.), one stores claims data, and one stores payment data. Each data model can contain the same person's records, but they are scattered across them, and each data model is corrupted in its own ways. This simulates the databases of old Japanese insurance companies, which struggle with the nayose problem."
+ },
+ {
+  "id": "nayose_insurance_realistic",
+  "timeout_minutes": 15,
+  "prompt": "Create a Japanese entity matching (nayose) solution for a general insurance company, with synthetic data creation and a near state of the art name matching solution. It should find whether customers are the same person across three different data models: one stores policy data (auto, medical, fire, etc.), one stores claims data, and one stores payment data. Each data model can contain the same person's records, but they are scattered across them, and each data model is corrupted in its own ways. This simulates the databases of old Japanese insurance companies, which struggle with the nayose problem.",
+  "prefer": [
+   "Realistic",
+   "Both",
+   "Name + date of birth + address + phone",
+   "~5,000"
+  ]
+ }
 ]

@@ -28,3 +28,15 @@ test('latest run of this workflow, and whether it ran exactly the current graph'
   assert.equal(latestMatchingRun(history, 'wf', JSON.stringify({1: 'changed'})).current, false);
   assert.equal(latestMatchingRun(history, 'none', '{}'), null);
 });
+
+import {compactOutputs} from './pi_canvas.js';
+
+test('run outputs are compacted for the agent', () => {
+  const huge = {7: {text: ['x'.repeat(9000)], rows: Array.from({length: 50}, (_, i) => i)}};
+  const compact = compactOutputs(huge);
+  assert.match(compact[7].text[0], /… \[5000 more characters\]$/);
+  assert.equal(compact[7].rows.length, 21);
+  assert.equal(compact[7].rows.at(-1), '… [30 more items]');
+  const many = Object.fromEntries(Array.from({length: 300}, (_, i) => [i, {text: ['y'.repeat(4000)]}]));
+  assert.ok(JSON.stringify(compactOutputs(many)).length < 400000, 'a large run still fits the chat limit');
+});

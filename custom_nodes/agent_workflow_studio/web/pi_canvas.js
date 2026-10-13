@@ -30,6 +30,18 @@ export function evaluateGates(gates, outputsByTitle) {
   });
 }
 
+/** Run outputs small enough for the agent: long texts shortened, long lists sampled, marked as such. */
+export function compactOutputs(outputs, {maxText = 4000, maxItems = 20, budget = 400000} = {}) {
+  const shrink = value => {
+    if (typeof value === 'string') return value.length > maxText ? `${value.slice(0, maxText)}… [${value.length - maxText} more characters]` : value;
+    if (Array.isArray(value)) return value.length > maxItems ? [...value.slice(0, maxItems).map(shrink), `… [${value.length - maxItems} more items]`] : value.map(shrink);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, shrink(item)]));
+    return value;
+  };
+  const compact = shrink(outputs ?? {});
+  return JSON.stringify(compact).length > budget && maxText > 500 ? compactOutputs(outputs, {maxText: 500, maxItems: 5, budget: Infinity}) : compact;
+}
+
 /** Outputs of a finished run grouped by the producing node's (lowercased) title. */
 function outputsByTitle(record, graph) {
   const titles = Object.fromEntries(nodes(graph).map(node => [String(node.id), node.title]));
@@ -101,6 +113,14 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
   // Node keys stay valid for the whole chat, so later batches can reference earlier nodes.
   const keys = Object.create(null);
   const catalog = async () => definitions ??= await api.getNodeDefs();
+  // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.
+  const waitForRun = async () => {
+    for (let waited = 0; latestPrompt && waited < 60000; waited += 1000) {
+      const finished = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`).then(r => (r.ok ? r.json() : {}));
+      if (finished[latestPrompt]) return;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  };
   const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? keys[ref] ?? ref);
 
   async function edit(operations, contractSteps) {
@@ -250,6 +270,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'contract_evidence') return contractEvidence(app, api, Array.isArray(args.gates) ? args.gates : []);
     if (action === 'gates') {
       if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');
+      await waitForRun();
       const response = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`);
       if (!response.ok) throw Error('Cannot read native execution history.');
       const record = (await response.json())[latestPrompt];
@@ -257,12 +278,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], outputsByTitle(record, app.graph))};
     }
     if (action === 'results') {
-      // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.
-      for (let waited = 0; latestPrompt && waited < 60000; waited += 1000) {
-        const finished = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`).then(r => (r.ok ? r.json() : {}));
-        if (finished[latestPrompt]) break;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      await waitForRun();
       const queue = await api.getQueue();
       const result = {submitted,prompt_id:latestPrompt??null,queue,validation_errors:app.extensionManager?.lastNodeErrors??null,execution_error:app.extensionManager?.lastExecutionError??null};
       if (latestPrompt) {
@@ -270,7 +286,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (!response.ok) throw Error('Cannot read native execution history.');
         const record = (await response.json())[latestPrompt];
         if (record) {
-          result.status=record.status; result.outputs=record.outputs;
+          result.status=record.status; result.outputs=compactOutputs(record.outputs);
           result.image_previews=[];
           for (const output of Object.values(record.outputs??{})) {
             for (const image of output.images??[]) {

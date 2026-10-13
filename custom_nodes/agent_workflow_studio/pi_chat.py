@@ -604,7 +604,7 @@ class PiChatSession:
             for v in ports.values()
         ):
             raise ValueError("Describe inputs and outputs as lists of {name, kind}.")
-        description = str(arguments.get("description", "")).strip()[:500]
+        description = str(arguments.get("description", "")).strip()[:1200]
         if not description:
             raise ValueError("Say what the tool does.")
         file = await self.workspace_action("workspace_read", {"path": f"tools/{name}.py"})

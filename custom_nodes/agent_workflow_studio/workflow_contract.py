@@ -119,7 +119,7 @@ def from_plan_v1(plan: dict) -> dict:
     return validate_contract(
         {
             "contract": 2,
-            "purpose": plan["goal"][:400],
+            "purpose": plan["goal"][:600],
             "requests": [
                 {
                     "id": "R1",

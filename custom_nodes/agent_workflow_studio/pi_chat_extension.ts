@@ -134,7 +134,7 @@ export default async function (pi: ExtensionAPI) {
     execute:async (_id,args,signal) => canvas("contract_propose",{contract:args.contract},signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_check_gates", label:"Check success gates", description:"After a run, check every step's success gate from the approved contract against the latest run's outputs. Gates without a check are listed for the user to confirm.",
+    name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), check every step's success gate from the approved contract against the latest run's outputs. Gates without a check are listed for the user to confirm.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
   }));
@@ -153,7 +153,7 @@ export default async function (pi: ExtensionAPI) {
   }));
   pi.registerTool(defineTool({
     name:"comfy_propose_tool", label:"Propose tool", description:"Ask the user to approve a Python tool you wrote at tools/<name>.py in this workflow's workspace. The user sees the full code; once approved, the Agent Tool node can run that exact code (stdlib only, confined, time-limited). Any later change to the code needs a new approval.",
-    parameters:Type.Object({name:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}),description:Type.String({minLength:1,maxLength:500}),inputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16}),outputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16})}),
+    parameters:Type.Object({name:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}),description:Type.String({minLength:1,maxLength:1200}),inputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16}),outputs:Type.Array(Type.Object({name:Type.String({minLength:1,maxLength:80}),kind:Type.String({minLength:1,maxLength:40})}),{maxItems:16})}),
     execute:async (_id,args,signal) => canvas("tool_propose",args,signal),
   }));
 }

@@ -23,7 +23,7 @@ from pathlib import Path
 
 NAME = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 RUNNER = Path(__file__).with_name("agent_tool_runner.py")
-TIMEOUT_SECONDS = 120
+TIMEOUT_SECONDS = 600  # real data sets (thousands of records in pure Python) need minutes
 MAX_OUTPUT = 4 * 1024 * 1024
 
 

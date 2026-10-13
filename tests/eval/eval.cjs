@@ -56,7 +56,9 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       if (await card.count()) {
         result.cards.push((await card.innerText()).slice(0, 4000));
         const allow = card.getByRole('button', {name: 'Allow'});
-        await (await allow.count() ? allow : card.getByRole('button').first()).click();
+        const options = await card.getByRole('button').allTextContents();
+        const preferred = options.find(option => (task.prefer ?? []).some(word => option.includes(word)));
+        await (await allow.count() ? allow : preferred ? card.getByRole('button', {name: preferred, exact: true}) : card.getByRole('button').first()).click();
         result.approvals += 1;
       }
       await page.waitForTimeout(1000);
