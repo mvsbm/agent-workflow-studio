@@ -13,6 +13,7 @@ cd "$PACKAGE_ROOT"
 node -e "require('fs').accessSync(require('playwright-core').chromium.executablePath())" 2>/dev/null \
     || npx --no-install playwright-core install chromium
 
+(cd "$APP_HOME/ComfyUI" && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python "$PACKAGE_ROOT/tests/e2e/pi_startup.py")
 for addons in 1 0; do
     FAKE_PI_ADDONS=$addons "$APP_HOME/ComfyUI/.venv/bin/python" tests/e2e/run.py
 done

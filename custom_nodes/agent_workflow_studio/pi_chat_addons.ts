@@ -1,4 +1,4 @@
-/** Compose the user's installed packages through Pi's public APIs. No vendoring. */
+/** Compose the user's optional installed packages through Pi's public APIs. No vendoring. */
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -6,9 +6,11 @@ import { pathToFileURL } from "node:url";
 import { CONFIG_DIR_NAME, DefaultPackageManager, getAgentDir, SettingsManager, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 type Manifest = {name:string;version:string;pi:{extensions:string[];skills?:string[]}};
-const names = ["sol-pi", "@dietrichgebert/ponytail"];
+type Status = (ctx:ExtensionContext)=>Record<string,unknown>;
+const SOL_PI = "sol-pi", PONYTAIL = "@dietrichgebert/ponytail";
 
-export async function loadChatAddons(pi: ExtensionAPI) {
+/** Load SoL-Pi and/or Ponytail when the user has them configured; both are optional. */
+export async function loadChatAddons(pi: ExtensionAPI): Promise<Status> {
   // Preserve the operator's package/config choices even when provider auth uses
   // a temporary Keychain profile. Never copy their credentials or change config.
   const parent = process.env.COMFY_PI_PARENT_AGENT_DIR;
@@ -20,31 +22,38 @@ export async function loadChatAddons(pi: ExtensionAPI) {
     if (pkg.scope !== "user" || !pkg.installedPath) continue;
     let manifest:Manifest;
     try {manifest=JSON.parse(readFileSync(join(pkg.installedPath,"package.json"),"utf8"));} catch {continue;}
-    if (!names.includes(manifest.name)) continue;
+    if (manifest.name !== SOL_PI && manifest.name !== PONYTAIL) continue;
     if (packages.has(manifest.name)) throw new Error(`Multiple installed ${manifest.name} packages; choose one in Pi settings.`);
     if (manifest.pi?.extensions?.length !== 1) throw new Error(`Expected the installed ${manifest.name} package's single Pi entrypoint.`);
     packages.set(manifest.name,{root:pkg.installedPath,manifest});
   }
-  for (const name of names) if (!packages.has(name)) throw new Error(`Install/configure ${name} in your Pi profile first. Chat never downloads packages.`);
-  const sol=packages.get(names[0]!)!,pony=packages.get(names[1]!)!;
-  const solURL=pathToFileURL(resolve(sol.root,sol.manifest.pi.extensions[0]!));
-  const solModule=await import(solURL.href);
-  const configModule=await import(new URL("./config.ts",solURL).href);
-  let config:Record<string,unknown>|undefined;
-  // Use SoL-Pi's own loader and factory, including project trust/strict validation.
-  solModule.createSolPiExtension((ctx:ExtensionContext)=>{
-    config=configModule.loadSolPiConfig(ctx.cwd,agentDir,ctx.isProjectTrusted());
-    return config;
-  })(pi);
-  const ponyModule=await import(pathToFileURL(resolve(pony.root,pony.manifest.pi.extensions[0]!)).href);
-  ponyModule.default(pi);
-  pi.on("resources_discover",()=>({skillPaths:(pony.manifest.pi.skills??[]).map(path=>resolve(pony.root,path))}));
-  return (ctx:ExtensionContext)=>{
-    if (!config) throw new Error("SoL-Pi did not initialize in this session.");
-    if (config.observationPack && !pi.getActiveTools().includes("obs_recall")) throw new Error("SoL-Pi ObservationPack is configured but its recall tool is inactive.");
-    return {
-      sol_pi:{version:sol.manifest.version,actionFusion:config.actionFusion,observationPack:config.observationPack,evidencePreservingReducer:config.evidencePreservingReducer,onlineContextCompact:config.onlineContextCompact},
-      ponytail:{version:pony.manifest.version,mode:ponyModule.resolveSessionMode(ctx.sessionManager.getBranch(),ponyModule.readDefaultMode())},
-    };
-  };
+  const statuses:Status[] = [];
+
+  const sol = packages.get(SOL_PI);
+  if (sol) {
+    const solURL=pathToFileURL(resolve(sol.root,sol.manifest.pi.extensions[0]!));
+    const solModule=await import(solURL.href);
+    const configModule=await import(new URL("./config.ts",solURL).href);
+    let config:Record<string,unknown>|undefined;
+    // Use SoL-Pi's own loader and factory, including project trust/strict validation.
+    solModule.createSolPiExtension((ctx:ExtensionContext)=>{
+      config=configModule.loadSolPiConfig(ctx.cwd,agentDir,ctx.isProjectTrusted());
+      return config;
+    })(pi);
+    statuses.push(()=>{
+      if (!config) throw new Error("SoL-Pi did not initialize in this session.");
+      if (config.observationPack && !pi.getActiveTools().includes("obs_recall")) throw new Error("SoL-Pi ObservationPack is configured but its recall tool is inactive.");
+      return {sol_pi:{version:sol.manifest.version,actionFusion:config.actionFusion,observationPack:config.observationPack,evidencePreservingReducer:config.evidencePreservingReducer,onlineContextCompact:config.onlineContextCompact}};
+    });
+  }
+
+  const pony = packages.get(PONYTAIL);
+  if (pony) {
+    const ponyModule=await import(pathToFileURL(resolve(pony.root,pony.manifest.pi.extensions[0]!)).href);
+    ponyModule.default(pi);
+    pi.on("resources_discover",()=>({skillPaths:(pony.manifest.pi.skills??[]).map(path=>resolve(pony.root,path))}));
+    statuses.push(ctx=>({ponytail:{version:pony.manifest.version,mode:ponyModule.resolveSessionMode(ctx.sessionManager.getBranch(),ponyModule.readDefaultMode())}}));
+  }
+
+  return ctx=>Object.assign({},...statuses.map(status=>status(ctx)));
 }

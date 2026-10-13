@@ -19,8 +19,8 @@ export function registerWorkspaceFiles(pi:ExtensionAPI,call:Call) {
     if (!result.exists) throw new Error("Workspace file does not exist.");
   };
   let ctx:ExtensionContext;
-  // Run after SoL-Pi's session_start registration. Preserve its configuration,
-  // but replace its unrestricted file/fusion implementations with these tools.
+  // Registered after the optional add-ons load, so these confined tools replace
+  // Pi's built-in (and SoL-Pi's, when installed) unrestricted file tools.
   pi.on("session_start",(_event,context)=>{
     ctx=context;
     const read=createReadToolDefinition(directory,{operations:{access,readFile:async absolute=>(await load(absolute)).bytes,detectImageMimeType:async()=>null}});

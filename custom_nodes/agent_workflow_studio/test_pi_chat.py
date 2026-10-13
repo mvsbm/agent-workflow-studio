@@ -32,6 +32,8 @@ class Socket:
 
 
 class Transport:
+    addons = True
+
     def __init__(self, *args):
         self.workspace = {
             "workflow_id": args[1]["COMFY_PI_WORKFLOW_ID"],
@@ -69,7 +71,10 @@ class Transport:
                     "type": "response",
                     "id": record["id"],
                     "success": True,
-                    "data": {"commands": [{"name": "comfy"}, {"name": "ponytail"}]},
+                    "data": {
+                        "commands": [{"name": "comfy"}]
+                        + ([{"name": "ponytail"}] if self.addons else [])
+                    },
                 }
             )
 
@@ -106,7 +111,9 @@ class Transport:
                                     "onlineContextCompact": False,
                                 },
                                 "ponytail": {"version": "fixture", "mode": "full"},
-                            },
+                            }
+                            if self.addons
+                            else {},
                             "active": [
                                 "comfy_read_workflow",
                                 "comfy_node_catalog",
@@ -206,6 +213,29 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(session.socket.events[-1]["extensions"]["ponytail"]["mode"], "full")
         finally:
             await session.close()
+
+    async def test_chat_starts_without_optional_addons(self):
+        class BareTransport(Transport):
+            addons = False
+
+        with patch.object(pi_chat, "_PiRPCProcess", BareTransport):
+            session = pi_chat.PiChatSession(
+                Socket(),
+                "http://127.0.0.1:8189",
+                None,
+                workflow_id=self.workspace_id,
+                workspace_root=Path(self.workspace_temp.name) / "workspaces",
+            )
+            try:
+                await session.start()
+                ready = session.socket.events[-1]
+                self.assertEqual(ready["type"], "ready")
+                self.assertEqual(ready["extensions"], {})
+                sent = [command.get("message") for command in session.transport.commands]
+                self.assertNotIn("/ponytail full", sent)
+                self.assertIn("/comfy --check", sent)
+            finally:
+                await session.close()
 
     async def test_browser_workspace_downloads_are_read_only_and_confined(self):
         data = "name,prefecture\n佐藤 花子,東京都\n".encode()

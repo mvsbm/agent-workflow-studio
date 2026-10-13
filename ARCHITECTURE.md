@@ -23,7 +23,7 @@ browser: web/pi_chat.js ──WebSocket /agent-workflow-studio/pi-chat/ws──�
 | File | Role |
 | --- | --- |
 | `pi_chat.py`, `pi_chat_workspace.py` | Chat sessions, WebSocket and bridge routes, confined per-workflow file workspace. |
-| `pi_chat_extension.ts`, `pi_chat_files.ts`, `pi_chat_addons.ts` | Pi-side tools, system prompt and workspace-confined file I/O; add-on composition. |
+| `pi_chat_extension.ts`, `pi_chat_files.ts`, `pi_chat_addons.ts` | Pi-side tools, system prompt and workspace-confined file I/O; optional SoL-Pi/Ponytail composition. |
 | `skills/` | Bundled agent skills (node creation, debugging, connectors, organization). |
 | `pi_cli.py`, `pi_auth.py`, `credential_store.py`, `structured_json.py` | Pi subprocess adapter, provider auth metadata, OS-keychain access, local JSON-Schema validation. |
 | `pi_model_config.py`, `agent_node.py`, `llm_harness.py`, `node_progress.py` | The two ComfyUI V3 nodes and their progress/timeout harness. |
@@ -38,7 +38,6 @@ browser: web/pi_chat.js ──WebSocket /agent-workflow-studio/pi-chat/ws──�
 
 ## Known limitations
 
-- **Hard dependency on SoL-Pi and Ponytail.** `pi_chat_addons.ts` throws if either is missing from the user's Pi profile, and `pi_chat.py` verifies they initialized. They should be optional.
 - The agent can only use nodes that are installed. When a capability is missing it reports that and points to manual node search; it does not create nodes.
-- No browser end-to-end tests are included. The previous Playwright harness was removed with the rest of the old studio.
+- The browser end-to-end test covers one scripted build-and-run flow with a fake Pi; live-provider behavior is not automated.
 - Live-provider behavior (how well the agent plans and builds real workflows) is verified manually, not by tests.

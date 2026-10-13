@@ -88,7 +88,14 @@ function createChat() {
   let boundWorkflow=null;
   const workflowId=()=> (app.rootGraph??app.graph?.rootGraph??app.graph)?.id;
   function checkWorkflow() {if(boundWorkflow&&workflowId()!==boundWorkflow)throw Error('Workflow changed. Start New chat to bind its workspace; existing files and canvas are preserved.');}
-  function showAddons(value) {if(!value?.sol_pi||!value?.ponytail)return;addons.textContent=`SoL-Pi · Ponytail ${String(value.ponytail.mode).toUpperCase()}`;addons.title=`SoL-Pi ${value.sol_pi.version}: `+['actionFusion','observationPack','evidencePreservingReducer','onlineContextCompact'].map(key=>`${key}: ${value.sol_pi[key]?'on':'off'}`).join(', ')+` · Ponytail ${value.ponytail.version}`;}
+  function showAddons(value) {
+    if(!value||typeof value!=='object')return;
+    const sol=value.sol_pi,pony=value.ponytail,parts=[],details=[];
+    if(sol){parts.push('SoL-Pi');details.push(`SoL-Pi ${sol.version}: `+['actionFusion','observationPack','evidencePreservingReducer','onlineContextCompact'].map(key=>`${key}: ${sol[key]?'on':'off'}`).join(', '));}
+    if(pony){parts.push(`Ponytail ${String(pony.mode).toUpperCase()}`);details.push(`Ponytail ${pony.version}`);}
+    addons.textContent=parts.length?parts.join(' · '):'No Pi add-ons';
+    addons.title=details.length?details.join(' · '):'SoL-Pi and Ponytail are optional and not installed in this Pi profile.';
+  }
   function scroll() {log.scrollTop=log.scrollHeight;}
   function row(role,text) {empty.remove();const article=element('article',null,{className:`aw-pi-message aw-pi-${role}`});article.append(element('h3',role==='user'?'You':role==='assistant'?'Pi':'Notice'));const body=element('div',text,{className:'aw-pi-message-text'});article.append(body);log.append(article);scroll();return body;}
   function update() {sendButton.disabled=busy||connecting||configuring||resetting||!input.value.trim();input.disabled=connecting||configuring||resetting;stopButton.hidden=!busy;saveModel.disabled=busy||connecting||configuring;for(const field of [providerSelect,modelSelect,thinkingSelect,authSelect])field.disabled=busy||connecting||configuring;}

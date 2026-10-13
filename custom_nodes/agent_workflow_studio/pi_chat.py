@@ -93,6 +93,7 @@ class PiChatSession:
         self.closed = False
         self.model = {}
         self.thinking_level = "off"
+        self.ponytail = False
         self.initialized = asyncio.Event()
         self.turns = 0
         self.send_lock = asyncio.Lock()
@@ -298,17 +299,18 @@ class PiChatSession:
                     await self.send({"type": "get_commands", "id": "chat_extension"})
                     continue
                 if event.get("type") == "response" and event.get("id") == "chat_extension":
-                    commands = event.get("data", {}).get("commands", [])
-                    if not event.get("success") or not {"comfy", "ponytail"}.issubset(
-                        {item.get("name") for item in commands}
-                    ):
+                    names = {item.get("name") for item in event.get("data", {}).get("commands", [])}
+                    if not event.get("success") or "comfy" not in names:
                         raise PiCLIError("Pi could not load its native ComfyUI extension.")
-                    # Use Ponytail's actual local command, not copied prompt text.
+                    # Ponytail is optional; when installed, use its own command, not copied prompt text.
+                    self.ponytail = "ponytail" in names
                     await self.send(
-                        {
+                        {"type": "prompt", "id": "chat_ponytail", "message": "/ponytail full"}
+                        if self.ponytail
+                        else {
                             "type": "prompt",
-                            "id": "chat_ponytail",
-                            "message": "/ponytail full",
+                            "id": "chat_tool_check",
+                            "message": "/comfy --check",
                         }
                     )
                     continue
@@ -348,13 +350,12 @@ class PiChatSession:
                                 "Pi's native canvas tools are not active; check its tool configuration."
                             )
                         extensions = tools.get("extensions", {})
-                        if not self.initialized.is_set() and (
-                            not extensions.get("sol_pi")
-                            or extensions.get("ponytail", {}).get("mode") != "full"
+                        if (
+                            not self.initialized.is_set()
+                            and self.ponytail
+                            and extensions.get("ponytail", {}).get("mode") != "full"
                         ):
-                            raise PiCLIError(
-                                "SoL-Pi/Ponytail full initialization was not verified."
-                            )
+                            raise PiCLIError("Ponytail full mode was not verified.")
                         skills = tools.get("skills", {})
                         if (
                             not skills.get("default_loaded")

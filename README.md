@@ -44,7 +44,7 @@ Use the **Pi provider credentials & model catalog** canvas menu to manage provid
 
 - macOS or Linux, Git, `curl`; the installer bootstraps `uv` and Python 3.12.
 - The Pi CLI (`pi`, npm package `@earendil-works/pi-coding-agent`) on `PATH`, or set `AGENT_WORKFLOW_STUDIO_PI_CLI`.
-- **SoL-Pi and Ponytail** installed in your Pi profile. The chat currently refuses to start without them; see [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
+- Optional: **SoL-Pi** and **Ponytail** in your Pi profile. When installed, the chat loads them (Ponytail in `full` mode) and shows them in its header; without them it shows "No Pi add-ons".
 
 ## Install and run
 
@@ -63,4 +63,8 @@ Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI
 scripts/test.sh   # Python (unittest, via the installed ComfyUI venv) + JS (node --test)
 ```
 
-Tests are offline: no provider calls, no browser. Live-provider behavior and browser end-to-end flows are not covered by automated tests.
+```bash
+scripts/e2e.sh    # real Pi startup check, then a browser test: the agent builds and runs a workflow
+```
+
+`scripts/e2e.sh` starts an isolated ComfyUI (temp directory, free port, CPU, only this package) and replaces the LLM with a scripted fake Pi; the chat UI, canvas bridge and native queue are real. It runs with and without the optional add-ons. No test makes a provider call, so how well a real model plans and builds workflows is still checked by hand.
