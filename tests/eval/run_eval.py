@@ -61,11 +61,12 @@ def main() -> int:
     parser.add_argument("--provider", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--only", nargs="*")
+    parser.add_argument(
+        "--tasks", default=str(HERE / "tasks.json"), help="task file (default: tasks.json)"
+    )
     args = parser.parse_args()
     tasks = [
-        t
-        for t in json.loads((HERE / "tasks.json").read_text())
-        if not args.only or t["id"] in args.only
+        t for t in json.loads(Path(args.tasks).read_text()) if not args.only or t["id"] in args.only
     ]
     key_env = provider_credential_environment(args.provider)
     if not key_env:
@@ -90,7 +91,7 @@ def main() -> int:
             subprocess.run(
                 ["node", str(HERE / "eval.cjs")],
                 cwd=REPO,
-                timeout=600,
+                timeout=task.get("timeout_minutes", 7) * 60 + 180,
                 check=False,
                 env={
                     **os.environ,

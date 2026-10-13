@@ -89,11 +89,11 @@ export default async function (pi: ExtensionAPI) {
   }));
   pi.registerTool(defineTool({
     name:"comfy_node_catalog", label:"Find native nodes", description:"Search ALL installed native node types by name/category, descriptions, aliases and input/output schemas (including format choices such as csv), or retrieve exact schemas for class_types. Discovery does not install or authorize generated code.",
-    parameters:Type.Object({query:Type.Optional(Type.String()),class_types:Type.Optional(Type.Array(Type.String(),{maxItems:20}))}),
+    parameters:Type.Object({query:Type.Optional(Type.String()),queries:Type.Optional(Type.Array(Type.String(),{maxItems:8,description:"Several searches at once (up to 8), each returning up to 20 matches."})),class_types:Type.Optional(Type.Array(Type.String(),{maxItems:20}))}),
     execute:async (_id,args,signal) => canvas("catalog",args,signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_edit_workflow", label:"Edit native canvas", description:"Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. New-node keys can be used by later operations in the batch. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
+    name:"comfy_edit_workflow", label:"Edit native canvas", description:"Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. New-node keys stay valid for the rest of this chat, so later batches can reference earlier nodes by key. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
     parameters:Type.Object({operations:Type.Array(operation,{minItems:1,maxItems:32}),summary:Type.Optional(Type.String({maxLength:200,description:"One line saying what this batch does and why; recorded as the version message."}))}),
     execute:async (_id,args,signal) => {
       // The native browser verifies existing links and asks once for all

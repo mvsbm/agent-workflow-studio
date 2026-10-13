@@ -49,9 +49,9 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
     // Act as a user: answer questions with the first option, approve plans and permission requests.
     result.approvals = 0;
     result.cards = [];
-    const deadline = Date.now() + 420000;
+    const deadline = Date.now() + (task.timeout_minutes ?? 7) * 60000;
     while (!await page.evaluate(texts => texts.some(t => document.body.innerText.includes(t)), SETTLED)) {
-      if (Date.now() > deadline) throw Error('Agent did not settle within 7 minutes.');
+      if (Date.now() > deadline) throw Error(`Agent did not settle within ${task.timeout_minutes ?? 7} minutes.`);
       const card = page.locator('.aw-pi-permission').first();
       if (await card.count()) {
         result.cards.push((await card.innerText()).slice(0, 4000));

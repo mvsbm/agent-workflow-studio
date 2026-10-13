@@ -25,6 +25,7 @@ const artifacts = process.env.ARTIFACTS;
       await bridge.handle('edit', {operations: [
         {op: 'add', key: 'llm', class_type: 'AgentWorkflowPiStructuredAgent', position: [50, 100]},
         {op: 'widget', node: 'llm', name: 'prompt', value: 'Say something'},
+        {op: 'widget', node: 'llm', name: 'max_tokens', value: 512}, // an ordinary setting, not a secret
         {op: 'add', key: 'out', class_type: 'PreviewAny', position: [600, 100]},
         {op: 'connect', from: 'llm', output: 0, to: 'out', input: 'source'},
       ]});

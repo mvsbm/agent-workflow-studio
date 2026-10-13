@@ -197,6 +197,10 @@ def build_and_run():
     tool(
         "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
     )
+    # Keys from an earlier batch stay valid for the whole chat.
+    moved = tool("edit", {"operations": [{"op": "move", "node": "out", "position": [760, 100]}]})
+    if "error" in moved:
+        raise SystemExit("key from an earlier batch did not resolve: " + moved["error"])
     run = tool("run", {"reason": "build and verify"})
     if not run.get("prompt_id"):
         raise SystemExit("run returned no prompt_id")

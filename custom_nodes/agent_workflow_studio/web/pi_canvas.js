@@ -1,7 +1,9 @@
 // Native graph APIs, following Comfy-Org/ComfyUI_frontend's app.ts/API queue path.
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
-const secret = /(?:password|api.?key|token|credential|secret|authorization)/i;
+// Widgets that may hold secrets: hidden from the agent and never set by it. Names like
+// max_tokens or credential_source are ordinary settings, not secrets.
+const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)token$)/i;
 const nodes = graph => graph.nodes ?? graph._nodes ?? [];
 // The current frontend keeps links in a Map; older graphs used a plain object.
 const links = graph => graph.links instanceof Map ? [...graph.links.values()] : Object.values(graph.links ?? {});
@@ -96,8 +98,10 @@ function fitStepGroups(graph, steps) {
 
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
   let definitions, latestPrompt, submitted = false;
+  // Node keys stay valid for the whole chat, so later batches can reference earlier nodes.
+  const keys = Object.create(null);
   const catalog = async () => definitions ??= await api.getNodeDefs();
-  const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? ref);
+  const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? keys[ref] ?? ref);
 
   async function edit(operations, contractSteps) {
     if (!Array.isArray(operations) || !operations.length || operations.length > 32) throw Error('Use 1–32 edit operations.');
@@ -119,6 +123,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (!op || typeof op !== 'object') throw Error('Invalid edit operation.');
         if (op.op === 'add') {
           if (typeof op.key !== 'string' || !op.key || Object.hasOwn(added,op.key)) throw Error('New nodes need unique nonempty keys.');
+          if (Object.hasOwn(keys,op.key)) throw Error(`Key "${op.key}" already names a node in this chat; reference it, or use a new key.`);
           if (!Object.hasOwn(defs,op.class_type)) throw Error(`Node is not installed: ${op.class_type}`);
           const node = globalThis.LiteGraph.createNode(op.class_type);
           if (!node) throw Error(`Cannot create native node: ${op.class_type}`);
@@ -173,6 +178,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           }
         } else throw Error(`Unsupported operation: ${op.op}`);
       }
+      Object.assign(keys, added);
       if (Array.isArray(contractSteps)) fitStepGroups(app.graph, contractSteps);
       app.graph.setDirtyCanvas(true,true);
       return {added, node_count:nodes(app.graph).length, message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
@@ -204,9 +210,14 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (!Array.isArray(args.class_types) || args.class_types.length > 20) throw Error('Request at most 20 node schemas.');
         return {schemas:Object.fromEntries(args.class_types.map(name => {if (!Object.hasOwn(defs,name)) throw Error(`Node is not installed: ${name}`);return [name,defs[name]];}))};
       }
-      const query = String(args.query??'').toLowerCase();
-      const matches = Object.entries(defs).filter(([name,d]) => `${name} ${d.display_name??''} ${d.category??''} ${d.description??''} ${JSON.stringify([d.search_aliases,d.input,d.output,d.output_name])}`.toLowerCase().includes(query));
-      return {total:matches.length,nodes:matches.slice(0,60).map(([name,d]) => ({class_type:name,title:d.display_name??name,category:d.category,description:d.description}))};
+      const search = (text, limit) => {
+        const query = String(text??'').toLowerCase();
+        const matches = Object.entries(defs).filter(([name,d]) => `${name} ${d.display_name??''} ${d.category??''} ${d.description??''} ${JSON.stringify([d.search_aliases,d.input,d.output,d.output_name])}`.toLowerCase().includes(query));
+        return {total:matches.length,nodes:matches.slice(0,limit).map(([name,d]) => ({class_type:name,title:d.display_name??name,category:d.category,description:d.description}))};
+      };
+      // Several searches in one call save agent turns.
+      if (Array.isArray(args.queries)) return {results:Object.fromEntries(args.queries.slice(0,8).map(q => [q, search(q, 20)]))};
+      return search(args.query, 60);
     }
     if (action === 'edit') return edit(args.operations, args.contract_steps);
     if (action === 'run') {

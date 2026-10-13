@@ -50,6 +50,8 @@ REQUIRED_SKILLS = {
     "comfyui-workflow-contracts",
 }
 MAX_MESSAGE = 1_048_576
+# Agent turns per user message: room for a contract-gated multi-step build, still a loop guard.
+MAX_TURNS = 40
 
 
 def local_request(request, *, browser=False):
@@ -446,12 +448,12 @@ class PiChatSession:
                     self.cancel_pending()
                 if event.get("type") == "turn_start":
                     self.turns += 1
-                    if self.turns > 16:
+                    if self.turns > MAX_TURNS:
                         await self.send({"type": "abort"})
                         await self.socket.send_json(
                             {
                                 "type": "chat_error",
-                                "error": "Stopped after 16 agent turns. Refine the request to continue.",
+                                "error": f"Stopped after {MAX_TURNS} agent turns. Say continue to go on.",
                             }
                         )
                 if event.get("type") == "agent_settled":
