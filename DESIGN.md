@@ -130,6 +130,10 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 
 The first edit_existing attempt stalled because the harness did not answer the agent's (correct) request to rewire an occupied input; the harness now approves such requests and counts them. Five tasks is a smoke test, not a benchmark: it shows the tools and guide work end to end with a small fast model, not how the agent handles ambiguous or large requests.
 
+### Nayose scenario (2026-10-14, deepseek-v4-flash)
+
+A Japanese insurer nayose request (synthetic policy/claims/payment data, each corrupted differently, near state-of-the-art matching) run through `tests/eval/scenarios/nayose.json`. Before agent tools the agent could only build an LLM demo or leave Python files it could not run. With P5 it asked four questions, got the contract approved, wrote and got approved three tools (generator, Fellegi–Sunter + EM matcher with Japanese normalization, evaluator), built 19 nodes in three tagged steps and verified all gates. On realistic corruption (300 people, 1,129 records): pairwise precision 0.948, recall 0.980, F1 0.964, blocking recall 0.993; it found and fixed a bug in its own evaluator before reporting. Monitoring these runs found and fixed harness problems: false secret matches, keys lost between edit batches, single-query catalog, a 16-turn cap, results too large for the chat, gate checks that did not wait, a 120 s tool limit, and text limits the model kept exceeding.
+
 ## MCP decision
 
 Community ComfyUI MCP servers can edit the live canvas, and Comfy's official local MCP server is in private testing and aimed at running workflows. We do not route Pi through a third-party MCP server: it would duplicate our bridge without its safeguards (atomic undoable batches, rollback, destructive-edit and Run confirmation, auto-commit) and would add someone else's custom node with broad canvas access. Pi gets the tools directly from our extension, which is the shortest path. Exposing our own tools over MCP (P6) is the way to let other agents use the studio.

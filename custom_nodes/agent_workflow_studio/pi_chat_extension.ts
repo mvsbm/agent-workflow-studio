@@ -113,7 +113,7 @@ export default async function (pi: ExtensionAPI) {
   }));
   pi.registerTool(defineTool({
     name:"comfy_ask_user", label:"Ask the user", description:"Ask the user up to 4 multiple-choice questions and wait for the answers. Each question offers 2-4 short options plus a free-text 'Other'. Use while planning to settle requirements; ask everything you need at once.",
-    parameters:Type.Object({questions:Type.Array(Type.Object({question:Type.String({minLength:1,maxLength:300}),options:Type.Array(Type.String({minLength:1,maxLength:120}),{minItems:2,maxItems:4})}),{minItems:1,maxItems:4})}),
+    parameters:Type.Object({questions:Type.Array(Type.Object({question:Type.String({minLength:1,maxLength:300}),options:Type.Array(Type.String({minLength:1,maxLength:200}),{minItems:2,maxItems:4})}),{minItems:1,maxItems:4})}),
     execute:async (_id,args,_signal,_update,ctx) => {
       const answers:{question:string;answer:string}[]=[];
       for (const {question,options} of args.questions) {
