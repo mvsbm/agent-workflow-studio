@@ -7,6 +7,7 @@ from typing import override
 from comfy_api.latest import ComfyExtension
 
 from .agent_node import PiStructuredAgent
+from .fuzzy_node import FuzzyNode
 from .pi_model_config import AgentWorkflowPiModelConfig
 
 WEB_DIRECTORY = "./web"
@@ -15,7 +16,7 @@ WEB_DIRECTORY = "./web"
 class AgentWorkflowStudioExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type]:
-        return [AgentWorkflowPiModelConfig, PiStructuredAgent]
+        return [AgentWorkflowPiModelConfig, PiStructuredAgent, FuzzyNode]
 
 
 async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
@@ -32,6 +33,7 @@ async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
 __all__ = [
     "AgentWorkflowPiModelConfig",
     "AgentWorkflowStudioExtension",
+    "FuzzyNode",
     "PiStructuredAgent",
     "comfy_entrypoint",
 ]

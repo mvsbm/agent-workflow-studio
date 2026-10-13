@@ -41,6 +41,7 @@ Each run of a **Pi CLI · Structured LLM** node is also recorded as a version, t
 
 ## Nodes
 
+- **Fuzzy · Plan with nodes**: describe a text job in plain words. The model plans a chain of allowed installed nodes (default: the built-in string nodes); the plan is checked against their real schemas (node and input names, link types, allowed values, step order) and runs as ordinary nodes. Its `plan` output shows the chosen chain, and every plan is recorded in **Versions**. The model never writes code. Text in, text out for now.
 - **Pi CLI · Model Config** (`PI_MODEL_CONFIG_V1`): provider, model, thinking level, credential source.
 - **Pi CLI · Structured LLM**: a single-turn Pi call that must fill a JSON-Schema-bound result tool. Action tools are disabled, output is validated locally, and the result goes out on a typed `DICT` socket.
 
@@ -61,7 +62,7 @@ cd agent-workflow-studio
 ./run-local.sh    # http://127.0.0.1:8188
 ```
 
-Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
+The installer copies two demo workflows into your library: **Studio - Fuzzy Slug** (a fuzzy node turns text into a slug and shows the plan it chose) and **Studio - LLM Sentiment** (a Structured LLM node classifies a review). Both are set to `opencode-go / deepseek-v4-flash` with a Studio Keychain key; change the **Pi CLI · Model Config** node to use another model. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
 ## Development
 

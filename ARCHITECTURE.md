@@ -28,6 +28,7 @@ browser: web/pi_chat.js ──WebSocket /agent-workflow-studio/pi-chat/ws──�
 | `skills/` | Bundled agent skills (node creation, debugging, connectors, organization). |
 | `pi_cli.py`, `pi_auth.py`, `credential_store.py`, `structured_json.py` | Pi subprocess adapter, provider auth metadata, OS-keychain access, local JSON-Schema validation. |
 | `pi_model_config.py`, `agent_node.py`, `llm_harness.py`, `node_progress.py` | The two ComfyUI V3 nodes and their progress/timeout harness. |
+| `fuzzy_node.py` | Fuzzy · Plan with nodes: plan request, local plan validation against live node schemas, `GraphBuilder` expansion, run record. |
 | `routes.py` | Loopback-only Pi model catalog, credential and auth-check routes. |
 | `project_repo.py`, `web/project_versions.js` | Per-workflow git history: `<user>/agent-projects/<uuid>/workflow.json` with its git directory beside it, auto-commits for agent edits and saves, and the Versions panel. Git runs with system/global config and hooks disabled. |
 | `web/` | Sidebar, canvas bridge, chat history, model picker, credentials panel. |

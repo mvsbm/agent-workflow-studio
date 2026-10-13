@@ -106,7 +106,7 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | **P0 Foundation** | Readable `pi_chat.js`; SoL-Pi and Ponytail optional; one browser end-to-end test where the agent builds and runs a small workflow. | The test passes without the two add-ons installed. |
 | **P1 Project repo** ✔ (slim: linear list, no lane graph or squashing; workspace files not yet versioned) | Per-workflow git repo with auto-commit of agent edits and saves; History panel with commit graph, diff and restore-as-new-commit. | Any agent or user change can be seen as a commit and reverted from the UI, and the canvas matches the restored commit. |
 | **P2 Run records** ✔ (Structured LLM node; full prompt/output kept in the local record, no separate artifacts store) | `Structured LLM` writes records into the project repo; chat tools to list and read them. | A run commits a record with a stable hash and no credentials or reasoning text. |
-| **P3 Fuzzy node folders** | `node.json` / `graph.json` loader, plan validation, expansion; side-effect-free nodes only, no generated Python yet. | A goal produces a visible, type-valid inner graph; invalid plans fail locally before anything runs. |
+| **P3 Fuzzy node folders** ✔ (slim: a single `Fuzzy · Plan with nodes` node, text in/out, allowlist widget; no folders yet) | `node.json` / `graph.json` loader, plan validation, expansion; side-effect-free nodes only, no generated Python yet. | A goal produces a visible, type-valid inner graph; invalid plans fail locally before anything runs. |
 | **P4 Hardening** | Materialize, pin cases, offline replay check. | A frozen subgraph reproduces its pinned cases with the LLM disabled. |
 | **P5 Agent-written tools** | Proposal branches, diff review, subprocess execution. | Unapproved code never runs; approved code runs out of process. |
 | **P6 Studio MCP server** | Publish the same canvas tools (read, catalog, edit, run, results, history) as an MCP server, bridged to the open browser session, so other MCP clients such as Claude Code can drive the studio with the same undo, rollback, confirmation and commit safeguards. Pi keeps using the tools natively. | An MCP client builds and runs a workflow, and the edit appears as one undo step and one commit. |
@@ -123,6 +123,7 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | edit_existing | kept both nodes, inserted CaseConverter (1 rewiring approval) | output `GOOD MORNING` | 26 s |
 | image | EmptyImage → SaveImage | 1 PNG saved | 21 s |
 | fuzzy_llm | Structured LLM node with a `sentiment` schema → PreviewAny | `{"sentiment": "positive"}`, run record committed | 31 s |
+| fuzzy_node (added with P3) | Fuzzy node planned StringTrim → CaseConverter → RegexReplace | output `hello-big-world`, plan recorded | 40 s |
 
 The first edit_existing attempt stalled because the harness did not answer the agent's (correct) request to rewire an occupied input; the harness now approves such requests and counts them. Five tasks is a smoke test, not a benchmark: it shows the tools and guide work end to end with a small fast model, not how the agent handles ambiguous or large requests.
 

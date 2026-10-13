@@ -125,8 +125,10 @@ class PiStructuredAgent(io.ComfyNode):
             )
         except Exception as exc:  # recorded below, then re-raised unchanged
             error = exc
-        recorded = _record_run(
+        recorded = record_run(
             cls,
+            "pi_structured_llm",
+            "Pi CLI Structured LLM",
             unique_id,
             harness,
             started,
@@ -145,7 +147,7 @@ class PiStructuredAgent(io.ComfyNode):
         return io.NodeOutput(result, ui={"text": (summary,)})
 
 
-def _record_run(cls, unique_id, harness, started, inputs, config, result, error) -> str:
+def record_run(cls, kind, title, unique_id, harness, started, inputs, config, result, error) -> str:
     """Commit an auditable record of this run, with the workflow that ran, to its history."""
     hidden = getattr(cls, "hidden", None)
     workflow = (getattr(hidden, "extra_pnginfo", None) or {}).get("workflow")
@@ -155,16 +157,17 @@ def _record_run(cls, unique_id, harness, started, inputs, config, result, error)
         _, provider, model, thinking = _build_command(config)
     except Exception:  # model resolution is best-effort metadata
         provider = model = thinking = None
-    try:
-        inputs = {**inputs, "output_schema": json.loads(inputs["output_schema"])}
-    except ValueError:
-        pass
+    if isinstance(inputs.get("output_schema"), str):
+        try:
+            inputs = {**inputs, "output_schema": json.loads(inputs["output_schema"])}
+        except ValueError:
+            pass
     status = "failed" if error is not None else "succeeded"
     record = {
         "version": 1,
-        "kind": "pi_structured_llm",
+        "kind": kind,
         "status": status,
-        "node": {"id": unique_id, "class_type": "AgentWorkflowPiStructuredAgent"},
+        "node": {"id": unique_id, "class_type": cls.define_schema().node_id},
         "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
         "duration_seconds": round(time.time() - started, 3),
         # Credentials never appear here: config holds only provider/model/source names.
@@ -187,7 +190,7 @@ def _record_run(cls, unique_id, harness, started, inputs, config, result, error)
     }
     try:
         sha = ProjectRepo(projects_root(), workflow["id"]).add_record(
-            record, f"Run · Pi CLI Structured LLM #{unique_id} · {status}", workflow
+            record, f"Run · {title} #{unique_id} · {status}", workflow
         )
     except (OSError, RuntimeError, ValueError) as exc:
         return f"Run record: not saved ({type(exc).__name__})."

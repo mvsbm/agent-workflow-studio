@@ -62,7 +62,14 @@ class PiStructuredAgentTests(unittest.TestCase):
     def test_extension_registers_exactly_the_studio_nodes(self) -> None:
         node_types = asyncio.run(AgentWorkflowStudioExtension().get_node_list())
         ids = {node.define_schema().node_id for node in node_types}
-        self.assertEqual(ids, {"AgentWorkflowPiModelConfig", "AgentWorkflowPiStructuredAgent"})
+        self.assertEqual(
+            ids,
+            {
+                "AgentWorkflowPiModelConfig",
+                "AgentWorkflowPiStructuredAgent",
+                "AgentWorkflowFuzzyNode",
+            },
+        )
 
 
 class RunRecordTests(unittest.TestCase):

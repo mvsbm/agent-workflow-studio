@@ -118,11 +118,20 @@ def structured_answer(record):
     """Answer like a model filling the typed-output tool once."""
     respond(record)
     emit({"type": "message_start", "message": {"role": "assistant", "content": []}})
-    call = {
-        "id": "fake-call",
-        "name": "agent_workflow_submit_json",
-        "arguments": {"answer": "fake answer"},
-    }
+    answer = {"answer": "fake answer"}
+    if "FUZZY PLAN REQUEST" in record["message"]:
+        answer = {
+            "explanation": "FAKE PI · uppercase the input",
+            "steps": [
+                {
+                    "id": "upper",
+                    "class_type": "CaseConverter",
+                    "inputs": {"string": {"from": "$input"}, "mode": "UPPERCASE"},
+                }
+            ],
+            "output": {"from": "upper", "output": 0},
+        }
+    call = {"id": "fake-call", "name": "agent_workflow_submit_json", "arguments": answer}
     emit(
         {
             "type": "message_update",

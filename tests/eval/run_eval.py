@@ -48,6 +48,9 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
         "Run · Pi CLI Structured LLM" in v for v in r.get("versions", [])
     ):
         failures.append("no LLM run record")
+    kind = task.get("expect_kind")
+    if kind and not any(f"Run · {kind}" in v for v in r.get("versions", [])):
+        failures.append(f"no {kind} run record")
     if "success" not in r.get("run_statuses", []):
         failures.append("no successful native run")
     return not failures, failures
