@@ -49,6 +49,15 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     assert.deepEqual(graph.types, ['PreviewAny', 'PrimitiveString', 'StringConcatenate']);
     assert.equal(graph.links, 2);
 
+    // The agent's own view of the canvas must include the connections.
+    const seen = await page.evaluate(async () => {
+      const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      const bridge = createCanvasBridge(window.comfyAPI.app.app, window.comfyAPI.api.api);
+      try { return await bridge.handle('read', {}); } finally { bridge.dispose(); }
+    });
+    assert.equal(seen.nodes.length, 3);
+    assert.equal(seen.links.length, 2);
+
     const history = await page.evaluate(async () => (await window.comfyAPI.api.api.getHistory(5)).History ?? null);
     const outputs = JSON.stringify(history ?? await page.evaluate(async () => await (await fetch('/history')).json()));
     assert.match(outputs, /hello world/, 'run output should contain the concatenated text');

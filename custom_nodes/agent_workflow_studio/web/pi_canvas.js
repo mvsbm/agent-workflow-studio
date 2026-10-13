@@ -2,6 +2,8 @@
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 const secret = /(?:password|api.?key|token|credential|secret|authorization)/i;
 const nodes = graph => graph.nodes ?? graph._nodes ?? [];
+// The current frontend keeps links in a Map; older graphs used a plain object.
+const links = graph => graph.links instanceof Map ? [...graph.links.values()] : Object.values(graph.links ?? {});
 const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?.findIndex(input => input.name === name || input.widget?.name === name);
 
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
@@ -106,9 +108,11 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:input.link})),
         outputs:(node.outputs??[]).map((output,index) => ({index,name:output.name,type:output.type})),
         widgets:(node.widgets??[]).filter(w => !['button'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
+        // A subgraph node's type is an opaque UUID; describe what it contains.
+        ...(node.isSubgraphNode?.() ? {subgraph:{name:node.subgraph?.name,nodes:nodes(node.subgraph ?? {}).map(inner => ({id:inner.id,class_type:inner.type,title:inner.title}))}} : {}),
       })),
       groups:(app.graph._groups??[]).map(group=>({title:group.title,bounding:Array.from(group._bounding??[])})),
-      links:Object.values(app.graph.links ?? {}).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot})),
+      links:links(app.graph).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot})),
     };
     if (action === 'catalog') {
       const defs = await catalog();

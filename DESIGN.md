@@ -109,7 +109,12 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | **P3 Fuzzy node folders** | `node.json` / `graph.json` loader, plan validation, expansion; side-effect-free nodes only, no generated Python yet. | A goal produces a visible, type-valid inner graph; invalid plans fail locally before anything runs. |
 | **P4 Hardening** | Materialize, pin cases, offline replay check. | A frozen subgraph reproduces its pinned cases with the LLM disabled. |
 | **P5 Agent-written tools** | Proposal branches, diff review, subprocess execution. | Unapproved code never runs; approved code runs out of process. |
-| **P6 Orchestration** | Chat tools to create fuzzy nodes, inspect records and history, and propose hardening as a reviewable diff. | The user can go from request to a partially hardened workflow entirely in conversation. |
+| **P6 Studio MCP server** | Publish the same canvas tools (read, catalog, edit, run, results, history) as an MCP server, bridged to the open browser session, so other MCP clients such as Claude Code can drive the studio with the same undo, rollback, confirmation and commit safeguards. Pi keeps using the tools natively. | An MCP client builds and runs a workflow, and the edit appears as one undo step and one commit. |
+| **P7 Orchestration** | Chat tools to create fuzzy nodes, inspect records and history, and propose hardening as a reviewable diff. | The user can go from request to a partially hardened workflow entirely in conversation. |
+
+## MCP decision
+
+Community ComfyUI MCP servers can edit the live canvas, and Comfy's official local MCP server is in private testing and aimed at running workflows. We do not route Pi through a third-party MCP server: it would duplicate our bridge without its safeguards (atomic undoable batches, rollback, destructive-edit and Run confirmation, auto-commit) and would add someone else's custom node with broad canvas access. Pi gets the tools directly from our extension, which is the shortest path. Exposing our own tools over MCP (P6) is the way to let other agents use the studio.
 
 ## Non-goals
 
