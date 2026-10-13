@@ -89,6 +89,8 @@ class WorkspaceTests(unittest.TestCase):
             "a//x",
             "a/./x",
             "bad\x00path",
+            ".git/hooks/pre-commit",
+            "notes/.GIT/config",
         ):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 self.write(path, "bad")

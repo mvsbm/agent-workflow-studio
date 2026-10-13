@@ -75,6 +75,10 @@ class PiChatWorkspace:
             or any(p in {"", ".", ".."} for p in parts)
         ):
             raise ValueError("Absolute paths and traversal are not allowed.")
+        # Git metadata is never workspace data: the project history must not be
+        # writable by the agent, and git must never pick up agent-written config.
+        if any(p.lower() == ".git" for p in parts):
+            raise ValueError("Paths containing .git are reserved for the project history.")
         return parts
 
     @contextlib.contextmanager

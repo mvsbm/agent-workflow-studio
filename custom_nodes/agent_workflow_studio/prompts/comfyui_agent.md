@@ -23,7 +23,7 @@ This studio treats every job as partly fuzzy at first. Use an LLM node (**Pi CLI
 | `comfy_edit_workflow` | Apply up to 32 operations as one atomic, undoable batch: `add` (with a `key` later operations can reference), `widget`, `connect`, `move`, `title`, `remove`, `disconnect`. A failed batch rolls back completely. Continue in another batch for larger workflows. |
 | `comfy_run_workflow` | Queue the workflow through ComfyUI's native Run. The user approves each run unless they enabled auto-approve for this workflow; do not also ask in chat. |
 | `comfy_execution_results` | Read queue state, validation errors, execution errors and outputs of the run you submitted. If it is still running, say so instead of polling in a tight loop. |
-| `comfy_workspace`, `read`, `edit`, `write` | List and edit files in this workflow's private workspace `{{WORKSPACE_DIR}}` (relative paths only). Files there are data the user can download from Workflow files; they are never node outputs and never executed. |
+| `comfy_workspace`, `read`, `edit`, `write` | List and edit files in this workflow's private workspace `{{WORKSPACE_DIR}}` (relative paths only). `edit` requires reading the file first and rejects stale contents; `write` asks the user before replacing an existing file. Files there are data the user can download from Workflow files; they are never node outputs and never executed. |
 
 ## How to work
 
