@@ -73,4 +73,10 @@ scripts/test.sh   # Python (unittest, via the installed ComfyUI venv) + JS (node
 scripts/e2e.sh    # real Pi startup check, then a browser test: the agent builds and runs a workflow
 ```
 
-`scripts/e2e.sh` starts an isolated ComfyUI (temp directory, free port, CPU, only this package) and replaces the LLM with a scripted fake Pi; the chat UI, canvas bridge and native queue are real. It runs with and without the optional add-ons. No test makes a provider call, so how well a real model plans and builds workflows is still checked by hand.
+`scripts/e2e.sh` starts an isolated ComfyUI (temp directory, free port, CPU, only this package) and replaces the LLM with a scripted fake Pi; the chat UI, canvas bridge and native queue are real. It runs with and without the optional add-ons. No test makes a provider call. To measure the real agent, run the evaluation, which **makes real provider calls** with a provider key saved in Studio Keychain:
+
+```bash
+~/.local/share/agent-workflow-studio/ComfyUI/.venv/bin/python tests/eval/run_eval.py --provider opencode-go --model deepseek-v4-flash
+```
+
+It gives the agent five requests (`tests/eval/tasks.json`) in fresh isolated instances, approves its permission prompts like a user would, and scores only evidence: run outputs, saved images, preserved nodes and run records.

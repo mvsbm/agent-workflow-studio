@@ -1,0 +1,12 @@
+[
+  {"id": "uppercase", "prompt": "Build a workflow that converts the text 'hello studio' to uppercase and shows the result. Run it.",
+   "expect_text": "HELLO STUDIO"},
+  {"id": "join", "prompt": "Make a workflow that joins the words 'alpha' and 'beta' with a hyphen between them, preview the result, and run it.",
+   "expect_text": "alpha-beta"},
+  {"id": "edit_existing", "prompt": "Change this workflow so the preview shows its text in uppercase. Keep the existing nodes. Run it.",
+   "setup": "good_morning", "expect_text": "GOOD MORNING", "keep_setup_nodes": true},
+  {"id": "image", "prompt": "Create a 64x64 solid red image and save it as a PNG file. Run it.",
+   "expect_images": 1},
+  {"id": "fuzzy_llm", "prompt": "Use the Pi CLI Structured LLM node to decide whether the review 'I absolutely love this product' is positive or negative, show its answer, and run it.",
+   "expect_text_ci": "positive", "expect_record": true}
+]

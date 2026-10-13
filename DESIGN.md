@@ -112,6 +112,20 @@ Letting the agent write `tools/*.py` means executing model-authored Python. That
 | **P6 Studio MCP server** | Publish the same canvas tools (read, catalog, edit, run, results, history) as an MCP server, bridged to the open browser session, so other MCP clients such as Claude Code can drive the studio with the same undo, rollback, confirmation and commit safeguards. Pi keeps using the tools natively. | An MCP client builds and runs a workflow, and the edit appears as one undo step and one commit. |
 | **P7 Orchestration** | Chat tools to create fuzzy nodes, inspect records and history, and propose hardening as a reviewable diff. | The user can go from request to a partially hardened workflow entirely in conversation. |
 
+## Evaluation results
+
+2026-10-13, `opencode-go / deepseek-v4-flash`, thinking `low`, `tests/eval/run_eval.py`: **5/5**.
+
+| Task | Built | Evidence | Time |
+| --- | --- | --- | --- |
+| uppercase | PrimitiveString → CaseConverter → PreviewAny | output `HELLO STUDIO` | 21 s |
+| join | StringConcatenate → PreviewAny | output `alpha-beta` | 31 s |
+| edit_existing | kept both nodes, inserted CaseConverter (1 rewiring approval) | output `GOOD MORNING` | 26 s |
+| image | EmptyImage → SaveImage | 1 PNG saved | 21 s |
+| fuzzy_llm | Structured LLM node with a `sentiment` schema → PreviewAny | `{"sentiment": "positive"}`, run record committed | 31 s |
+
+The first edit_existing attempt stalled because the harness did not answer the agent's (correct) request to rewire an occupied input; the harness now approves such requests and counts them. Five tasks is a smoke test, not a benchmark: it shows the tools and guide work end to end with a small fast model, not how the agent handles ambiguous or large requests.
+
 ## MCP decision
 
 Community ComfyUI MCP servers can edit the live canvas, and Comfy's official local MCP server is in private testing and aimed at running workflows. We do not route Pi through a third-party MCP server: it would duplicate our bridge without its safeguards (atomic undoable batches, rollback, destructive-edit and Run confirmation, auto-commit) and would add someone else's custom node with broad canvas access. Pi gets the tools directly from our extension, which is the shortest path. Exposing our own tools over MCP (P6) is the way to let other agents use the studio.
