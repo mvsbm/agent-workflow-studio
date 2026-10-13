@@ -291,7 +291,10 @@ class FuzzyNode(io.ComfyNode):
             raise error
         result, expansion = expand_plan(plan, text)
         summary = f"FUZZY PLAN · VALIDATED · {len(plan['steps'])} step(s)\n{describe_plan(plan)}\n{recorded}"
-        return io.NodeOutput(result, plan, ui={"text": (summary,)}, expand=expansion)
+        # The browser shows the plan on the node and needs it to harden the step.
+        return io.NodeOutput(
+            result, plan, ui={"text": (summary,), "aws_plan": (plan,)}, expand=expansion
+        )
 
 
 __all__ = ["FuzzyNode", "describe_plan", "expand_plan", "validate_plan"]

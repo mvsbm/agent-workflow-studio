@@ -119,10 +119,12 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     }
     if (action === 'edit') return edit(args.operations);
     if (action === 'run') {
-      const before = JSON.stringify(app.rootGraph?.serialize?.() ?? app.graph.serialize());
+      // Compare what would execute, not layout: node sizes can settle after a render.
+      const executable = async () => JSON.stringify((await app.graphToPrompt()).output);
+      const before = await executable();
       if (!autoApproveRun() && !await confirm?.('Run the current ComfyUI workflow?', String(args.reason??''))) throw Error('Workflow execution was not authorized.');
       const queue = await api.getQueue();
-      if (before !== JSON.stringify(app.rootGraph?.serialize?.() ?? app.graph.serialize())) throw Error('Workflow changed before submission; inspect it again before running.');
+      if (before !== await executable()) throw Error('Workflow changed before submission; inspect it again before running.');
       if (queue.Running?.length || queue.Pending?.length || app.processingQueue) throw Error('Native queue is busy; wait before starting a chat-owned run.');
       latestPrompt = null; submitted = false;
       // app.queuePrompt does not return the server's prompt_id, so record what

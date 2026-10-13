@@ -170,6 +170,7 @@ class FuzzyNodeTests(unittest.TestCase):
         self.assertIn('"CaseConverter"', request)
         self.assertNotIn('"StringLength"', request)
         self.assertEqual(output.args[1], UPPER)
+        self.assertEqual(output.ui["aws_plan"], (UPPER,))
         self.assertEqual(
             [n["class_type"] for n in output.expand.values()], ["CaseConverter", "StringReplace"]
         )

@@ -16,6 +16,15 @@ const artifacts = process.env.ARTIFACTS;
     await page.goto(base);
     await page.waitForFunction(() => window.comfyAPI?.app?.app?.extensionManager?.workflow?.activeWorkflow?.changeTracker, null, {timeout: 60000});
     await page.waitForTimeout(1000);
+    const planned = await page.evaluate(async () => {
+      const app = window.comfyAPI.app.app;
+      app.graph.clear();
+      app.graph.add(window.LiteGraph.createNode('AgentWorkflowFuzzyNode'));
+      await new Promise(r => setTimeout(r, 300));
+      const node = app.graph.nodes[0];
+      return {color: node.color, view: node.widgets.find(w => w.name === 'plan_view')?.value};
+    });
+    assert.match(planned.view, /^PLANNED/, 'a new fuzzy step starts as Planned');
     const run = await page.evaluate(async () => {
       const app = window.comfyAPI.app.app;
       app.graph.clear();
@@ -47,7 +56,59 @@ const artifacts = process.env.ARTIFACTS;
     const first = page.locator('.aw-versions-item').first();
     await first.waitFor({timeout: 15000});
     assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Fuzzy plan #\d+ · succeeded$/);
+
+    // After a run the step is Fuzzy and shows its plan on the node.
+    const fuzzy = await page.evaluate(() => {
+      const node = window.comfyAPI.app.app.graph.nodes.find(n => n.type === 'AgentWorkflowFuzzyNode');
+      const options = []; node.getExtraMenuOptions(window.comfyAPI.app.app.canvas, options);
+      return {view: node.widgets.find(w => w.name === 'plan_view').value, menu: options.filter(Boolean).map(o => [o.content, !!o.disabled])};
+    });
+    assert.match(fuzzy.view, /^FUZZY/);
+    assert.match(fuzzy.view, /upper = CaseConverter/);
+    assert.deepEqual(fuzzy.menu.find(([label]) => label.startsWith('Harden')), ['Harden this step (freeze the latest plan)', false]);
     await page.screenshot({path: path.join(artifacts, 'fuzzy-node.png')});
+
+    // Harden: the plan becomes a native subgraph titled with the goal; later runs call no model.
+    const hardened = await page.evaluate(async () => {
+      const app = window.comfyAPI.app.app;
+      const {hardenStep} = await import('/extensions/agent_workflow_studio/fuzzy_steps.js');
+      const types = () => app.graph.nodes.map(n => n.type);
+      const run = cmd => app.extensionManager.command.execute(cmd);
+      await hardenStep(app.graph.nodes.find(n => n.type === 'AgentWorkflowFuzzyNode'));
+      // Hardening is exactly one undo step: undo restores the fuzzy step, redo re-applies it.
+      await run('Comfy.Undo');
+      await new Promise(r => setTimeout(r, 400));
+      const undone = types();
+      await run('Comfy.Redo');
+      await new Promise(r => setTimeout(r, 400));
+      const step = app.graph.nodes.find(n => n.isSubgraphNode?.());
+      const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      const bridge = createCanvasBridge(app, window.comfyAPI.api.api, {autoApproveRun: () => true});
+      await new Promise(r => setTimeout(r, 300));
+      await bridge.handle('run', {reason: 'hardened'});
+      let result;
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        result = await bridge.handle('results', {});
+        if (result.status?.completed !== undefined) break;
+      }
+      const log = await (await fetch(`/agent-workflow-studio/projects/${encodeURIComponent(app.rootGraph.id)}/log`)).json();
+      return {
+        undone, types: types(), title: step.title, state: step.properties.aws_step.state,
+        inner: step.subgraph.nodes.map(n => n.type), status: result.status?.status_str, outputs: JSON.stringify(result.outputs),
+        fuzzyRuns: log.commits.filter(c => c.message.startsWith('Run · Fuzzy plan')).length,
+      };
+    });
+    assert.ok(hardened.undone.includes('AgentWorkflowFuzzyNode'), `one undo reverts hardening: ${hardened.undone}`);
+    assert.ok(!hardened.types.includes('AgentWorkflowFuzzyNode'), JSON.stringify(hardened));
+    assert.equal(hardened.title, 'make it loud');
+    assert.equal(hardened.state, 'hardened');
+    assert.deepEqual(hardened.inner, ['CaseConverter']);
+    assert.equal(hardened.status, 'success');
+    assert.match(hardened.outputs, /FUZZY TEST/);
+    assert.equal(hardened.fuzzyRuns, 1, 'the hardened step made no model call');
+    await page.screenshot({path: path.join(artifacts, 'hardened.png')});
+
     assert.deepEqual(errors, []);
     console.log('PASS fuzzy_node');
   } catch (error) {
