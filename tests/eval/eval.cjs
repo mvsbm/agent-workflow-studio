@@ -70,6 +70,8 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       const log = await (await fetch(`/agent-workflow-studio/projects/${encodeURIComponent(app.rootGraph.id)}/log`)).json();
       return {
         node_types: app.rootGraph.nodes.map(n => n.type), node_ids: app.rootGraph.nodes.map(n => n.id),
+        step_groups: (app.rootGraph._groups ?? app.rootGraph.groups ?? []).map(g => g.title),
+        untagged: app.rootGraph.nodes.filter(n => !n.properties?.aws_contract_step).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,
         run_statuses: statuses, versions: (log.commits ?? []).map(c => `${c.author}: ${c.message}`),
         chat: document.querySelector('.aw-pi-host')?.innerText.slice(-3000) ?? '',

@@ -28,12 +28,75 @@ export function evaluateGates(gates, outputsByTitle) {
   });
 }
 
+/** Outputs of a finished run grouped by the producing node's (lowercased) title. */
+function outputsByTitle(record, graph) {
+  const titles = Object.fromEntries(nodes(graph).map(node => [String(node.id), node.title]));
+  const byTitle = {};
+  for (const [id, output] of Object.entries(record.outputs ?? {})) {
+    const title = (titles[id] ?? record.prompt?.[2]?.[id]?._meta?.title ?? '').trim().toLowerCase();
+    if (title) (byTitle[title] ??= []).push(output);
+  }
+  return byTitle;
+}
+
+/** The most recent run of this workflow in /history, and whether it ran exactly the current graph. */
+export function latestMatchingRun(history, workflowId, executable) {
+  const runs = Object.values(history ?? {}).filter(run => run.prompt?.[3]?.extra_pnginfo?.workflow?.id === workflowId);
+  const run = runs.at(-1);
+  return run ? {run, current: JSON.stringify(run.prompt[2]) === executable} : null;
+}
+
+/** Evidence for deriving contract step states: step tags on nodes and, when the latest run of
+ *  this workflow ran exactly the current graph, each gate's outcome on that run. */
+export async function contractEvidence(app, api, gates) {
+  const graph = app.rootGraph ?? app.graph;
+  const evidence = {
+    nodes: nodes(graph).map(node => ({id: node.id, title: node.title, class_type: node.type, step: node.properties?.aws_contract_step ?? null, fuzzy: node.type === 'AgentWorkflowFuzzyNode'})),
+    gate_results: {}, run: null,
+  };
+  const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
+  const match = latestMatchingRun(history, graph.id, JSON.stringify((await app.graphToPrompt()).output));
+  if (match) {
+    evidence.run = {prompt_id: match.run.prompt[1], current: match.current};
+    if (match.current && match.run.status?.completed) {
+      for (const gate of evaluateGates(gates ?? [], outputsByTitle(match.run, graph))) evidence.gate_results[gate.step] = gate.status;
+    }
+  }
+  return evidence;
+}
+
+/** Draw each contract step as a native group around the nodes tagged with it (inside an edit). */
+function fitStepGroups(graph, steps) {
+  const LGraphGroup = globalThis.LiteGraph?.LGraphGroup;
+  if (!LGraphGroup) return;
+  const known = (graph.extra ??= {}).aws_step_groups ??= {};
+  const groups = () => graph._groups ?? graph.groups ?? [];
+  for (const {id, title} of steps) {
+    const members = nodes(graph).filter(node => node.properties?.aws_contract_step === id);
+    let group = groups().find(g => g.title === (known[id] ?? title));
+    if (!members.length) {
+      if (group) graph.remove(group);
+      delete known[id];
+      continue;
+    }
+    if (!group) graph.add(group = new LGraphGroup(title));
+    group.title = title;
+    // From pos/size, not resizeTo: bounding boxes of just-added nodes are only computed on draw.
+    const pad = 24, head = globalThis.LiteGraph.NODE_TITLE_HEIGHT ?? 30;
+    const x0 = Math.min(...members.map(n => n.pos[0])) - pad, y0 = Math.min(...members.map(n => n.pos[1])) - head - pad - head;
+    const x1 = Math.max(...members.map(n => n.pos[0] + n.size[0])) + pad, y1 = Math.max(...members.map(n => n.pos[1] + n.size[1])) + pad;
+    group.pos = [x0, y0];
+    group.size = [x1 - x0, y1 - y0];
+    known[id] = title;
+  }
+}
+
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
   let definitions, latestPrompt, submitted = false;
   const catalog = async () => definitions ??= await api.getNodeDefs();
   const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? ref);
 
-  async function edit(operations) {
+  async function edit(operations, contractSteps) {
     if (!Array.isArray(operations) || !operations.length || operations.length > 32) throw Error('Use 1–32 edit operations.');
     const graph = app.graph;
     const defs = await catalog();
@@ -107,6 +170,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           }
         } else throw Error(`Unsupported operation: ${op.op}`);
       }
+      if (Array.isArray(contractSteps)) fitStepGroups(app.graph, contractSteps);
       app.graph.setDirtyCanvas(true,true);
       return {added, node_count:nodes(app.graph).length, message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
     } catch (error) {
@@ -141,7 +205,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       const matches = Object.entries(defs).filter(([name,d]) => `${name} ${d.display_name??''} ${d.category??''} ${d.description??''} ${JSON.stringify([d.search_aliases,d.input,d.output,d.output_name])}`.toLowerCase().includes(query));
       return {total:matches.length,nodes:matches.slice(0,60).map(([name,d]) => ({class_type:name,title:d.display_name??name,category:d.category,description:d.description}))};
     }
-    if (action === 'edit') return edit(args.operations);
+    if (action === 'edit') return edit(args.operations, args.contract_steps);
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.
       const executable = async () => JSON.stringify((await app.graphToPrompt()).output);
@@ -168,23 +232,14 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return {paths: findConverterPaths(await catalog(), args.from_type, args.to_type)};
     }
     if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? '')) === true};
-    if (action === 'contract_evidence') return {nodes: nodes(app.rootGraph ?? app.graph).map(node => ({
-      id: node.id, title: node.title, class_type: node.type,
-      step: node.properties?.aws_contract_step ?? null, fuzzy: node.type === 'AgentWorkflowFuzzyNode',
-    }))};
+    if (action === 'contract_evidence') return contractEvidence(app, api, Array.isArray(args.gates) ? args.gates : []);
     if (action === 'gates') {
       if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');
       const response = await api.fetchApi(`/history/${encodeURIComponent(latestPrompt)}`);
       if (!response.ok) throw Error('Cannot read native execution history.');
       const record = (await response.json())[latestPrompt];
       if (!record?.status?.completed) throw Error('The latest run has not completed yet.');
-      const titles = Object.fromEntries(nodes(app.graph).map(node => [String(node.id), node.title]));
-      const byTitle = {};
-      for (const [id, output] of Object.entries(record.outputs ?? {})) {
-        const title = (titles[id] ?? record.prompt?.[2]?.[id]?._meta?.title ?? '').trim().toLowerCase();
-        if (title) (byTitle[title] ??= []).push(output);
-      }
-      return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], byTitle)};
+      return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], outputsByTitle(record, app.graph))};
     }
     if (action === 'results') {
       // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.

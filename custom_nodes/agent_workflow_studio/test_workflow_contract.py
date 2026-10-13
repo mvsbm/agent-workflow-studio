@@ -206,6 +206,41 @@ class ContractTests(unittest.TestCase):
         )
         self.assertLess(text.index("NOT NOW"), text.index("Technical details"))
 
+    def test_report_from_evidence(self) -> None:
+        from .workflow_contract import report, step_titles
+
+        nodes = [{"title": "Label", "step": "classify"}, {"title": "Stray", "step": None}]
+        fresh = report(
+            CONTRACT,
+            {"nodes": nodes, "gate_results": {"classify": "passed"}, "run": {"current": True}},
+        )
+        self.assertEqual(fresh["progress"], "1/2 steps verified")
+        self.assertEqual(fresh["freshness"], "Based on the latest run of this exact graph.")
+        self.assertEqual(fresh["nodes_outside_steps"], ["Stray"])
+        stale = report(CONTRACT, {"nodes": nodes, "gate_results": {}, "run": {"current": False}})
+        self.assertEqual(stale["progress"], "0/2 steps verified")
+        self.assertIn("graph changed since the last run", stale["freshness"])
+        self.assertEqual(
+            report(CONTRACT, {"nodes": []})["freshness"], "No run of this workflow yet."
+        )
+        self.assertEqual(
+            step_titles(CONTRACT)[0],
+            {"id": "classify", "title": "1 · Decide whether the review is positive or negative."},
+        )
+        long = {
+            **CONTRACT,
+            "steps": [
+                {
+                    **CONTRACT["steps"][0],
+                    "purpose": "Concatenate the two words with the hyphen separator and show the result",
+                }
+            ],
+        }
+        self.assertEqual(
+            step_titles(long)[0]["title"],
+            "1 · Concatenate the two words with the hyphen separator and…",
+        )
+
     def test_schema_file_is_valid_and_shared(self) -> None:
         from jsonschema import Draft202012Validator
 

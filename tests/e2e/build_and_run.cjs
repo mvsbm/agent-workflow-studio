@@ -63,6 +63,24 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     assert.deepEqual(graph.types, ['PreviewAny', 'PrimitiveString', 'StringConcatenate']);
     assert.equal(graph.links, 2);
 
+    // Contract steps are drawn as native groups around the nodes tagged with them.
+    const groups = await page.evaluate(comfy(app => (app.graph._groups ?? app.graph.groups).map(g => ({
+      title: g.title,
+      // Every member node lies inside its step's group.
+      contains: app.graph.nodes.filter(n => n.properties?.aws_contract_step && g.title.startsWith(n.properties.aws_contract_step === 'greet' ? '1 ·' : '2 ·'))
+        .every(n => n.pos[0] >= g.pos[0] && n.pos[1] >= g.pos[1] && n.pos[0] + n.size[0] <= g.pos[0] + g.size[0] && n.pos[1] + n.size[1] <= g.pos[1] + g.size[1]),
+    })).sort((a, b) => a.title.localeCompare(b.title))));
+    assert.deepEqual(groups, [{title: '1 · Join hello and world into one greeting.', contains: true}, {title: '2 · Show the greeting.', contains: true}]);
+
+    // The Contract tab shows live progress derived from the latest run of this exact graph.
+    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
+    const contractStatus = page.locator('.aw-contract-status');
+    await page.waitForFunction(() => /steps verified/.test(document.querySelector('.aw-contract-status')?.textContent ?? ''), null, {timeout: 15000});
+    assert.equal(await contractStatus.textContent(), '1/2 steps verified · Based on the latest run of this exact graph.');
+    assert.deepEqual(await page.locator('.aw-contract-chip').allTextContents(), ['Verified', 'Built']);
+    assert.match(await page.locator('.aw-contract pre').textContent(), /PURPOSE: Show the text hello world\./);
+    await page.screenshot({path: path.join(artifacts, 'contract-tab.png')});
+
     // The agent's own view of the canvas must include the connections.
     const seen = await page.evaluate(async () => {
       const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');

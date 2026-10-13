@@ -1,0 +1,10 @@
+.aw-contract { display: flex; flex-direction: column; gap: 8px; padding: 12px; height: 100%; overflow: auto; }
+.aw-contract header { display: flex; align-items: center; justify-content: space-between; }
+.aw-contract h2 { font-size: 1rem; margin: 0; }
+.aw-contract-status { margin: 0; font-size: 0.85rem; opacity: 0.85; }
+.aw-contract-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.aw-contract-steps li { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; }
+.aw-contract-steps small { grid-column: 2; opacity: 0.75; }
+.aw-contract-chip { font-size: 0.7rem; font-weight: 600; color: #fff; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.aw-contract-warning { margin: 0; font-size: 0.85rem; color: var(--p-yellow-400, #e0b84a); }
+.aw-contract pre { margin: 4px 0 0; white-space: pre-wrap; font-size: 0.75rem; background: var(--comfy-input-bg, #222); padding: 8px; border-radius: 4px; }

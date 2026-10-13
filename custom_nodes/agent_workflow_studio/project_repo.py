@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 from .pi_chat_workspace import workspace_id_for_graph
-from .workflow_contract import from_plan_v1, from_yaml, render, to_yaml
+from .workflow_contract import from_plan_v1, from_yaml, gates, render, report, to_yaml
 
 AUTHORS = {
     "agent": ("Pi agent", "agent@agent-workflow-studio"),
@@ -290,6 +290,29 @@ def install_project_routes() -> None:
                 )
             },
         )
+
+    @routes.get(prefix + "/contract")
+    async def contract(request):
+        def run(repo):
+            current = repo.load_contract()
+            return {"contract": current, "gates": gates(current) if current else []}
+
+        return await call(request, run)
+
+    @routes.post(prefix + "/contract/status")
+    async def contract_status(request):
+        try:
+            evidence = await request.json()
+        except ValueError:
+            return web.json_response({"error": "invalid JSON body"}, status=400)
+        if not isinstance(evidence, dict) or not isinstance(evidence.get("nodes"), list):
+            return web.json_response({"error": "invalid evidence"}, status=400)
+
+        def run(repo):
+            current = repo.load_contract()
+            return {"contract": current, **(report(current, evidence) if current else {})}
+
+        return await call(request, run)
 
     @routes.post(prefix + "/restore/{sha}")
     async def restore(request):

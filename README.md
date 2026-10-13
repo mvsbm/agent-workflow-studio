@@ -28,6 +28,8 @@ Every workflow the agent builds has one **contract**, agreed with you before any
 
 You approve it in the chat; the agent cannot add nodes to a workflow without an approved contract, and changing it means proposing an amendment you approve again. Contracts are YAML checked against `contract.schema.json`, which editors such as VS Code use to validate hand edits. Each step's state (planned, built, fuzzy, verified, failing) is never written down: it is derived from the canvas and the latest gate check, so progress ("2 of 3 steps verified") always matches reality. Plans approved before contracts existed are converted automatically.
 
+The **Contract** sidebar tab shows the approved contract for the open workflow with live progress: each step's state as a colored chip with its next action, which nodes are not part of any step, and whether the progress is based on the latest run of exactly this graph or the graph has changed since. On the canvas each step is a native group titled with its number and purpose, around the nodes the agent built for it.
+
 ### Graph checks
 
 After every agent edit that adds, removes or rewires nodes, the workflow is checked automatically, without running it or calling a model, and the result appears in the chat: nodes that will not run (they reach no output), required inputs left unconnected, type mismatches, cycles and deprecated nodes. The agent must fix what it finds before running. It can also run the check on demand, see the checkpoints every path to an output passes (natural places for success gates), and look up the shortest chain of installed nodes that converts one data type to another.

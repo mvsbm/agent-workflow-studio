@@ -235,45 +235,38 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(notice["type"], "graph_check")
         self.assertIn("Will not run (reaches no output): Loose trim", notice["text"])
 
-    async def test_contract_status_follows_gates_and_structural_edits(self):
+    async def test_contract_status_comes_from_browser_evidence(self):
         self.session.contract = CONTRACT
-        nodes = [
-            {"id": 1, "title": "Label", "step": "classify", "fuzzy": False},
-            {"id": 2, "title": "Loose", "step": None},
-        ]
-        answers = {
-            "contract_evidence": {"nodes": nodes},
-            "gates": {
-                "gates": [
-                    {"step": "classify", "status": "passed"},
-                    {"step": "tidy", "status": "needs_user_review"},
-                ]
-            },
-            "edit": {"ok": True},
-            "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
+        evidence = {
+            "nodes": [
+                {"id": 1, "title": "Label", "step": "classify", "fuzzy": False},
+                {"id": 2, "title": "Loose", "step": None},
+            ],
+            "gate_results": {"classify": "passed", "tidy": "needs_user_review"},
+            "run": {"prompt_id": "p", "current": True},
         }
-        with patch.object(
-            self.session,
-            "canvas_action",
-            AsyncMock(side_effect=lambda action, _args: answers[action]),
-        ):
-            before = await self.session.agent_action("contract_status", {})
-            await self.session.agent_action("contract_gates", {})
-            after = await self.session.agent_action("contract_status", {})
+        calls = []
+
+        async def canvas(action, args):
+            calls.append((action, args))
+            return evidence if action == "contract_evidence" else {"ok": True}
+
+        with patch.object(self.session, "canvas_action", side_effect=canvas):
+            status = await self.session.agent_action("contract_status", {})
             await self.session.agent_action(
-                "edit",
-                {"operations": [{"op": "connect", "from": 1, "output": 0, "to": 2, "input": "x"}]},
+                "edit", {"operations": [{"op": "title", "node": 1, "title": "Label"}]}
             )
-            changed = await self.session.agent_action("contract_status", {})
-        state = lambda status: {s["step"]: s["state"] for s in status["steps"]}  # noqa: E731
-        self.assertEqual(state(before), {"classify": "built", "tidy": "planned"})
-        self.assertEqual(state(after), {"classify": "verified", "tidy": "planned"})
-        self.assertEqual(after["progress"], "1/2 steps verified")
-        self.assertEqual(after["nodes_outside_steps"], ["Loose"])
         self.assertEqual(
-            state(changed)["classify"],
-            "built",
-            "a structural edit invalidates earlier gate outcomes",
+            {s["step"]: s["state"] for s in status["steps"]},
+            {"classify": "verified", "tidy": "planned"},
+        )
+        self.assertEqual(status["progress"], "1/2 steps verified")
+        self.assertEqual(status["nodes_outside_steps"], ["Loose"])
+        # Gates to evaluate come from the approved contract; edits carry the step group titles.
+        self.assertEqual([g["step"] for g in calls[0][1]["gates"]], ["classify", "tidy"])
+        self.assertEqual(
+            calls[1][1]["contract_steps"][0]["title"],
+            "1 · Decide whether the review is positive or negative.",
         )
 
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):

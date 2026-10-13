@@ -23,7 +23,7 @@ Every workflow you build or extend has one contract, approved by the user and ve
 
 ## Building against the contract
 
-- Give every node you `add` the `step` id it belongs to, and the titles the gates name. Untagged nodes show up as work outside the contract.
+- Give every node you `add` the `step` id it belongs to, and the titles the gates name. Untagged nodes show up as work outside the contract. Each step is drawn as a box titled with its number and purpose around its nodes, so lay out each step's nodes in its own column, left to right, to keep the boxes apart.
 - One edit batch per step is usually right. Each structural edit returns a `graph_check`; fix every problem it lists before running.
 - If an output does not fit an input, use `comfy_find_converter` rather than rewiring around it.
 

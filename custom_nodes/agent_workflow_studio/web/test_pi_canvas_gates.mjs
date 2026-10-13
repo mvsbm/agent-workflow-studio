@@ -18,3 +18,13 @@ test('gates pass, fail or need review from real outputs', () => {
   assert.deepEqual(result.map(r => r.status), ['passed', 'failed', 'passed', 'needs_user_review', 'no_output']);
   assert.match(result[0].evidence, /positive/);
 });
+
+import {latestMatchingRun} from './pi_canvas.js';
+
+test('latest run of this workflow, and whether it ran exactly the current graph', () => {
+  const run = (id, workflow, graph) => ({prompt: [0, id, graph, {extra_pnginfo: {workflow: {id: workflow}}}, []]});
+  const history = {a: run('a', 'wf', {1: 'old'}), b: run('b', 'other', {1: 'x'}), c: run('c', 'wf', {1: 'new'})};
+  assert.deepEqual(latestMatchingRun(history, 'wf', JSON.stringify({1: 'new'})), {run: history.c, current: true});
+  assert.equal(latestMatchingRun(history, 'wf', JSON.stringify({1: 'changed'})).current, false);
+  assert.equal(latestMatchingRun(history, 'none', '{}'), null);
+});

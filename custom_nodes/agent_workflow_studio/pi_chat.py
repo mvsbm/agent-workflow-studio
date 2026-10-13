@@ -22,7 +22,7 @@ from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_g
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
 from .project_repo import ProjectRepo
-from .workflow_contract import derive_states, gates, render, validate_for_approval
+from .workflow_contract import gates, render, report, step_titles, validate_for_approval
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
@@ -101,7 +101,6 @@ class PiChatSession:
         # The approved plan lives in the workflow's project history, beside the workspaces.
         self.repo = ProjectRepo(Path(workspace_root).parent / "agent-projects", workflow_id)
         self.contract = self.repo.load_contract()
-        self.gate_results = {}  # step -> latest gate outcome since the last structural change
         self.socket = socket
         self.id = secrets.token_urlsafe(24)
         self.token = secrets.token_urlsafe(32)
@@ -502,9 +501,11 @@ class PiChatSession:
                 "Adding nodes needs an approved contract. Clarify the requirements with "
                 "comfy_ask_user, then propose the contract with comfy_propose_contract."
             )
+        if action == "edit" and self.contract is not None:
+            # Steps are drawn as native groups inside the same edit (one undo step).
+            arguments = {**arguments, "contract_steps": step_titles(self.contract)}
         result = await self.canvas_action(action, arguments)
         if structural:
-            self.gate_results = {}  # earlier gate outcomes no longer describe this graph
             result = {**result, "graph_check": await self.check_graph()}
         return result
 
@@ -527,19 +528,13 @@ class PiChatSession:
             raise ValueError("This workflow has no approved contract yet.")
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
-            result = await self.canvas_action("gates", {"gates": gates(self.contract)})
-            self.gate_results = {g["step"]: g["status"] for g in result["gates"]}
-            return result
+            return await self.canvas_action("gates", {"gates": gates(self.contract)})
         if action == "contract_status":
-            evidence = await self.canvas_action("contract_evidence", {})
-            states = derive_states(self.contract, evidence["nodes"], self.gate_results)
-            done = sum(s["state"] == "verified" for s in states)
-            untagged = [n["title"] for n in evidence["nodes"] if not n.get("step")]
-            return {
-                "progress": f"{done}/{len(states)} steps verified",
-                "steps": states,
-                "nodes_outside_steps": untagged,
-            }
+            evidence = await self.canvas_action(
+                "contract_evidence", {"gates": gates(self.contract)}
+            )
+            status = report(self.contract, evidence)
+            return {k: status[k] for k in ("progress", "freshness", "steps", "nodes_outside_steps")}
         contract = validate_for_approval(
             arguments.get("contract") if isinstance(arguments, dict) else None
         )
@@ -554,7 +549,7 @@ class PiChatSession:
                 "message": "The user did not approve the contract; ask what to change.",
             }
         sha = await asyncio.to_thread(self.repo.save_contract, contract)
-        self.contract, self.gate_results = contract, {}
+        self.contract = contract
         return {"approved": True, "version": sha[:8]}
 
     async def canvas_action(self, action, arguments):

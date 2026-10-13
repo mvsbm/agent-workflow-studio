@@ -185,6 +185,47 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
     return result
 
 
+def step_titles(contract: dict) -> list[dict]:
+    """Canvas group titles for the steps, e.g. "2 · Classify the review"."""
+
+    def short(text: str, limit: int = 60) -> str:
+        if len(text) <= limit:
+            return text
+        cut = text.rfind(" ", 0, limit - 1)
+        return text[: cut if cut > 0 else limit - 1].rstrip(" ,.;:") + "…"
+
+    return [
+        {"id": s["id"], "title": f"{n} · {short(s['purpose'])}"}
+        for n, s in enumerate(contract["steps"], 1)
+    ]
+
+
+def report(contract: dict, evidence: dict) -> dict:
+    """Where the work stands, from browser evidence: one function for the agent and the Contract tab.
+
+    evidence: {"nodes": [{"title", "step", "fuzzy"}], "gate_results": {step: status} from the latest
+    run of exactly the current graph (empty if none), "run": {"prompt_id", "current"} | None}.
+    """
+    states = derive_states(contract, evidence["nodes"], evidence.get("gate_results") or {})
+    run = evidence.get("run")
+    freshness = (
+        "No run of this workflow yet."
+        if not run
+        else "Based on the latest run of this exact graph."
+        if run.get("current")
+        else "The graph changed since the last run; run it again to check gates."
+    )
+    return {
+        "progress": f"{sum(s['state'] == 'verified' for s in states)}/{len(states)} steps verified",
+        "freshness": freshness,
+        "steps": states,
+        "nodes_outside_steps": [
+            n.get("title") or "untitled" for n in evidence["nodes"] if not n.get("step")
+        ],
+        "text": render(contract, states),
+    }
+
+
 def render(contract: dict, states: list[dict] | None = None) -> str:
     """Plain-language view: what a non-technical reader approves; technical bits last."""
     approach = {"fixed": "fixed steps", "ai_planned": "AI-planned", "ai_judgment": "AI judgment"}
@@ -252,6 +293,8 @@ __all__ = [
     "from_yaml",
     "gates",
     "render",
+    "report",
+    "step_titles",
     "to_yaml",
     "validate_contract",
     "validate_for_approval",
