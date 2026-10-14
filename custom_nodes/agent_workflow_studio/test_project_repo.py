@@ -120,6 +120,18 @@ class ProjectRepoTests(unittest.TestCase):
             (old.tree / "spec.json").exists(), "the old plan is replaced, not kept beside it"
         )
 
+    def test_review_decisions_merge_clear_and_are_the_users(self) -> None:
+        self.repo.save_labels({"p1": "same", "p2": "different"}, "match-1")
+        self.repo.save_labels({"p1": None, "C7": "wrong"}, "match-2")
+        self.assertEqual(self.repo.load_labels(), {"p2": "different", "C7": "wrong"})
+        top = self.repo.log()[0]
+        self.assertEqual(
+            (top["author"], top["message"]), ("user", "Review · 2 decisions (1 different, 1 wrong)")
+        )
+        for bad in (None, {"p": "maybe"}, {"p": 1}):
+            with self.subTest(labels=bad), self.assertRaises(ValueError):
+                self.repo.save_labels(bad, "r")
+
     def test_rejects_bad_input(self) -> None:
         for bad in (None, {}, {"nodes": "x"}):
             with self.subTest(workflow=bad), self.assertRaises(ValueError):

@@ -23,7 +23,19 @@ class AgentPromptTests(unittest.TestCase):
     def test_documented_edit_operations_match_the_schema(self) -> None:
         operations = set(re.findall(r'op: Type\.Literal\("([a-z]+)"\)', EXTENSION))
         self.assertEqual(
-            operations, {"add", "move", "title", "widget", "connect", "remove", "disconnect"}
+            operations,
+            {
+                "add",
+                "move",
+                "title",
+                "widget",
+                "connect",
+                "remove",
+                "disconnect",
+                "arrange",
+                "organize",
+                "unpack",
+            },
         )
         for operation in operations:
             with self.subTest(operation=operation):

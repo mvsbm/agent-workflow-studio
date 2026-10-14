@@ -5,7 +5,8 @@ the workflow's workspace and proposes it; the user sees the full code and approv
 copies the code into the workflow's project history (which the agent cannot write) with its
 hash. The Agent Tool node runs only that approved copy, in a separate process with a time
 limit, and on macOS inside a sandbox: no network, no other programs, no reading outside the
-Python install and the tool, writing only to the run's own folder.
+Python install, the tool and an optional input folder the user chose, writing only to the run's
+own folder.
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ def protections() -> str:
     return "Runs in a separate process with a time limit only: this system has no sandbox, so review the code carefully."
 
 
-def _profile(tool_dir: Path, run_dir: Path) -> str:
+def _profile(tool_dir: Path, run_dir: Path, reads_extra: list[Path]) -> str:
     python = python_executable()
     install = python.parent.parent
     reads = [
@@ -59,7 +60,7 @@ def _profile(tool_dir: Path, run_dir: Path) -> str:
         Path("/dev"),
         Path("/private/etc"),
         Path("/Library/Preferences"),
-    ]
+    ] + reads_extra
     quote = lambda p: json.dumps(str(p))  # noqa: E731  (SBPL strings use the same escaping)
     return "\n".join(
         [
@@ -77,8 +78,19 @@ def _profile(tool_dir: Path, run_dir: Path) -> str:
     )
 
 
-def run_tool(code: str, inputs: dict, run_dir: Path, timeout: float = TIMEOUT_SECONDS) -> dict:
-    """Run tool code with JSON inputs; returns its JSON outputs or raises RuntimeError."""
+def run_tool(
+    code: str,
+    inputs: dict,
+    run_dir: Path,
+    timeout: float = TIMEOUT_SECONDS,
+    read_dir: Path | None = None,
+    upstream: list[Path] = (),
+) -> dict:
+    """Run tool code with JSON inputs; returns its JSON outputs or raises RuntimeError.
+
+    ``read_dir`` is a folder the tool may read (not write), exposed as ``TOOL_INPUT_DIR``;
+    ``upstream`` are earlier tools' run folders it may also read.
+    """
     run_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="aws-tool-") as scratch:
         tool_dir = Path(scratch).resolve()  # the sandbox matches real paths (/var is a symlink)
@@ -93,10 +105,12 @@ def run_tool(code: str, inputs: dict, run_dir: Path, timeout: float = TIMEOUT_SE
         ]
         if sandboxed():
             profile = tool_dir / "profile.sb"
-            profile.write_text(_profile(tool_dir, run_dir.resolve()))
+            reads = [p.resolve() for p in [*([read_dir] if read_dir else []), *upstream]]
+            profile.write_text(_profile(tool_dir, run_dir.resolve(), reads))
             command = ["sandbox-exec", "-f", str(profile), *command]
         env = {
             "TOOL_RUN_DIR": str(run_dir.resolve()),
+            **({"TOOL_INPUT_DIR": str(read_dir.resolve())} if read_dir else {}),
             "PATH": "/usr/bin:/bin",
             "LANG": "C.UTF-8",
             "PYTHONIOENCODING": "utf-8",

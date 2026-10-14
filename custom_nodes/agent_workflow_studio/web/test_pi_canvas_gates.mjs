@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {evaluateGates} from './pi_canvas.js';
+import {agentOutputs, evaluateGates} from './pi_canvas.js';
 
 const outputs = {
   answer: [{text: ['{"sentiment": "positive"}']}],
@@ -39,4 +39,12 @@ test('run outputs are compacted for the agent', () => {
   assert.equal(compact[7].rows.at(-1), '… [30 more items]');
   const many = Object.fromEntries(Array.from({length: 300}, (_, i) => [i, {text: ['y'.repeat(4000)]}]));
   assert.ok(JSON.stringify(compactOutputs(many)).length < 400000, 'a large run still fits the chat limit');
+});
+
+test('scores against a hidden answer key never reach the agent', () => {
+  const record = {
+    outputs: {'3': {text: ['matched']}, '9': {aws_tables: [{title: 'Score'}]}},
+    prompt: [0, 'id', {'3': {class_type: 'PreviewAny'}, '9': {class_type: 'AgentWorkflowNayoseScore'}}],
+  };
+  assert.deepEqual(Object.keys(agentOutputs(record)), ['3']);
 });

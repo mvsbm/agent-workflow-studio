@@ -1,0 +1,3089 @@
+{
+ "id": "3d182cae-bbcf-44dc-9c0f-0c6e5930e60e",
+ "revision": 0,
+ "last_node_id": 9,
+ "last_link_id": 19,
+ "nodes": [
+  {
+   "id": 6,
+   "type": "PreviewAny",
+   "pos": [
+    520,
+    160
+   ],
+   "size": [
+    210,
+    122
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "source",
+     "name": "source",
+     "type": "*",
+     "link": 9
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "STRING",
+     "name": "STRING",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "Data folder",
+   "properties": {
+    "Node name for S&R": "PreviewAny",
+    "aws_given": true
+   },
+   "widgets_values": [],
+   "widgets_values_named": {}
+  },
+  {
+   "id": 7,
+   "type": "AgentWorkflowNayoseScore",
+   "pos": [
+    2700,
+    160
+   ],
+   "size": [
+    560,
+    386
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Result",
+     "name": "result",
+     "shape": 7,
+     "type": "DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Folder",
+     "name": "folder",
+     "type": "STRING",
+     "widget": {
+      "name": "folder"
+     },
+     "link": 10
+    },
+    {
+     "localized_name": "Result file",
+     "name": "result_file",
+     "type": "STRING",
+     "widget": {
+      "name": "result_file"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [],
+   "title": "Score · hidden answer key",
+   "properties": {
+    "Node name for S&R": "AgentWorkflowNayoseScore",
+    "aws_given": true,
+    "aws_tables": [
+     {
+      "title": "Score",
+      "columns": [
+       "what",
+       "count"
+      ],
+      "rows": [
+       [
+        "waiting",
+        "Connect the step that writes the result (or its file path), then run again."
+       ]
+      ]
+     }
+    ]
+   },
+   "widgets_values": [
+    "nayose",
+    "nayose_result.csv",
+    ""
+   ],
+   "widgets_values_named": {
+    "folder": "nayose",
+    "result_file": "nayose_result.csv",
+    "table_view": ""
+   }
+  },
+  {
+   "id": 8,
+   "type": "MarkdownNote",
+   "pos": [
+    0,
+    -420
+   ],
+   "size": [
+    900,
+    360
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "How to use",
+   "properties": {
+    "aws_given": true
+   },
+   "widgets_values": [
+    "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+   ],
+   "widgets_values_named": {
+    "text": "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 9,
+   "type": "70b67619-52d1-4def-a32c-a7275d16fc3f",
+   "pos": [
+    0,
+    160
+   ],
+   "size": [
+    260,
+    200
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "folder",
+     "name": "folder",
+     "type": "STRING",
+     "links": [
+      9,
+      10
+     ]
+    }
+   ],
+   "title": "Synthetic data · 3 legacy systems",
+   "properties": {
+    "aws_given": true,
+    "aws_card": {
+     "purpose": "",
+     "lines": [
+      "people 2,810"
+     ],
+     "state": ""
+    },
+    "previewExposures": []
+   },
+   "widgets_values": [
+    7
+   ],
+   "widgets_values_named": {
+    "seed": 7,
+    "stage_card": ""
+   },
+   "color": "#24496b",
+   "bgcolor": "#1a3550"
+  }
+ ],
+ "links": [
+  [
+   9,
+   9,
+   0,
+   6,
+   0,
+   "STRING"
+  ],
+  [
+   10,
+   9,
+   0,
+   7,
+   1,
+   "STRING"
+  ]
+ ],
+ "groups": [],
+ "definitions": {
+  "subgraphs": [
+   {
+    "id": "70b67619-52d1-4def-a32c-a7275d16fc3f",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 9,
+     "lastLinkId": 19,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "Synthetic data",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -188,
+      -24,
+      128,
+      48
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      60,
+      -34,
+      128,
+      68
+     ]
+    },
+    "inputs": [
+     {
+      "id": "c09dcdcc-2c22-4d34-af2c-8a860d569732",
+      "name": "seed",
+      "type": "INT",
+      "linkIds": [
+       11,
+       16,
+       17,
+       18,
+       19
+      ],
+      "pos": [
+       0,
+       0
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "d017b5a7-9fc6-41d4-99ab-9af5e4cbaa6c",
+      "name": "folder",
+      "type": "STRING",
+      "linkIds": [
+       7
+      ],
+      "localized_name": "folder",
+      "pos": [
+       24,
+       24
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 1,
+      "type": "AgentWorkflowNayosePeople",
+      "pos": [
+       0,
+       0
+      ],
+      "size": [
+       560,
+       386
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Households",
+        "name": "households",
+        "type": "INT",
+        "widget": {
+         "name": "households"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 11
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "people",
+        "name": "people",
+        "type": "NAYOSE_PEOPLE",
+        "links": [
+         1
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "AgentWorkflowNayosePeople",
+       "aws_given": true,
+       "aws_tables": [
+        {
+         "title": "Population",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "people",
+           "2810"
+          ],
+          [
+           "households",
+           "1200"
+          ],
+          [
+           "companies",
+           "40"
+          ],
+          [
+           "surname changed (marriage)",
+           "749"
+          ],
+          [
+           "moved at least once",
+           "2414"
+          ],
+          [
+           "look-alike strangers",
+           "50"
+          ]
+         ]
+        },
+        {
+         "title": "People (first 20 of 2,810)",
+         "columns": [
+          "id",
+          "name now",
+          "reading",
+          "born",
+          "household",
+          "surnames",
+          "addresses",
+          "accounts",
+          "notes"
+         ],
+         "rows": [
+          [
+           "P00001",
+           "鈴木 敏輔",
+           "スズキ トシスケ",
+           "1970-10-22",
+           "0",
+           "鈴木",
+           "4",
+           "1",
+           ""
+          ],
+          [
+           "P00002",
+           "鈴木 久代",
+           "スズキ クヨ",
+           "1972-06-15",
+           "0",
+           "市崎 → 鈴木",
+           "4",
+           "1",
+           ""
+          ],
+          [
+           "P00003",
+           "森 達之",
+           "モリ タツユキ",
+           "1943-06-12",
+           "1",
+           "森",
+           "2",
+           "1",
+           ""
+          ],
+          [
+           "P00004",
+           "森 智香",
+           "モリ トモカ",
+           "1947-05-09",
+           "1",
+           "杉沢 → 森",
+           "2",
+           "1",
+           ""
+          ],
+          [
+           "P00005",
+           "下瀬 秀之",
+           "シモゼ ヒデユキ",
+           "1988-11-06",
+           "2",
+           "下瀬",
+           "2",
+           "1",
+           ""
+          ],
+          [
+           "P00006",
+           "寺山 明里",
+           "テラヤマ アキリ",
+           "1941-08-17",
+           "3",
+           "寺山",
+           "1",
+           "2",
+           ""
+          ],
+          [
+           "P00007",
+           "寺山 翔吾",
+           "テラヤマ ショウゴ",
+           "1964-04-01",
+           "3",
+           "寺山",
+           "1",
+           "1",
+           ""
+          ],
+          [
+           "P00008",
+           "土塚 直也",
+           "ツチヅカ ナオヤ",
+           "1976-12-05",
+           "4",
+           "土塚",
+           "4",
+           "1",
+           ""
+          ],
+          [
+           "P00009",
+           "土塚 直希",
+           "ツチヅカ ナオキ",
+           "1977-01-29",
+           "4",
+           "佐々木 → 土塚",
+           "4",
+           "2",
+           ""
+          ],
+          [
+           "P00010",
+           "土塚 幸吾",
+           "ツチヅカ ユキゴ",
+           "2011-08-10",
+           "4",
+           "土塚",
+           "3",
+           "0",
+           ""
+          ],
+          [
+           "P00011",
+           "土塚 唯",
+           "ツチヅカ ユイ",
+           "2017-05-17",
+           "4",
+           "土塚",
+           "3",
+           "0",
+           ""
+          ],
+          [
+           "P00012",
+           "土塚 信太",
+           "ツチヅカ ノブタ",
+           "2014-09-01",
+           "4",
+           "土塚",
+           "3",
+           "0",
+           ""
+          ],
+          [
+           "P00013",
+           "福城 翔平",
+           "フクジロ ショウヘイ",
+           "1995-09-23",
+           "5",
+           "福城",
+           "4",
+           "2",
+           ""
+          ],
+          [
+           "P00014",
+           "李 文里",
+           "イ フミリ",
+           "1945-07-07",
+           "6",
+           "李",
+           "3",
+           "1",
+           ""
+          ],
+          [
+           "P00015",
+           "西島 大二",
+           "ニシジマ ダイジ",
+           "1939-01-29",
+           "7",
+           "西島",
+           "1",
+           "1",
+           ""
+          ],
+          [
+           "P00016",
+           "西島 秀治",
+           "ニシジマ ヒデジ",
+           "1971-05-20",
+           "7",
+           "西島",
+           "1",
+           "2",
+           ""
+          ],
+          [
+           "P00017",
+           "石村 翔吾",
+           "イシムラ ショウゴ",
+           "1973-05-06",
+           "8",
+           "石村",
+           "4",
+           "2",
+           ""
+          ],
+          [
+           "P00018",
+           "橋本 文菜",
+           "ハシモト フミナ",
+           "1944-11-19",
+           "9",
+           "橋本",
+           "4",
+           "1",
+           ""
+          ],
+          [
+           "P00019",
+           "中村 和乃",
+           "ナカムラ カズノ",
+           "1949-11-24",
+           "10",
+           "中村",
+           "1",
+           "1",
+           ""
+          ],
+          [
+           "P00020",
+           "片崎 拓人",
+           "カタザキ タクト",
+           "1938-10-24",
+           "11",
+           "片崎",
+           "1",
+           "1",
+           ""
+          ]
+         ]
+        }
+       ]
+      },
+      "widgets_values": [
+       1200,
+       7,
+       ""
+      ],
+      "widgets_values_named": {
+       "households": 1200,
+       "seed": 7,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 2,
+      "type": "AgentWorkflowNayoseActivity",
+      "pos": [
+       600,
+       0
+      ],
+      "size": [
+       560,
+       386
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "People",
+        "name": "people",
+        "type": "NAYOSE_PEOPLE",
+        "link": 1
+       },
+       {
+        "localized_name": "Update rate",
+        "name": "update_rate",
+        "type": "FLOAT",
+        "widget": {
+         "name": "update_rate"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 16
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "facts",
+        "name": "facts",
+        "type": "NAYOSE_FACTS",
+        "links": [
+         2,
+         3,
+         4
+        ]
+       }
+      ],
+      "properties": {
+       "Node name for S&R": "AgentWorkflowNayoseActivity",
+       "aws_given": true,
+       "aws_tables": [
+        {
+         "title": "Activity",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "policies",
+           "3589"
+          ],
+          [
+           "claims",
+           "1808"
+          ],
+          [
+           "bank registrations",
+           "5396"
+          ],
+          [
+           "claims by a family member",
+           "388"
+          ],
+          [
+           "premiums paid from someone else's account",
+           "567"
+          ]
+         ]
+        },
+        {
+         "title": "Policies (clean) (first 20 of 3,589)",
+         "columns": [
+          "policy",
+          "product",
+          "holder",
+          "signed",
+          "channel",
+          "insured",
+          "beneficiary",
+          "stale fields"
+         ],
+         "rows": [
+          [
+           "A164098824",
+           "自動車",
+           "片木 由絵",
+           "2024-03-03",
+           "web",
+           "片木 由絵",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "M928350498",
+           "医療",
+           "東 茂樹",
+           "1996-08-05",
+           "paper",
+           "東 茂樹",
+           "東 幸子",
+           ""
+          ],
+          [
+           "S324183116",
+           "傷害",
+           "平部 喜希",
+           "2025-03-29",
+           "agency",
+           "平部 喜希",
+           "平部 和紀",
+           "name, addr, tel"
+          ],
+          [
+           "L181314163",
+           "個人賠償",
+           "藤浦 和也",
+           "2020-12-26",
+           "agency",
+           "",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "F529799108",
+           "火災",
+           "川田 大太",
+           "2013-05-31",
+           "agency",
+           "",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "M830145334",
+           "医療",
+           "秋塚 健郎",
+           "2024-09-14",
+           "web",
+           "秋塚 健郎",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "S840327296",
+           "傷害",
+           "藤川 信二",
+           "2007-08-29",
+           "paper",
+           "藤川 信二",
+           "藤川 京子",
+           ""
+          ],
+          [
+           "L197992906",
+           "個人賠償",
+           "長本 篤樹",
+           "2019-01-11",
+           "agency",
+           "",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "A194808222",
+           "自動車",
+           "松島 悠治",
+           "2012-04-13",
+           "agency",
+           "松島 悠治",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "S334381969",
+           "傷害",
+           "小島 里里",
+           "2006-06-12",
+           "agency",
+           "小島 里里",
+           "法定相続人",
+           ""
+          ],
+          [
+           "A305206649",
+           "自動車",
+           "東 研一",
+           "2009-10-01",
+           "agency",
+           "東 研一",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "A759444927",
+           "自動車",
+           "株式会社三和建設",
+           "1992-11-29",
+           "paper",
+           "",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "F381307438",
+           "火災",
+           "加藤 篤吾",
+           "2000-02-09",
+           "paper",
+           "",
+           "",
+           ""
+          ],
+          [
+           "L833351126",
+           "個人賠償",
+           "福口 悠彦",
+           "2013-03-26",
+           "agency",
+           "",
+           "",
+           "tel"
+          ],
+          [
+           "M957906898",
+           "医療",
+           "林 一郎",
+           "1997-11-16",
+           "paper",
+           "浅木 由香",
+           "浅木 由香",
+           "name, addr, tel"
+          ],
+          [
+           "S879463297",
+           "傷害",
+           "大森 秀郎",
+           "2019-01-20",
+           "agency",
+           "大森 秀郎",
+           "大森 純希",
+           "name, addr, tel"
+          ],
+          [
+           "M359499278",
+           "医療",
+           "古塚 智美",
+           "2012-08-03",
+           "paper",
+           "古塚 智美",
+           "古塚 順一",
+           "name, addr, tel"
+          ],
+          [
+           "S321421173",
+           "傷害",
+           "桑内 達志",
+           "2021-11-05",
+           "web",
+           "桑内 達志",
+           "法定相続人",
+           "addr, tel"
+          ],
+          [
+           "F521992180",
+           "火災",
+           "大本 奈子",
+           "2024-06-30",
+           "agency",
+           "",
+           "",
+           "name, addr, tel"
+          ],
+          [
+           "M395996048",
+           "医療",
+           "木瀬 英人",
+           "2011-03-12",
+           "web",
+           "木瀬 英人",
+           "未指定",
+           "addr, tel"
+          ]
+         ]
+        },
+        {
+         "title": "Claims (clean) (first 20 of 1,808)",
+         "columns": [
+          "claim",
+          "received",
+          "channel",
+          "claimant",
+          "holder"
+         ],
+         "rows": [
+          [
+           "2024-423817",
+           "2024-05-23",
+           "paper",
+           "片木 由絵",
+           "片木 由絵"
+          ],
+          [
+           "2025-607654",
+           "2025-09-30",
+           "paper",
+           "平部 喜希",
+           "平部 喜希"
+          ],
+          [
+           "2023-846782",
+           "2023-04-08",
+           "phone",
+           "藤浦 和也",
+           "藤浦 和也"
+          ],
+          [
+           "2022-250057",
+           "2022-06-10",
+           "phone",
+           "藤浦 和也",
+           "藤浦 和也"
+          ],
+          [
+           "2022-527473",
+           "2022-05-29",
+           "phone",
+           "藤浦 和也",
+           "藤浦 和也"
+          ],
+          [
+           "2001-256270",
+           "2001-04-20",
+           "phone",
+           "株式会社三和建設",
+           "株式会社三和建設"
+          ],
+          [
+           "1994-307825",
+           "1994-01-26",
+           "phone",
+           "株式会社三和建設",
+           "株式会社三和建設"
+          ],
+          [
+           "2016-630351",
+           "2016-02-09",
+           "paper",
+           "加藤 美智子",
+           "加藤 篤吾"
+          ],
+          [
+           "2019-480481",
+           "2019-09-01",
+           "paper",
+           "加藤 篤吾",
+           "加藤 篤吾"
+          ],
+          [
+           "2023-606993",
+           "2023-09-04",
+           "paper",
+           "桑内 達志",
+           "桑内 達志"
+          ],
+          [
+           "2019-301284",
+           "2019-10-09",
+           "phone",
+           "山川 響子",
+           "山川 響子"
+          ],
+          [
+           "2019-328404",
+           "2019-09-18",
+           "phone",
+           "山川 響子",
+           "山川 響子"
+          ],
+          [
+           "2024-943557",
+           "2024-03-27",
+           "phone",
+           "宮川 大翔",
+           "宮川 大翔"
+          ],
+          [
+           "2020-194545",
+           "2020-09-28",
+           "web",
+           "新部 紗代",
+           "新部 紗代"
+          ],
+          [
+           "2016-308852",
+           "2016-08-28",
+           "web",
+           "北本 紗絵",
+           "北本 紗絵"
+          ],
+          [
+           "2019-905649",
+           "2019-02-07",
+           "paper",
+           "福田 直絵",
+           "福田 直絵"
+          ],
+          [
+           "2020-942587",
+           "2020-01-23",
+           "paper",
+           "福田 翔吾",
+           "福田 直絵"
+          ],
+          [
+           "2016-689432",
+           "2016-06-17",
+           "web",
+           "浅橋 秀太",
+           "浅橋 秀太"
+          ],
+          [
+           "2025-105436",
+           "2025-08-11",
+           "phone",
+           "佐藤 悠彦",
+           "佐藤 悠彦"
+          ],
+          [
+           "2025-158586",
+           "2025-06-30",
+           "web",
+           "佐藤 悠彦",
+           "佐藤 悠彦"
+          ]
+         ]
+        }
+       ]
+      },
+      "widgets_values": [
+       0.5,
+       7,
+       ""
+      ],
+      "widgets_values_named": {
+       "update_rate": 0.5,
+       "seed": 7,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 3,
+      "type": "AgentWorkflowNayoseExport",
+      "pos": [
+       1200,
+       0
+      ],
+      "size": [
+       560,
+       458
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Facts",
+        "name": "facts",
+        "type": "NAYOSE_FACTS",
+        "link": 2
+       },
+       {
+        "localized_name": "System",
+        "name": "system",
+        "type": "COMBO",
+        "widget": {
+         "name": "system"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Damage",
+        "name": "damage",
+        "type": "FLOAT",
+        "widget": {
+         "name": "damage"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Folder",
+        "name": "folder",
+        "type": "STRING",
+        "widget": {
+         "name": "folder"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 17
+       },
+       {
+        "localized_name": "After",
+        "name": "after",
+        "shape": 7,
+        "type": "STRING",
+        "widget": {
+         "name": "after"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "folder",
+        "name": "folder",
+        "type": "STRING",
+        "links": [
+         5
+        ]
+       }
+      ],
+      "title": "Export · policies",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowNayoseExport",
+       "aws_given": true,
+       "aws_tables": [
+        {
+         "title": "policies export",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "rows",
+           "3589"
+          ],
+          [
+           "person mentions",
+           "5480"
+          ],
+          [
+           "file",
+           "input/nayose_bench/policy_master.csv"
+          ]
+         ]
+        },
+        {
+         "title": "policy_master.csv (first 20 of 3,589)",
+         "columns": [
+          "REC_ID",
+          "SHOKEN_NO",
+          "SHOHIN_CD",
+          "KEIYAKU_YMD",
+          "KOSHIN_YMD",
+          "KAIYAKU_YMD",
+          "DAIRITEN_CD",
+          "NYURYOKU_KBN",
+          "KYK_NM_KJ",
+          "KYK_NM_KN",
+          "KYK_BIRTH",
+          "KYK_SEX",
+          "KYK_ADDR",
+          "KYK_ZIP",
+          "KYK_TEL",
+          "KYK_TEL2",
+          "HHK_NM_KJ",
+          "HHK_NM_KN",
+          "HHK_BIRTH",
+          "HHK_ZOKU",
+          "UKT_NM_KJ",
+          "UKT_NM_KN",
+          "UKT_ADDR",
+          "UKT_ZIP",
+          "UKT_ZOKU"
+         ],
+         "rows": [
+          [
+           "0000001",
+           "A164098824",
+           "01",
+           "5060303",
+           "20240303",
+           "",
+           "",
+           "3",
+           "片木由絵",
+           "ｶﾀｷ ﾕｴ",
+           "3330503",
+           "2",
+           "神奈川県横浜市港北区日吉四丁目十九番五号　ハイツ松風808",
+           "772-6402",
+           "0456510246",
+           "09056527794",
+           "片木 由絵",
+           "ｶﾀｷ ﾕｴ",
+           "3330503",
+           "本人",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000002",
+           "M928350498",
+           "03",
+           "19960805",
+           "20111203",
+           "",
+           "AG004",
+           "1",
+           "東 茂樹",
+           "ヒガツ シゲキ",
+           "46/03/07",
+           "1",
+           "神戸市中央区三宮町　4ー6一3 コ一ポ山田101",
+           "7073225",
+           "07015500245",
+           "",
+           "",
+           "",
+           "",
+           "本人",
+           "東　祥子",
+           "アスマ　サチコ",
+           "神戸市中央区三宮町1-28-19　レジデンス栄802",
+           "707-32",
+           "配偶者"
+          ],
+          [
+           "0000003",
+           "S324183116",
+           "04",
+           "20250329",
+           "20250329",
+           "",
+           "AG026",
+           "2",
+           "平部　喜希",
+           "ヒラベ キキ",
+           "1964年3月1日",
+           "2",
+           "札幌市中央区北一条西　五丁目三番四号 サンハイツ 607号室",
+           "3384383",
+           "0112624776",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "平部　和紀",
+           "ヒラベ カズキ",
+           "北海道札幌市中央区北一条西 ２－９－１",
+           "3384383",
+           "子"
+          ],
+          [
+           "0000004",
+           "L181314163",
+           "05",
+           "2020-12-26",
+           "20201226",
+           "20230918",
+           "AG006",
+           "2",
+           "藤浦和也",
+           "フウラ カズヤ",
+           "1999年4月6日",
+           "1",
+           "堺市堺区大浜北町　２丁目２６番５号",
+           "3604211",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000005",
+           "F529799108",
+           "02",
+           "H25.05.31",
+           "20130531",
+           "",
+           "AG011",
+           "2",
+           "川田",
+           "ｶﾜﾀ ﾀﾞｲﾀ",
+           "S16.11.21",
+           "2",
+           "愛知県名古屋市中区栄 2丁目10番10号　メゾン桜 806号室",
+           "5985357",
+           "052-723-8862",
+           "070-7147-3037",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000006",
+           "M830145334",
+           "03",
+           "20240914",
+           "20240914",
+           "20241105",
+           "",
+           "3",
+           "秋塚 健郎",
+           "アキヅカ　ケンロウ",
+           "1993/12/30",
+           "1",
+           "新潟県新潟市秋葉区新津本町　3-25-18　ハイツ松風104",
+           "644-2726",
+           "0250-61-3251",
+           "070-3404-2833",
+           "秋塚　健郎",
+           "アキヅカケンロウ",
+           "1993/12/30",
+           "本人",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000007",
+           "S840327296",
+           "04",
+           "平成19年8月29曰",
+           "20100518",
+           "20180127",
+           "AG008",
+           "1",
+           "藤川信二",
+           "フジ力ワ ノブシ",
+           "昭和46年6月9日",
+           "1",
+           "大阪府大阪市北区梅田 4-2-l4",
+           "3970283",
+           "070-2394-8353",
+           "",
+           "",
+           "",
+           "",
+           "本人",
+           "藤川京子",
+           "フジカワ キョウコ",
+           "大阪府大阪市北区梅田5-3-4",
+           "397-0283",
+           "配偶者"
+          ],
+          [
+           "0000008",
+           "L197992906",
+           "05",
+           "20190111",
+           "20190111",
+           "",
+           "AG011",
+           "2",
+           "長本　篤樹",
+           "ナガモト　アツキ",
+           "19800128",
+           "1",
+           "東京都練馬区石神井町5-3-7ハイツ松風203",
+           "5307228",
+           "8019658763",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000009",
+           "A194808222",
+           "01",
+           "H24.04.13",
+           "20120413",
+           "",
+           "AG017",
+           "2",
+           "松島悠治",
+           "ﾏﾂｼﾞﾏ ﾕｳｼﾞ",
+           "S19.10.30",
+           "1",
+           "兵庫県神戸市中央区三宮町　1丁目4-11",
+           "7073225",
+           "0788230096",
+           "",
+           "松嶋　悠治",
+           "ﾏﾂｼﾏ ﾕｳｼﾞ",
+           "S19.10.30",
+           "本人",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000010",
+           "S334381969",
+           "04",
+           "2006年6月12日",
+           "20141210",
+           "20220909",
+           "AG001",
+           "2",
+           "小島　里里",
+           "コジマサトリ",
+           "19791024",
+           "2",
+           "東京都新宿区西新宿５ー１０ー９",
+           "8566307",
+           "03-6257-2631",
+           "",
+           "小島　里里",
+           "オジマ サトリ",
+           "1979-10-24",
+           "本人",
+           "法定相続人",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000011",
+           "A305206649",
+           "01",
+           "H21.10.01",
+           "20091001",
+           "",
+           "AG026",
+           "2",
+           "東研一",
+           "ｱｽﾞﾏｹﾝｲﾁ",
+           "S16.09.13",
+           "1",
+           "名古屋市中区栄２丁目１９番１７号",
+           "598-5357",
+           "052(247)2206",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000012",
+           "A759444927",
+           "01",
+           "4041129",
+           "19921129",
+           "20020815",
+           "AG003",
+           "1",
+           "三和建設",
+           "ｻﾝﾜｹﾝｾﾂ",
+           "",
+           "",
+           "埼玉県大宮市桜木町３丁目１４－７ サンハイツ504",
+           "266",
+           "048(910)7876",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000013",
+           "F381307438",
+           "02",
+           "4120209",
+           "20181014",
+           "",
+           "AG022",
+           "1",
+           "加藤　篤吾",
+           "ｶﾄｰ ｱﾂｺﾞ",
+           "",
+           "1",
+           "西東京市田無町1-11-4 ハイツ松風602",
+           "527-8984",
+           "080(8645)1734",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000014",
+           "L833351126",
+           "05",
+           "2013/03/26",
+           "20241228",
+           "",
+           "AG023",
+           "2",
+           "福口悠彦",
+           "フククチ　ユウヒコ",
+           "1978年8月23日",
+           "1",
+           "東京都練馬区石神井町　１－２０－１９",
+           "530-7228",
+           "07028309792",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000015",
+           "M957906898",
+           "03",
+           "1997年11月16日",
+           "19971116",
+           "",
+           "AG040",
+           "1",
+           "林　一郎",
+           "ハヤシイチロウ",
+           "1940-7-28",
+           "1",
+           "神戸市中央区三宮町3-18-2",
+           "707-32",
+           "",
+           "",
+           "浅木由香",
+           "アサキ　ユ力",
+           "1967/08/05",
+           "子",
+           "浅木　由香",
+           "アサキユカ",
+           "太阪市北区梅由５－７－２",
+           "397-02",
+           "子"
+          ],
+          [
+           "0000016",
+           "S879463297",
+           "04",
+           "平成31年1月20日",
+           "20190120",
+           "",
+           "AG012",
+           "2",
+           "大森 秀郎",
+           "オオモリヒデロウ",
+           "昭和53年6月14日",
+           "1",
+           "兵庫県神戸市中央区三宮町 2丁目28番18号",
+           "707-3225",
+           "078-571-1242",
+           "０８０－３９８２－０７１９",
+           "",
+           "",
+           "",
+           "本人",
+           "大森　純希",
+           "オオモリジュンキ",
+           "兵庫県神戸市中央区三宮町２丁目２８番１８号",
+           "7073225",
+           "親"
+          ],
+          [
+           "0000017",
+           "M359499278",
+           "03",
+           "平成24年8月3日",
+           "20120803",
+           "",
+           "AG038",
+           "1",
+           "古塚智美",
+           "フルツカトモミ",
+           "昭和34年10月5日",
+           "2",
+           "静岡県清水市江尻町1B30番地 グラソドール 406号室",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "本人",
+           "古塚 順一",
+           "フルツカジュンイチ",
+           "静岡県静岡市清水区江尻町 1830",
+           "198-3659",
+           "配偶者"
+          ],
+          [
+           "0000018",
+           "S321421173",
+           "04",
+           "R03.11.05",
+           "20221204",
+           "",
+           "",
+           "3",
+           "桑内　達志",
+           "クワウチ タツシ",
+           "H13.08.01",
+           "1",
+           "福岡県福岡市博多区博多駅前 一丁目二十三番十七号",
+           "508-2486",
+           "092-904-4383",
+           "",
+           "桑内　達志",
+           "クワウチ　タツシ",
+           "H13.08.01",
+           "本人",
+           "法定相続人",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000019",
+           "F521992180",
+           "02",
+           "R06.06.30",
+           "20240630",
+           "",
+           "AG039",
+           "2",
+           "大本 奈子",
+           "ｵｵﾓﾄ ﾅｺ",
+           "H08.10.21",
+           "2",
+           "京都市中京区二条殿町 1408番地",
+           "677-1420",
+           "0754227565",
+           "070-8866-3262",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000020",
+           "M395996048",
+           "03",
+           "H23.03.12",
+           "20220611",
+           "",
+           "",
+           "3",
+           "木瀬　英人",
+           "きせ ひでと",
+           "S58.12.07",
+           "1",
+           "大阪府大阪市北区梅田 ２ー４ー３",
+           "397-0283",
+           "06(6637)0375",
+           "",
+           "",
+           "",
+           "",
+           "本人",
+           "未指定",
+           "",
+           "",
+           "",
+           ""
+          ]
+         ]
+        },
+        {
+         "title": "Damage in this export (mentions)",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "stale_address",
+           "1277"
+          ],
+          [
+           "ocr",
+           "813"
+          ],
+          [
+           "stale_phone",
+           "806"
+          ],
+          [
+           "old_city_name",
+           "659"
+          ],
+          [
+           "typo",
+           "368"
+          ],
+          [
+           "reading_guess",
+           "343"
+          ],
+          [
+           "same_as_above",
+           "259"
+          ],
+          [
+           "old_surname",
+           "245"
+          ],
+          [
+           "kana_missing",
+           "225"
+          ],
+          [
+           "lookalike",
+           "215"
+          ],
+          [
+           "long_vowel",
+           "213"
+          ],
+          [
+           "no_small_kana",
+           "187"
+          ],
+          [
+           "dob_missing",
+           "180"
+          ],
+          [
+           "itaiji",
+           "163"
+          ],
+          [
+           "address_partial",
+           "136"
+          ],
+          [
+           "kanji_missing",
+           "132"
+          ],
+          [
+           "kana_only",
+           "131"
+          ],
+          [
+           "company",
+           "98"
+          ],
+          [
+           "given_missing",
+           "94"
+          ],
+          [
+           "phone_lost_zero",
+           "73"
+          ],
+          [
+           "homophone",
+           "62"
+          ],
+          [
+           "dob_era",
+           "50"
+          ],
+          [
+           "dob_typo",
+           "49"
+          ],
+          [
+           "phone_placeholder",
+           "44"
+          ],
+          [
+           "sex_wrong",
+           "40"
+          ],
+          [
+           "foreign",
+           "40"
+          ],
+          [
+           "dob_two_digit_year",
+           "37"
+          ],
+          [
+           "dob_placeholder",
+           "34"
+          ],
+          [
+           "variant_normalized",
+           "32"
+          ],
+          [
+           "dob_swapped",
+           "31"
+          ],
+          [
+           "kana_variant",
+           "13"
+          ],
+          [
+           "gaiji",
+           "11"
+          ],
+          [
+           "same_name_as_parent",
+           "4"
+          ]
+         ]
+        }
+       ]
+      },
+      "widgets_values": [
+       "policies",
+       1,
+       "nayose_bench",
+       7,
+       "",
+       ""
+      ],
+      "widgets_values_named": {
+       "system": "policies",
+       "damage": 1,
+       "folder": "nayose_bench",
+       "seed": 7,
+       "after": "",
+       "table_view": ""
+      }
+     },
+     {
+      "id": 4,
+      "type": "AgentWorkflowNayoseExport",
+      "pos": [
+       1200,
+       480
+      ],
+      "size": [
+       560,
+       458
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Facts",
+        "name": "facts",
+        "type": "NAYOSE_FACTS",
+        "link": 3
+       },
+       {
+        "localized_name": "System",
+        "name": "system",
+        "type": "COMBO",
+        "widget": {
+         "name": "system"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Damage",
+        "name": "damage",
+        "type": "FLOAT",
+        "widget": {
+         "name": "damage"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Folder",
+        "name": "folder",
+        "type": "STRING",
+        "widget": {
+         "name": "folder"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 18
+       },
+       {
+        "localized_name": "After",
+        "name": "after",
+        "shape": 7,
+        "type": "STRING",
+        "widget": {
+         "name": "after"
+        },
+        "link": 5
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "folder",
+        "name": "folder",
+        "type": "STRING",
+        "links": [
+         6
+        ]
+       }
+      ],
+      "title": "Export · claims",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowNayoseExport",
+       "aws_given": true,
+       "aws_tables": [
+        {
+         "title": "claims export",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "rows",
+           "1808"
+          ],
+          [
+           "person mentions",
+           "2699"
+          ],
+          [
+           "file",
+           "input/nayose_bench/claims.csv"
+          ]
+         ]
+        },
+        {
+         "title": "claims.csv (first 20 of 1,808)",
+         "columns": [
+          "REC_ID",
+          "UKETSUKE_NO",
+          "SHOKEN_NO",
+          "JIKO_YMD",
+          "UKETSUKE_YMD",
+          "UKETSUKE_KBN",
+          "SEIKYU_NM",
+          "SEIKYU_KANA",
+          "SEIKYU_ZOKU",
+          "SEIKYU_TEL",
+          "SEIKYU_ADDR",
+          "SEIKYU_ZIP",
+          "BIKO",
+          "HHK_NM",
+          "HHK_KANA",
+          "HHK_BIRTH",
+          "HHK_SEX"
+         ],
+         "rows": [
+          [
+           "0000001",
+           "2024-423817",
+           "A164098824",
+           "2024/05/21",
+           "2024/05/23",
+           "書面",
+           "片本由絵",
+           "カタキユエ",
+           "本人",
+           "",
+           "神奈川県横浜市港北区日吉四丁目十九番五号",
+           "772-6402",
+           "本人より入電。",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000002",
+           "2025-607654",
+           "S324183116",
+           "2025/09/01",
+           "2025/09/30",
+           "書面",
+           "平部 喜希",
+           "ヒラベ キキ",
+           "本人",
+           "",
+           "北海道札幌市中央区北一条西５丁目３番４号サン八イツ607",
+           "3384383",
+           "",
+           "平部 喜希",
+           "ヒラベ　キキ",
+           "",
+           "女"
+          ],
+          [
+           "0000003",
+           "2023-846782",
+           "L181314163",
+           "2023/03/21",
+           "2023/04/08",
+           "電話",
+           "藤浦和也",
+           "フジウラカズヤ",
+           "本人",
+           "",
+           "大阪府堺市堺区大浜北町2-26-5",
+           "3604211",
+           "本人より入電。",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000004",
+           "2022-250057",
+           "L181314163",
+           "2022/06/08",
+           "2022/06/10",
+           "電話",
+           "藤浦 和也",
+           "フジウラ カズヤ",
+           "本人",
+           "",
+           "大阪府堺市堺区大浜北町2-26-5 レジデンス栄703",
+           "3604211",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000005",
+           "2022-527473",
+           "",
+           "2022/05/01",
+           "2022/05/29",
+           "電話",
+           "藤浦和也",
+           "フジウラ カズヤ",
+           "本人",
+           "",
+           "大阪府堺市堺区大浜北町 2-26-5 レジデンス栄703",
+           "360-4211",
+           "折返し希望。",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000006",
+           "2001-256270",
+           "A759444927",
+           "2001/04/14",
+           "2001/04/20",
+           "電話",
+           "株式会社三和建設",
+           "カブシキガイシャサンワケンセツ",
+           "法人",
+           "048-910-7876",
+           "大宮市桜木町３－１４－７サンハイツ504",
+           "266-0306",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000007",
+           "1994-307825",
+           "",
+           "1994/01/07",
+           "1994/01/26",
+           "電話",
+           "㈱三和建設",
+           "カブシキガイシャサンワケンセツ",
+           "法人",
+           "048-910-7876",
+           "埼玉県大宮市桜木町3-14-7　サンハイツ504",
+           "266",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000008",
+           "2016-630351",
+           "F381307438",
+           "2016/01/04",
+           "2016/02/09",
+           "書面",
+           "加藤 美智子",
+           "カトーミチコ",
+           "配偶者",
+           "",
+           "大阪府堺市堺区太浜北町１丁目２９－１１ サンハイツ301",
+           "360-4211",
+           "旧姓森。",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000009",
+           "2019-480481",
+           "F381307438",
+           "2019/08/26",
+           "2019/09/01",
+           "書面",
+           "加藤　篤吾",
+           "カトウ アツゴ",
+           "本人",
+           "O8086451734",
+           "東京都西東京市田無町1-11-4",
+           "5278984",
+           "",
+           "",
+           "",
+           "",
+           ""
+          ],
+          [
+           "0000010",
+           "2023-606993",
+           "S321421173",
+           "2023/08/14",
+           "2023/09/04",
+           "書面",
+           "桑内 達志",
+           "クワウチ タツシ",
+           "本人",
+           "07030763531",
+           "福岡県福岡市博多区博多駅前　1-23-17",
+           "508-2486",
+           "",
+           "桑内 達志",
+           "クワウチタツシ",
+           "2001年8月1日",
+           "男"
+          ],
+          [
+           "0000011",
+           "2019-301284",
+           "S747190081",
+           "2019/10/09",
+           "2019/10/09",
+           "電話",
+           "山川　響子",
+           "ヤマカワ　キョウコ",
+           "本人",
+           "090(6089)7567",
+           "宮城県仙台市青葉区一番町5丁目6-20",
+           "450-5969",
+           "",
+           "山川　響子",
+           "ヤマカワ キョウコ",
+           "1958/06/10",
+           "女"
+          ],
+          [
+           "0000012",
+           "2019-328404",
+           "S647190081",
+           "2019/08/28",
+           "2019/09/18",
+           "電話",
+           "山川響子",
+           "ヤマカワキョウコ",
+           "本人",
+           "09060897567",
+           "宮城県仙台市青葉区一番町5-6-20",
+           "450-5969",
+           "折返し希望。",
+           "山川 響子",
+           "ヤマカワ キョウコ",
+           "19580610",
+           ""
+          ],
+          [
+           "0000013",
+           "2024-943557",
+           "A183394779",
+           "2024/03/18",
+           "2024/03/27",
+           "電話",
+           "宮川　陽翔",
+           "ミヤカワ ヒロト",
+           "本人",
+           "０７０－６３２９－１９７４",
+           "愛知県名古屋市中区栄 2丁目5番3号",
+           "598-5357",
+           "",
+           "宮川　大翔",
+           "ミヤカワ ヒロト",
+           "2003年2月2日",
+           "男"
+          ],
+          [
+           "0000014",
+           "2020-194545",
+           "S286937717",
+           "2020/08/27",
+           "2020/09/28",
+           "WEB",
+           "新部 紗代",
+           "にいべ さよ",
+           "本人",
+           "90-4806-9216",
+           "東京都世田谷区経堂　二丁目十九番十九号",
+           "7714816",
+           "",
+           "新部 紗代",
+           "",
+           "19770530",
+           "女"
+          ],
+          [
+           "0000015",
+           "2016-308852",
+           "M287012866",
+           "2016/07/30",
+           "2016/08/28",
+           "WEB",
+           "北本",
+           "きたもと　さえ",
+           "本人",
+           "",
+           "広島県広島市中区紙屋町3-2-19",
+           "2641886",
+           "",
+           "北本　紗絵",
+           "キタモト サエ",
+           "19771031",
+           "女"
+          ],
+          [
+           "0000016",
+           "2019-905649",
+           "",
+           "2019/01/10",
+           "2019/02/07",
+           "書面",
+           "寺山　直絵",
+           "テラヤマ　ナオエ",
+           "本人",
+           "080-8607-6130",
+           "東京都保谷市東町２－６－７",
+           "604-3146",
+           "",
+           "寺山　直絵",
+           "テラヤマ　ナオ工",
+           "1993-8-1",
+           "女"
+          ],
+          [
+           "0000017",
+           "2020-942587",
+           "M540953308",
+           "2020/01/05",
+           "2020/01/23",
+           "書面",
+           "福田 吾",
+           "フクダ ショワコ",
+           "配偶者",
+           "07097769463",
+           "大阪府大阪市北区梅田 2丁目10-18",
+           "",
+           "",
+           "寺山直絵",
+           "テラヤマナオ工",
+           "1993年8月1日",
+           "女"
+          ],
+          [
+           "0000018",
+           "2016-689432",
+           "M208405892",
+           "2016/06/13",
+           "2016/06/17",
+           "WEB",
+           "浅橋　秀太",
+           "アサバシ　ヒデタ",
+           "本人",
+           "０９０－６９８９－５８３３",
+           "京都府京都市中京区烏丸通御池上る二条殿町613番地　グランドール 506号室",
+           "677-1420",
+           "本人より入電。",
+           "浅橋秀太",
+           "あさばし　ひでた",
+           "1989/12/03",
+           "男"
+          ],
+          [
+           "0000019",
+           "2025-105436",
+           "",
+           "2025/07/09",
+           "2025/08/11",
+           "電話",
+           "佐藤　悠彦",
+           "サトウ ユウヒコ",
+           "本人",
+           "090-8161-0350",
+           "兵庫県神戸市中央区三宮町",
+           "7073225",
+           "",
+           "佐藤悠彦",
+           "サトウ ユウヒコ",
+           "1977-6-13",
+           "男"
+          ],
+          [
+           "0000020",
+           "2025-158586",
+           "S523035495",
+           "2025/06/30",
+           "2025/06/30",
+           "WEB",
+           "佐藤悠彦",
+           "さとうゆうひこ",
+           "本人",
+           "09081610350",
+           "兵庫県神戸市中央区三宮町　4丁目30番17号",
+           "7073225",
+           "折返し希望。",
+           "佐藤 悠彦",
+           "さとう　ゆうひこ",
+           "1977年6月13日",
+           "男"
+          ]
+         ]
+        },
+        {
+         "title": "Damage in this export (mentions)",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "stale_address",
+           "525"
+          ],
+          [
+           "ocr",
+           "317"
+          ],
+          [
+           "old_city_name",
+           "237"
+          ],
+          [
+           "kana_only",
+           "229"
+          ],
+          [
+           "reading_guess",
+           "188"
+          ],
+          [
+           "long_vowel",
+           "174"
+          ],
+          [
+           "homophone",
+           "158"
+          ],
+          [
+           "policy_ref_typo",
+           "146"
+          ],
+          [
+           "typo",
+           "134"
+          ],
+          [
+           "kana_missing",
+           "116"
+          ],
+          [
+           "lookalike",
+           "104"
+          ],
+          [
+           "old_surname",
+           "78"
+          ],
+          [
+           "kanji_missing",
+           "67"
+          ],
+          [
+           "itaiji",
+           "66"
+          ],
+          [
+           "address_partial",
+           "57"
+          ],
+          [
+           "dob_missing",
+           "56"
+          ],
+          [
+           "company",
+           "53"
+          ],
+          [
+           "given_missing",
+           "34"
+          ],
+          [
+           "phone_lost_zero",
+           "33"
+          ],
+          [
+           "variant_normalized",
+           "24"
+          ],
+          [
+           "phone_placeholder",
+           "21"
+          ],
+          [
+           "foreign",
+           "19"
+          ],
+          [
+           "dob_two_digit_year",
+           "17"
+          ],
+          [
+           "dob_typo",
+           "10"
+          ],
+          [
+           "kana_variant",
+           "9"
+          ],
+          [
+           "dob_swapped",
+           "8"
+          ],
+          [
+           "dob_placeholder",
+           "7"
+          ],
+          [
+           "same_name_as_parent",
+           "2"
+          ]
+         ]
+        }
+       ]
+      },
+      "widgets_values": [
+       "claims",
+       1,
+       "nayose_bench",
+       7,
+       "",
+       ""
+      ],
+      "widgets_values_named": {
+       "system": "claims",
+       "damage": 1,
+       "folder": "nayose_bench",
+       "seed": 7,
+       "after": "",
+       "table_view": ""
+      }
+     },
+     {
+      "id": 5,
+      "type": "AgentWorkflowNayoseExport",
+      "pos": [
+       1200,
+       960
+      ],
+      "size": [
+       560,
+       458
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Facts",
+        "name": "facts",
+        "type": "NAYOSE_FACTS",
+        "link": 4
+       },
+       {
+        "localized_name": "System",
+        "name": "system",
+        "type": "COMBO",
+        "widget": {
+         "name": "system"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Damage",
+        "name": "damage",
+        "type": "FLOAT",
+        "widget": {
+         "name": "damage"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Folder",
+        "name": "folder",
+        "type": "STRING",
+        "widget": {
+         "name": "folder"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 19
+       },
+       {
+        "localized_name": "After",
+        "name": "after",
+        "shape": 7,
+        "type": "STRING",
+        "widget": {
+         "name": "after"
+        },
+        "link": 6
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "folder",
+        "name": "folder",
+        "type": "STRING",
+        "links": [
+         7
+        ]
+       }
+      ],
+      "title": "Export · payments",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowNayoseExport",
+       "aws_given": true,
+       "aws_tables": [
+        {
+         "title": "payments export",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "rows",
+           "5396"
+          ],
+          [
+           "person mentions",
+           "5396"
+          ],
+          [
+           "file",
+           "input/nayose_bench/koza_furikae.csv"
+          ]
+         ]
+        },
+        {
+         "title": "koza_furikae.csv (first 20 of 5,396)",
+         "columns": [
+          "REC_ID",
+          "KANRI_NO",
+          "SHUBETSU",
+          "GINKO_CD",
+          "SHITEN_CD",
+          "KAMOKU",
+          "KOZA_NO",
+          "KOZA_MEIGI",
+          "TOROKU_YMD"
+         ],
+         "rows": [
+          [
+           "0004186",
+           "A484545482",
+           "1",
+           "0150",
+           "060",
+           "1",
+           "2131274",
+           "ｶ)ｻﾝﾜｼﾖｸﾋﾝ",
+           "19880119"
+          ],
+          [
+           "0004803",
+           "A291837600",
+           "1",
+           "0017",
+           "629",
+           "1",
+           "0161668",
+           "ｶﾀｷ ﾖｳﾍｲ",
+           "19880528"
+          ],
+          [
+           "0002411",
+           "M708165370",
+           "1",
+           "0009",
+           "203",
+           "1",
+           "3502489",
+           "ｱｽﾞﾏ ｻﾁｺ",
+           "19880714"
+          ],
+          [
+           "0000168",
+           "A610464555",
+           "1",
+           "9900",
+           "623",
+           "2",
+           "8093927",
+           "ｶ)ﾏﾙﾊﾁｾｲｻｸｼﾖ",
+           "19880815"
+          ],
+          [
+           "0003139",
+           "A422501565",
+           "1",
+           "0033",
+           "210",
+           "1",
+           "7689021",
+           "ｵｶﾑﾗ ﾕｶ",
+           "19880820"
+          ],
+          [
+           "0004018",
+           "L720970699",
+           "1",
+           "0005",
+           "750",
+           "1",
+           "7879292",
+           "ｳﾒﾓﾘ ｱｲﾐ",
+           "19880903"
+          ],
+          [
+           "0002678",
+           "L762007673",
+           "1",
+           "9900",
+           "107",
+           "1",
+           "6936353",
+           "ｽｷﾞｻﾞｷ ﾃﾙｼ",
+           "19881025"
+          ],
+          [
+           "0000920",
+           "A938218336",
+           "1",
+           "0010",
+           "291",
+           "1",
+           "0978555",
+           "ｳﾒｵｶ ﾕｳｺﾞ",
+           "19881227"
+          ],
+          [
+           "0005128",
+           "M865053452",
+           "1",
+           "0001",
+           "559",
+           "1",
+           "9792732",
+           "ﾀﾅｶ ﾌﾐｷ",
+           "19890105"
+          ],
+          [
+           "0004372",
+           "A472880878",
+           "1",
+           "0017",
+           "967",
+           "1",
+           "5332952",
+           "ﾜﾀﾅﾍﾞ ﾐﾂｼ",
+           "19890318"
+          ],
+          [
+           "0003609",
+           "F414517710",
+           "1",
+           "0033",
+           "431",
+           "1",
+           "7284279",
+           "ｶ)ﾆﾂｼﾝｾｲｻｸｼﾖ",
+           "19890623"
+          ],
+          [
+           "0003060",
+           "A804134895",
+           "1",
+           "0033",
+           "319",
+           "1",
+           "1565835",
+           "ｵｵﾂｶ ﾖｳﾍｲ",
+           "19890712"
+          ],
+          [
+           "0000393",
+           "L828893533",
+           "1",
+           "0033",
+           "280",
+           "1",
+           "4255582",
+           "ｼﾓﾀﾆ ｼｽﾞｶ",
+           "19890901"
+          ],
+          [
+           "0002413",
+           "F243858879",
+           "1",
+           "0150",
+           "059",
+           "1",
+           "7243616",
+           "ｲﾄｳ ｲﾁﾛｳ",
+           "19890913"
+          ],
+          [
+           "0005321",
+           "S645097518",
+           "1",
+           "0017",
+           "447",
+           "1",
+           "8804680",
+           "ｺﾍﾞ ｻﾄﾐ",
+           "19891003"
+          ],
+          [
+           "0004988",
+           "L867700695",
+           "1",
+           "0005",
+           "762",
+           "1",
+           "8752158",
+           "ﾋﾗﾓﾘ ｷﾖｼ",
+           "19891019"
+          ],
+          [
+           "0003177",
+           "S146681585",
+           "1",
+           "9900",
+           "454",
+           "1",
+           "2779737",
+           "ｱｷｾﾞ ﾄﾓｶ",
+           "19891105"
+          ],
+          [
+           "0002031",
+           "S278577914",
+           "1",
+           "0010",
+           "455",
+           "1",
+           "6609516",
+           "ﾃﾗｳﾁ ﾖｼﾔ",
+           "19891223"
+          ],
+          [
+           "0002388",
+           "L453401073",
+           "1",
+           "9900",
+           "829",
+           "1",
+           "0206160",
+           "ﾃﾗｳﾁ ｹﾝｲﾁ",
+           "19900202"
+          ],
+          [
+           "0003398",
+           "M856590988",
+           "1",
+           "0017",
+           "814",
+           "1",
+           "4480442",
+           "ﾃﾗﾊﾞﾗ ｸｴ",
+           "19900403"
+          ]
+         ]
+        },
+        {
+         "title": "Damage in this export (mentions)",
+         "columns": [
+          "what",
+          "count"
+         ],
+         "rows": [
+          [
+           "zengin",
+           "5396"
+          ],
+          [
+           "reading_guess",
+           "454"
+          ],
+          [
+           "old_surname",
+           "292"
+          ],
+          [
+           "lookalike",
+           "216"
+          ],
+          [
+           "company",
+           "151"
+          ],
+          [
+           "account_typo",
+           "98"
+          ],
+          [
+           "typo",
+           "56"
+          ],
+          [
+           "foreign",
+           "42"
+          ],
+          [
+           "same_name_as_parent",
+           "4"
+          ]
+         ]
+        }
+       ]
+      },
+      "widgets_values": [
+       "payments",
+       1,
+       "nayose_bench",
+       7,
+       "",
+       ""
+      ],
+      "widgets_values_named": {
+       "system": "payments",
+       "damage": 1,
+       "folder": "nayose_bench",
+       "seed": 7,
+       "after": "",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 1,
+      "origin_id": 1,
+      "origin_slot": 0,
+      "target_id": 2,
+      "target_slot": 0,
+      "type": "NAYOSE_PEOPLE"
+     },
+     {
+      "id": 2,
+      "origin_id": 2,
+      "origin_slot": 0,
+      "target_id": 3,
+      "target_slot": 0,
+      "type": "NAYOSE_FACTS"
+     },
+     {
+      "id": 3,
+      "origin_id": 2,
+      "origin_slot": 0,
+      "target_id": 4,
+      "target_slot": 0,
+      "type": "NAYOSE_FACTS"
+     },
+     {
+      "id": 5,
+      "origin_id": 3,
+      "origin_slot": 0,
+      "target_id": 4,
+      "target_slot": 5,
+      "type": "STRING"
+     },
+     {
+      "id": 4,
+      "origin_id": 2,
+      "origin_slot": 0,
+      "target_id": 5,
+      "target_slot": 0,
+      "type": "NAYOSE_FACTS"
+     },
+     {
+      "id": 6,
+      "origin_id": 4,
+      "origin_slot": 0,
+      "target_id": 5,
+      "target_slot": 5,
+      "type": "STRING"
+     },
+     {
+      "id": 7,
+      "origin_id": 5,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 11,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 1,
+      "target_slot": 1,
+      "type": "INT"
+     },
+     {
+      "id": 16,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 2,
+      "target_slot": 2,
+      "type": "INT"
+     },
+     {
+      "id": 17,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 3,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 18,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 4,
+      "target_slot": 4,
+      "type": "INT"
+     },
+     {
+      "id": 19,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 5,
+      "target_slot": 4,
+      "type": "INT"
+     }
+    ],
+    "extra": {}
+   }
+  ]
+ },
+ "config": {},
+ "extra": {
+  "ds": {
+   "scale": 0.4491017964071856,
+   "offset": [
+    311.73333333333335,
+    628.1333333333333
+   ]
+  }
+ },
+ "version": 0.4
+}

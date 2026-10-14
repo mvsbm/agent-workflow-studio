@@ -21,6 +21,9 @@ from pathlib import Path
 from .pi_chat_workspace import workspace_id_for_graph
 from .workflow_contract import from_plan_v1, from_yaml, gates, render, report, to_yaml
 
+# Pairs: same/different/unsure; customers: correct/wrong; a record in a customer: not_this_person.
+REVIEW_DECISIONS = {"same", "different", "unsure", "correct", "wrong", "not_this_person"}
+REVIEW_FILE_LIMIT = 20 * 1024 * 1024
 AUTHORS = {
     "agent": ("Pi agent", "agent@agent-workflow-studio"),
     "user": ("User", "user@agent-workflow-studio"),
@@ -185,6 +188,48 @@ class ProjectRepo:
             self._git("commit", "--quiet", "-m", f"Tool approved: {name}", author="user")
             return self._git("rev-parse", "HEAD").strip()
 
+    def load_labels(self) -> dict:
+        """The user's review decisions, {item id: decision}, as saved from the Review tab."""
+        path = self.tree / "labels" / "review.json"
+        return json.loads(path.read_text())["labels"] if path.is_file() else {}
+
+    def save_labels(self, decisions: dict, run: str) -> str:
+        """Merge review decisions (None clears one) and commit them as the user's."""
+        if not isinstance(decisions, dict) or not all(
+            isinstance(k, str) and len(k) <= 200 and (v is None or v in REVIEW_DECISIONS)
+            for k, v in decisions.items()
+        ):
+            raise ValueError(
+                "Review decisions must map item ids to " + ", ".join(sorted(REVIEW_DECISIONS)) + "."
+            )
+        with self.lock:
+            self._ensure()
+            labels = {**self.load_labels(), **decisions}
+            labels = {k: v for k, v in labels.items() if v is not None}
+            (self.tree / "labels").mkdir(exist_ok=True)
+            (self.tree / "labels" / "review.json").write_text(
+                json.dumps(
+                    {"run": str(run)[:200], "labels": labels},
+                    indent=1,
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+            self._git("add", "labels/review.json")
+            if not self._git("status", "--porcelain").strip():
+                return self._git("rev-parse", "HEAD").strip()
+            counts = {d: list(labels.values()).count(d) for d in sorted(set(labels.values()))}
+            summary = ", ".join(f"{n} {d}" for d, n in counts.items())
+            self._git(
+                "commit",
+                "--quiet",
+                "-m",
+                f"Review · {len(labels)} decisions ({summary})",
+                author="user",
+            )
+            return self._git("rev-parse", "HEAD").strip()
+
     def load_tool(self, name: str) -> tuple[str, dict]:
         """The approved code of a tool; refuses if it differs from what the user approved."""
         from .agent_tools import code_hash
@@ -342,6 +387,57 @@ def install_project_routes() -> None:
             return {"contract": current, **(report(current, evidence) if current else {})}
 
         return await call(request, run)
+
+    @routes.get(prefix + "/review")
+    async def review(request):
+        def run(repo):
+            import folder_paths
+
+            runs = Path(folder_paths.get_output_directory()) / "agent_tools" / repo.id
+            found = sorted(runs.glob("*/review.json"), key=lambda p: p.stat().st_mtime)
+            if not found:
+                return {"review": None, "labels": repo.load_labels()}
+            if found[-1].stat().st_size > REVIEW_FILE_LIMIT:
+                raise ValueError("review.json is over 20 MB; ask the agent to write fewer items.")
+            return {
+                "run": found[-1].parent.name,
+                "review": json.loads(found[-1].read_text(encoding="utf-8")),
+                "labels": repo.load_labels(),
+            }
+
+        return await call(request, run)
+
+    @routes.get(prefix + "/customers")
+    async def customers(request):
+        def run(repo):
+            import folder_paths
+
+            runs = Path(folder_paths.get_output_directory()) / "agent_tools" / repo.id
+            found = sorted(
+                runs.glob("cluster_guard-*/customers.json"), key=lambda p: p.stat().st_mtime
+            )
+            if not found:
+                return {"customers": None}
+            if found[-1].stat().st_size > REVIEW_FILE_LIMIT:
+                raise ValueError("customers.json is over 20 MB.")
+            return {
+                "run": found[-1].parent.name,
+                "customers": json.loads(found[-1].read_text(encoding="utf-8")),
+            }
+
+        return await call(request, run)
+
+    @routes.post(prefix + "/review/labels")
+    async def review_labels(request):
+        try:
+            body = await request.json()
+        except ValueError:
+            return web.json_response({"error": "invalid JSON body"}, status=400)
+        if not isinstance(body, dict):
+            return web.json_response({"error": "invalid review request"}, status=400)
+        return await call(
+            request, lambda repo: {"sha": repo.save_labels(body.get("labels"), body.get("run", ""))}
+        )
 
     @routes.post(prefix + "/restore/{sha}")
     async def restore(request):

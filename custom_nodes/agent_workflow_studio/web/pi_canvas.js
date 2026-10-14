@@ -7,7 +7,152 @@ const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)t
 const nodes = graph => graph.nodes ?? graph._nodes ?? [];
 // The current frontend keeps links in a Map; older graphs used a plain object.
 const links = graph => graph.links instanceof Map ? [...graph.links.values()] : Object.values(graph.links ?? {});
+// Every node, including those packed inside subgraphs, with the id a run reports for it ("outer:inner").
+export function deepNodes(graph, prefix = '') {
+  return nodes(graph).flatMap(node => [
+    {node, runId: `${prefix}${node.id}`},
+    ...(node.isSubgraphNode?.() && node.subgraph ? deepNodes(node.subgraph, `${prefix}${node.id}:`) : []),
+  ]);
+}
+
+/** Node definitions plus every subgraph that contains an output node, which therefore runs. */
+export function withStageOutputs(graph, defs) {
+  const extra = {};
+  for (const node of nodes(graph)) {
+    if (node.isSubgraphNode?.() && deepNodes(node.subgraph).some(({node: inner}) => defs[inner.type]?.output_node)) {
+      extra[node.type] = {...(defs[node.type] ?? {}), output_node: true};
+    }
+  }
+  return {...defs, ...extra};
+}
+
+/** Pack each contract step's nodes into one named stage subgraph (the overview shows one card per step). */
+export function packStages(graph, steps) {
+  const packed = [];
+  for (const {id, title} of steps) {
+    const members = nodes(graph).filter(node => node.properties?.aws_contract_step === id && !node.properties?.aws_stage);
+    if (!members.length) continue;
+    const before = new Set(nodes(graph));
+    graph.convertToSubgraph(new Set(members));
+    const stage = nodes(graph).find(node => !before.has(node) && node.isSubgraphNode?.());
+    if (!stage) throw Error(`Could not pack step ${id} into a stage.`);
+    // Short title on the card ("3 · Learn weights"); the step's full purpose is shown on its face.
+    const number = /^\s*(\d+)/.exec(title)?.[1] ?? String(steps.findIndex(step => step.id === id) + 1);
+    const name = id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+    stage.title = `${number} · ${name}`;
+    stage.subgraph.name = stage.title;
+    stage.properties = {...stage.properties, aws_stage_order: Number(number)};
+    stage.setSize([260, 200]); // a stage card's size, so the layout right after packing is final
+    stage.properties = {...stage.properties, aws_stage: id, aws_contract_step: id};
+    packed.push(id);
+  }
+  return packed;
+}
+
+/** Open a packed stage back into its nodes so they can be edited. */
+export function unpackStage(graph, id) {
+  const stage = nodes(graph).find(node => node.properties?.aws_stage === id);
+  if (!stage) throw Error(`No packed stage for step ${id}.`);
+  graph.unpackSubgraph(stage);
+}
+
 const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?.findIndex(input => input.name === name || input.widget?.name === name);
+
+/** A tidy layout, positions only: data flows left to right in columns by depth; a node that
+ *  feeds nothing and reads one node (a preview) sits under that node; notes go above. */
+export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX leaves room for wire labels
+  const isNote = node => /Note$/.test(node.type ?? '');
+  const flow = nodes(graph).filter(node => !isNote(node));
+  if (!flow.length) return;
+  // Lay out by the height a node really needs (tables inside grow it), not a stale saved size.
+  for (const node of flow) {
+    const needed = node.computeSize?.()?.[1];
+    if (Number.isFinite(needed) && needed > node.size[1]) node.size = [node.size[0], needed];
+  }
+  const ids = new Set(flow.map(node => node.id));
+  const parents = new Map(flow.map(node => [node.id, []])), children = new Map(flow.map(node => [node.id, []]));
+  for (const link of links(graph)) {
+    if (ids.has(link.origin_id) && ids.has(link.target_id)) {
+      parents.get(link.target_id).push(link.origin_id);
+      children.get(link.origin_id).push(link.target_id);
+    }
+  }
+  const under = new Map(), attached = new Set();
+  for (const node of flow) {
+    const from = [...new Set(parents.get(node.id))];
+    const parent = from.length === 1 ? graph.getNodeById?.(from[0]) : null;
+    // A preview hangs under what it shows; given nodes and stage cards keep their own place, except a
+    // given preview of a given source (the data folder under the generator).
+    const hangs = !node.properties?.aws_given || !!parent?.properties?.aws_given;
+    if (!children.get(node.id).length && from.length === 1 && hangs && !node.isSubgraphNode?.()) {
+      under.set(from[0], [...(under.get(from[0]) ?? []), node]);
+      attached.add(node.id);
+    }
+  }
+  const depth = new Map();
+  const visit = (id, path = new Set()) => {
+    if (depth.has(id)) return depth.get(id);
+    if (path.has(id)) return 0; // a feedback loop: break it here
+    path.add(id);
+    const level = Math.max(-1, ...parents.get(id).map(parent => visit(parent, path))) + 1;
+    path.delete(id);
+    depth.set(id, level);
+    return level;
+  };
+  const main = flow.filter(node => !attached.has(node.id));
+  for (const node of main) visit(node.id);
+  const columns = [];
+  const stages = main.filter(node => node.properties?.aws_stage).sort((a, b) => (a.properties.aws_stage_order ?? 0) - (b.properties.aws_stage_order ?? 0));
+  if (stages.length) {
+    // Organized into stages: given sources, then one column per stage in step order, then the rest.
+    const rest = main.filter(node => !stages.includes(node));
+    const sources = rest.filter(node => node.properties?.aws_given && !parents.get(node.id).length);
+    // Stages sharing a step number are parallel lanes (e.g. one per source system): one column.
+    const lanes = [];
+    for (const stage of stages) {
+      const last = lanes.at(-1);
+      if (last && last[0].properties.aws_stage_order === stage.properties.aws_stage_order) last.push(stage);
+      else lanes.push([stage]);
+    }
+    columns.push(...(sources.length ? [sources] : []), ...lanes);
+    const after = rest.filter(node => !sources.includes(node));
+    if (after.length) columns.push(after);
+  } else {
+    for (const node of main) (columns[depth.get(node.id)] ??= []).push(node);
+  }
+  const x0 = Math.min(...flow.map(node => node.pos[0])), y0 = Math.min(...flow.map(node => node.pos[1]));
+  const placedY = new Map();
+  const inputY = node => {
+    const ys = parents.get(node.id).map(id => placedY.get(id)).filter(Number.isFinite);
+    return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : node.pos[1];
+  };
+  let x = x0;
+  for (const column of columns.filter(Boolean)) {
+    column.sort((a, b) => !!b.properties?.aws_given - !!a.properties?.aws_given || inputY(a) - inputY(b));
+    let top = y0, width = 0;
+    for (const node of column) {
+      for (const member of [node, ...(under.get(node.id) ?? [])]) {
+        member.pos = [x, top];
+        placedY.set(member.id, top);
+        top += member.size[1] + gapY;
+        width = Math.max(width, member.size[0]);
+      }
+    }
+    x += width + gapX;
+  }
+  let noteX = x0;
+  for (const note of nodes(graph).filter(isNote)) {
+    note.pos = [noteX, y0 - note.size[1] - gapY];
+    noteX += note.size[0] + gapX;
+  }
+  // A subgraph's own connectors: what comes in on the left of its first column, what goes out on the
+  // right of its last, level with the top row.
+  const place = (boundary, at) => { if (boundary?.pos) { boundary.pos[0] = at[0]; boundary.pos[1] = at[1]; } };
+  place(graph.inputNode, [x0 - 260, y0]);
+  place(graph.outputNode, [x - gapX + 80, y0]);
+  // Organize inside every stage too.
+  for (const node of flow) if (node.isSubgraphNode?.() && node.subgraph) arrangeGraph(node.subgraph, {gapX, gapY});
+}
 
 /** Judge success gates against a run's outputs, grouped by the producing node's title. */
 export function evaluateGates(gates, outputsByTitle) {
@@ -42,11 +187,17 @@ export function compactOutputs(outputs, {maxText = 4000, maxItems = 20, budget =
   return JSON.stringify(compact).length > budget && maxText > 500 ? compactOutputs(outputs, {maxText: 500, maxItems: 5, budget: Infinity}) : compact;
 }
 
+// Scoring against a hidden answer key is for the user only: the agent must never tune to it.
+const USER_ONLY = new Set(['AgentWorkflowNayoseScore']);
+export function agentOutputs(record) {
+  return Object.fromEntries(Object.entries(record.outputs ?? {}).filter(([id]) => !USER_ONLY.has(record.prompt?.[2]?.[id]?.class_type)));
+}
+
 /** Outputs of a finished run grouped by the producing node's (lowercased) title. */
 function outputsByTitle(record, graph) {
-  const titles = Object.fromEntries(nodes(graph).map(node => [String(node.id), node.title]));
+  const titles = Object.fromEntries(deepNodes(graph).map(({node, runId}) => [runId, node.title]));
   const byTitle = {};
-  for (const [id, output] of Object.entries(record.outputs ?? {})) {
+  for (const [id, output] of Object.entries(agentOutputs(record))) {
     const title = (titles[id] ?? record.prompt?.[2]?.[id]?._meta?.title ?? '').trim().toLowerCase();
     if (title) (byTitle[title] ??= []).push(output);
   }
@@ -65,12 +216,18 @@ export function latestMatchingRun(history, workflowId, executable) {
 export async function contractEvidence(app, api, gates) {
   const graph = app.rootGraph ?? app.graph;
   const evidence = {
-    nodes: nodes(graph).map(node => ({id: node.id, title: node.title, class_type: node.type, step: node.properties?.aws_contract_step ?? null, fuzzy: node.type === 'AgentWorkflowFuzzyNode'})),
+    // Nodes packed into stages count as themselves; the stage container is only a frame.
+    nodes: deepNodes(graph).filter(({node}) => !node.properties?.aws_stage).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, step: node.properties?.aws_contract_step ?? null, given: !!node.properties?.aws_given, fuzzy: node.type === 'AgentWorkflowFuzzyNode'})),
     gate_results: {}, run: null,
   };
-  const analysis = analyzeGraph(graph.serialize(), await api.getNodeDefs());
+  const defs = await api.getNodeDefs();
+  const analysis = analyzeGraph(graph.serialize(), withStageOutputs(graph, defs));
+  // Output nodes packed inside stages count too: gates may point at them.
+  const inner = deepNodes(graph).filter(({runId, node}) => runId.includes(':') && defs[node.type]?.output_node).map(({node}) => node.title);
   // "No output node" is judged by the contract check itself: on an empty canvas it is progress, not drift.
-  evidence.analysis = {outputs: analysis.outputs.map(o => o.title), problems: analysis.problems.filter(p => p.kind !== 'no_output_node').map(p => p.message)};
+  const outputs = [...analysis.outputs.map(o => o.title), ...inner];
+  const problems = analysis.problems.filter(p => p.kind !== 'no_output_node');
+  evidence.analysis = {outputs, problems: problems.map(p => p.message)};
   const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
   const match = latestMatchingRun(history, graph.id, JSON.stringify((await app.graphToPrompt()).output));
   if (match) {
@@ -91,7 +248,7 @@ function fitStepGroups(graph, steps) {
   for (const {id, title} of steps) {
     const members = nodes(graph).filter(node => node.properties?.aws_contract_step === id);
     let group = groups().find(g => g.title === (known[id] ?? title));
-    if (!members.length) {
+    if (!members.length || members.every(node => node.properties?.aws_stage)) { // a packed stage is its own frame
       if (group) graph.remove(group);
       delete known[id];
       continue;
@@ -106,6 +263,12 @@ function fitStepGroups(graph, steps) {
     group.size = [x1 - x0, y1 - y0];
     known[id] = title;
   }
+}
+
+/** Lay the canvas out and re-fit the step groups it already has (titles kept). */
+export function organizeGraph(graph) {
+  arrangeGraph(graph);
+  fitStepGroups(graph, Object.entries(graph.extra?.aws_step_groups ?? {}).map(([id, title]) => ({id, title})));
 }
 
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
@@ -158,7 +321,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           added[op.key] = node.id;
         } else if (op.op === 'move' || op.op === 'title') {
           const node=resolve(op.node,added);
-          if (!node) throw Error(`Node not found: ${op.node}`);
+          if (!node) throw Error(`Node not found: ${op.node}. If its step is packed into a stage, unpack it first: {"op": "unpack", "step": "<step id>"}.`);
           if (op.op === 'move') {
             if (!Array.isArray(op.position)||op.position.length!==2||!op.position.every(Number.isFinite)) throw Error('Invalid node position.');
             node.pos=op.position;
@@ -189,16 +352,24 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           if (!from.connect(op.output,to,slot)) throw Error('Native port types do not connect.');
         } else if (op.op === 'remove' || op.op === 'disconnect') {
           const node = resolve(op.node,added);
-          if (!node) throw Error(`Node not found: ${op.node}`);
+          if (!node) throw Error(`Node not found: ${op.node}. If its step is packed into a stage, unpack it first: {"op": "unpack", "step": "<step id>"}.`);
           if (op.op === 'remove') app.graph.remove(node);
           else {
             const slot = inputSlot(node,op.input);
             if (!Number.isInteger(slot) || slot < 0 || !node.inputs?.[slot]) throw Error('Input not found.');
             node.disconnectInput(slot);
           }
-        } else throw Error(`Unsupported operation: ${op.op}`);
+        } else if (op.op === 'organize') {
+          if (!Array.isArray(contractSteps)) throw Error('Organizing into stages needs an approved contract.');
+          packStages(app.graph, contractSteps);
+        } else if (op.op === 'unpack') {
+          unpackStage(app.graph, op.step);
+        } else if (op.op !== 'arrange') throw Error(`Unsupported operation: ${op.op}`);
       }
       Object.assign(keys, added);
+      // Keep the canvas readable without the agent computing coordinates: re-lay out after
+      // structural edits (and on request); the whole batch is still one undo step.
+      if (operations.some(op => ['add', 'connect', 'arrange', 'organize', 'unpack'].includes(op.op))) arrangeGraph(app.graph);
       if (Array.isArray(contractSteps)) fitStepGroups(app.graph, contractSteps);
       app.graph.setDirtyCanvas(true,true);
       return {added, node_count:nodes(app.graph).length, message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
@@ -215,9 +386,11 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'read') return {
       selected: Object.values(app.canvas.selected_nodes ?? {}).map(node => node.id),
       nodes:nodes(app.graph).map(node => ({id:node.id,class_type:node.type,title:node.title,mode:node.mode,position:Array.from(node.pos),size:Array.from(node.size),
+        // given: provided by the user or a template, an input to the work, not part of a contract step.
+        ...(node.properties?.aws_given ? {given:true} : {}), ...(node.properties?.aws_contract_step ? {step:node.properties.aws_contract_step} : {}),
         inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:input.link})),
         outputs:(node.outputs??[]).map((output,index) => ({index,name:output.name,type:output.type})),
-        widgets:(node.widgets??[]).filter(w => !['button'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
+        widgets:(node.widgets??[]).filter(w => !['button','aws_table_view','aws_plan_view'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
         // A subgraph node's type is an opaque UUID; describe what it contains.
         ...(node.isSubgraphNode?.() ? {subgraph:{name:node.subgraph?.name,nodes:nodes(node.subgraph ?? {}).map(inner => ({id:inner.id,class_type:inner.type,title:inner.title}))}} : {}),
       })),
@@ -260,7 +433,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       latestPrompt = ids[0]; submitted = true;
       return {submitted:true,prompt_id:latestPrompt,message:'Submitted through native Run; inspect execution_results before claiming success.'};
     }
-    if (action === 'analyze') return analyzeGraph((app.rootGraph ?? app.graph).serialize(), await catalog());
+    if (action === 'analyze') return analyzeGraph((app.rootGraph ?? app.graph).serialize(), withStageOutputs(app.rootGraph ?? app.graph, await catalog()));
     if (action === 'converters') {
       if (typeof args.from_type !== 'string' || typeof args.to_type !== 'string') throw Error('Give from_type and to_type.');
       return {paths: findConverterPaths(await catalog(), args.from_type, args.to_type)};
@@ -286,9 +459,9 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (!response.ok) throw Error('Cannot read native execution history.');
         const record = (await response.json())[latestPrompt];
         if (record) {
-          result.status=record.status; result.outputs=compactOutputs(record.outputs);
+          result.status=record.status; result.outputs=compactOutputs(agentOutputs(record));
           result.image_previews=[];
-          for (const output of Object.values(record.outputs??{})) {
+          for (const output of Object.values(agentOutputs(record))) {
             for (const image of output.images??[]) {
               if (result.image_previews.length >= 2) break;
               const params = new URLSearchParams({filename:image.filename,subfolder:image.subfolder??'',type:image.type??'output'});

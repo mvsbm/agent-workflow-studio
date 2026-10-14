@@ -14,5 +14,26 @@
    "Name + date of birth + address + phone",
    "~5,000"
   ]
+ },
+ {
+  "id": "nayose_dirty",
+  "dataset": "nayose",
+  "timeout_minutes": 35,
+  "expect_pairwise_f1": 0.85,
+  "prompt": "Our IT team put customer exports from our three legacy systems in the input folder `nayose` (policies, claims and payments; README.txt explains the columns). The same customers appear across the systems and in different roles (policy holder, insured, beneficiary, claimant, bank account holder), and the data is very dirty: OCR errors, lazy input, typos, missing values, old addresses and maiden names, with some policies updated and others not. Build a near state of the art Japanese nayose (name matching) workflow that gives every person mention a customer ID. Save the result as nayose_result.csv with the columns system,record_id,role,customer_id (one row per mention, as README.txt defines them), and tell me how you checked its quality without an answer key.",
+  "prefer": [
+   "Recommended"
+  ]
+ },
+ {
+  "id": "nayose_visible",
+  "template": "Studio - Nayose benchmark.json",
+  "dataset": "nayose_bench",
+  "timeout_minutes": 35,
+  "expect_pairwise_f1": 0.85,
+  "prompt": "Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.",
+  "prefer": [
+   "Recommended"
+  ]
  }
 ]

@@ -257,6 +257,7 @@ class ContractTests(unittest.TestCase):
                     {"title": "Label", "step": "classify", "fuzzy": False},
                     {"title": "Cleaner", "step": "tidy", "fuzzy": True},
                     {"title": "Stray", "step": None},
+                    {"title": "Synthetic data", "step": None, "given": True},
                     {"title": "Old", "step": "removed_step"},
                 ],
                 "analysis": {

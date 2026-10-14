@@ -22,6 +22,13 @@ def main() -> int:
         return 0
     except Exception as error:  # report the tool's own failure, not the runner's
         detail = "".join(traceback.format_exception_only(type(error), error)).strip()
+        # Where in the tool it failed: a bare "AssertionError" is useless for debugging.
+        frames = [f for f in traceback.extract_tb(error.__traceback__) if f.filename == sys.argv[1]]
+        if frames:
+            last = frames[-1]
+            detail += (
+                f" (tool.py line {last.lineno}, in {last.name}: {(last.line or '').strip()[:200]})"
+            )
         print(json.dumps({"error": detail[-800:]}))
         return 1
 

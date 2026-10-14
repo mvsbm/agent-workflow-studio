@@ -17,6 +17,7 @@ Every workflow you build or extend, and every set of files you produce for the u
   - `fixed`: installed deterministic nodes do it (search the catalog first and name them in `nodes`).
   - `ai_planned`: a text step whose exact operations are unclear: a **Fuzzy · Plan with nodes** node.
   - `ai_judgment`: classification, extraction, rewriting: a **Pi CLI · Structured LLM** node with an output schema.
+  - Data jobs are pipelines: make each stage its own step (load and clean, find candidates, compare and score, decide, review, report), each built as its own Agent Tool or nodes, so the canvas shows how the result was made. Two steps for a whole matching or analytics job hides the work. Matching and nayose jobs mirror the architecture, one step each, with the step ids from the agent guide: profile_data → one cleansing lane per source system → find_candidates → deterministic_matching → probabilistic_matching → your_review → consolidate_customers → publish_results; decided pairs leave each matching stage through its matched/different branches straight to consolidation. The decision is never logic buried in a tool, so the user can read and edit how pairs are decided and see the whole decision tree.
 - **gate** on every step: `says` how we know it worked, in plain words. Add a `check` whenever an output can prove it; `node` must be the exact title of an **output node** (Preview, Save, ...) because other nodes produce no run outputs. Good gate places are the checkpoints `comfy_analyze_graph` reports; to prove an intermediate value, add a Preview titled for the gate.
 - **decisions**: one line each with `why` and, if useful, `instead_of`. `by: user` only for answers the user actually gave; your own choices are `by: agent`.
 - Every `must` and `should` request needs a covering step; otherwise move it to `not_now`. Keep the contract short: one line per entry.
@@ -38,6 +39,10 @@ Every workflow you build or extend, and every set of files you produce for the u
 | failing | its gate failed on the latest run | fix the smallest part of the step, run, re-check |
 
 Any structural edit resets gate outcomes, so verified steps return to built until re-checked. Use `comfy_contract_status` to see every step's state and the nodes outside any step; report progress to the user as "N of M steps verified".
+
+## Quality gates for data jobs
+
+Gates that only prove a file exists say nothing about quality. Add at least one gate per data job that a bad result fails, computed without any answer key: e.g. "every source has ≥ 50% of its records linked", "no customer groups more than 30 records", "no customer has two different birth dates", "review band ≤ 2,000 pairs". Have the step's tool print the measured values so the gate can check them and the user can see them.
 
 ## When the work and the contract disagree
 

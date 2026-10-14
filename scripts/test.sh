@@ -12,6 +12,10 @@ cd "$COMFYUI_DIR"
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover \
     -s custom_nodes/agent_workflow_studio -t . -p 'test_*.py'
 cd "$PACKAGE_ROOT"
+# Parse every front-end module as ES module (node --check misses errors such as duplicate const).
+for module in custom_nodes/agent_workflow_studio/web/*.js; do
+    node --experimental-vm-modules --no-warnings -e "new (require('vm').SourceTextModule)(require('fs').readFileSync(process.argv[1], 'utf8'))" "$module"
+done
 for test in custom_nodes/agent_workflow_studio/web/test_*.mjs; do
     node --test "$test"
 done

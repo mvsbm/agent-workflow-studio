@@ -6,7 +6,9 @@ import asyncio
 import base64
 import contextlib
 import ipaddress
+import itertools
 import json
+import logging
 import secrets
 import tempfile
 import time
@@ -59,8 +61,54 @@ REQUIRED_SKILLS = {
     "comfyui-workflow-contracts",
 }
 MAX_MESSAGE = 1_048_576
+# Above this a tool is doing several stages at once (counted without blank lines).
+MAX_TOOL_LINES = 500
 # Agent turns per user message: room for a contract-gated multi-step build, still a loop guard.
-MAX_TURNS = 40
+MAX_TURNS = 60
+
+
+def _decode(head: bytes) -> tuple[str, str]:
+    for encoding in ("utf-8-sig", "cp932"):
+        for cut in range(4):  # the preview may end inside a multi-byte character
+            try:
+                return head[: len(head) - cut].decode(encoding), encoding
+            except UnicodeDecodeError:
+                continue
+    return head.decode("latin-1"), "unknown (shown as latin-1)"
+
+
+def input_files(base: Path, path: str = "") -> dict:
+    """Read-only look at ComfyUI's input folder: a listing, or the first lines of a text file."""
+    base = base.resolve()
+    target = (base / path).resolve()
+    if base not in (target, *target.parents):
+        raise ValueError("Only files inside ComfyUI's input directory can be viewed.")
+    if target.is_dir():
+        files = [p for p in itertools.islice(target.rglob("*"), 2000) if p.is_file()]
+        return {
+            "folder": str(target.relative_to(base)),
+            "files": [
+                {"path": str(p.relative_to(base)), "bytes": p.stat().st_size}
+                for p in sorted(files)[:200]
+            ],
+        }
+    if not target.is_file():
+        raise ValueError("No such file in ComfyUI's input directory.")
+    with open(target, "rb") as file:
+        head = file.read(32768)
+        if b"\0" in head:
+            raise ValueError("Binary file: only text files can be previewed.")
+        lines = head.count(b"\n") + sum(
+            chunk.count(b"\n") for chunk in iter(lambda: file.read(1 << 20), b"")
+        )
+    text, encoding = _decode(head)
+    return {
+        "path": str(target.relative_to(base)),
+        "encoding": encoding,
+        "bytes": target.stat().st_size,
+        "lines": lines,
+        "head": text.splitlines()[:60],
+    }
 
 
 def local_request(request, *, browser=False):
@@ -479,6 +527,7 @@ class PiChatSession:
                 if visible is not None:
                     await self.socket.send_json(visible)
         except (PiCLIError, ConnectionError, RuntimeError) as error:
+            logging.warning("Pi chat ended: %s", error)
             if not self.socket.closed:
                 await self.socket.send_json({"type": "chat_error", "error": str(error)[:2000]})
                 await self.socket.close()
@@ -505,6 +554,11 @@ class PiChatSession:
             return await self.workspace_action(action, arguments)
         if action in CONTRACT_ACTIONS:
             return await self.contract_action(action, arguments)
+        if action == "input_files":
+            import folder_paths
+
+            path = arguments.get("path") if isinstance(arguments, dict) else None
+            return input_files(Path(folder_paths.get_input_directory()), str(path or ""))
         if action in {"contract_approve", "tool_approve", "contract_evidence", "gates"}:
             raise ValueError(
                 "Use comfy_propose_contract, comfy_check_gates or comfy_contract_status."
@@ -611,6 +665,14 @@ class PiChatSession:
         code = base64.b64decode(file["data"]).decode("utf-8")
         if "def run(" not in code:
             raise ValueError(f"tools/{name}.py must define run(inputs) returning a dict.")
+        size = sum(1 for line in code.splitlines() if line.strip())
+        if size > MAX_TOOL_LINES:
+            # One giant tool hides the whole job in one node; the canvas should show the stages.
+            raise ValueError(
+                f"tools/{name}.py has {size} code lines (limit {MAX_TOOL_LINES}). Split it into one "
+                "tool per stage, chained through `data`; a later tool reads earlier tools' files "
+                "from inputs['_run_folders']."
+            )
         text = approval_text(name, description, ports["inputs"], ports["outputs"], code)
         answer = await self.canvas_action(
             "tool_approve", {"title": f"Approve tool {name}?", "text": text}
@@ -739,6 +801,12 @@ def install_pi_chat_routes():
                         break
         finally:
             sockets.discard(socket)
+            # Why a chat ended is otherwise invisible (heartbeat, oversize message, Pi exit).
+            logging.info(
+                "Pi chat closed: socket code %s, exception %r",
+                socket.close_code,
+                socket.exception(),
+            )
             if boot:
                 boot.cancel()
                 with contextlib.suppress(asyncio.CancelledError):

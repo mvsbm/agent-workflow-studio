@@ -208,7 +208,10 @@ def alignment(contract: dict, evidence: dict) -> list[str]:
     analysis = evidence.get("analysis") or {}
     outputs = {t.strip().lower() for t in analysis.get("outputs", [])}
     drift = []
-    if stray := [n.get("title") or "untitled" for n in nodes if not n.get("step")]:
+    # Given nodes (provided by the user or a template) are inputs to the work, not steps of it.
+    if stray := [
+        n.get("title") or "untitled" for n in nodes if not n.get("step") and not n.get("given")
+    ]:
         drift.append(f"Not part of any step: {', '.join(stray[:6])}.")
     if orphans := sorted({n["step"] for n in nodes if n.get("step") and n["step"] not in steps}):
         drift.append(f"Nodes belong to steps the contract no longer has: {', '.join(orphans)}.")
@@ -252,7 +255,9 @@ def report(contract: dict, evidence: dict) -> dict:
         "drift": drift,
         "steps": states,
         "nodes_outside_steps": [
-            n.get("title") or "untitled" for n in evidence["nodes"] if not n.get("step")
+            n.get("title") or "untitled"
+            for n in evidence["nodes"]
+            if not n.get("step") and not n.get("given")
         ],
         "text": render(contract, states),
     }

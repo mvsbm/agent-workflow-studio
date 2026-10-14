@@ -69,6 +69,24 @@ class PiStructuredAgentTests(unittest.TestCase):
                 "AgentWorkflowPiStructuredAgent",
                 "AgentWorkflowFuzzyNode",
                 "AgentWorkflowAgentTool",
+                "AgentWorkflowDecisionRules",
+                "AgentWorkflowProfileData",
+                *(
+                    f"AgentWorkflow{name}"
+                    for name in (
+                        "SplitName ReadTable WriteTable StackRoles Concatenate FilterRows JoinTables NormalizeText "
+                        "MapValues ParseDates ExtractDigits FindCandidates CompareFields AttachGroups"
+                    ).split()
+                ),
+                "AgentWorkflowLearnWeights",
+                "AgentWorkflowLLMSuggestions",
+                "AgentWorkflowReviewDecisions",
+                "AgentWorkflowClusterGuard",
+                "AgentWorkflowNayosePeople",
+                "AgentWorkflowNayoseActivity",
+                "AgentWorkflowNayoseExport",
+                "AgentWorkflowNayoseScore",
+                "AgentWorkflowPreviewTable",
             },
         )
 

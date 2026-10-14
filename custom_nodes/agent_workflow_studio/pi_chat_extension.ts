@@ -17,6 +17,12 @@ const operation = Type.Union([
   Type.Object({ op: Type.Literal("connect"), from: ref, output: Type.Integer({minimum:0}), to: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
   Type.Object({ op: Type.Literal("remove"), node: ref }),
   Type.Object({ op: Type.Literal("disconnect"), node: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
+  // Re-lay out the canvas (also done automatically after adds and connects).
+  Type.Object({ op: Type.Literal("arrange") }),
+  // Pack each contract step into one stage subgraph (the overview shows one card per step).
+  Type.Object({ op: Type.Literal("organize") }),
+  // Open a packed stage back into its nodes to edit them.
+  Type.Object({ op: Type.Literal("unpack"), step: Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}) }),
 ]);
 
 // The contract schema is one JSON Schema file shared with the server and editors. Tool schemas
@@ -75,7 +81,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -146,6 +152,11 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_find_converter", label:"Find converter", description:"Find the shortest chains of installed nodes that turn one data type into another (e.g. IMAGE to MASK), each step a node with one connected input.",
     parameters:Type.Object({from_type:Type.String({minLength:1,maxLength:80}),to_type:Type.String({minLength:1,maxLength:80})}),
     execute:async (_id,args,signal) => canvas("converters",args,signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_input_files", label:"Input files", description:"Look at data the user put in ComfyUI's input folder, read-only: without a path, list its files; with a path, show a text file's encoding, size, line count and first 60 lines. An Agent Tool node reads such a folder through its Input folder widget (TOOL_INPUT_DIR).",
+    parameters:Type.Object({path:Type.Optional(Type.String({maxLength:300}))}),
+    execute:async (_id,args,signal) => canvas("input_files",args,signal),
   }));
   pi.registerTool(defineTool({
     name:"comfy_contract_status", label:"Contract status", description:"Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the canvas and the latest gate check, with the next action, plus nodes not tied to any step.",

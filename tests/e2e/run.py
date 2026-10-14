@@ -10,7 +10,15 @@ from pathlib import Path
 from fixture import REPO, ComfyFixture
 
 HERE = Path(__file__).resolve().parent
-TESTS = ["build_and_run.cjs", "llm_record.cjs", "fuzzy_node.cjs", "agent_tool.cjs"]
+TESTS = [
+    "build_and_run.cjs",
+    "llm_record.cjs",
+    "fuzzy_node.cjs",
+    "agent_tool.cjs",
+    "review_panel.cjs",
+    "decision_rules.cjs",
+    "matching_cascade.cjs",
+]
 
 
 def main() -> int:
@@ -24,7 +32,12 @@ def main() -> int:
             result = subprocess.run(
                 ["node", str(HERE / test)],
                 cwd=REPO,
-                env={**os.environ, "BASE": comfy.url, "ARTIFACTS": str(artifacts)},
+                env={
+                    **os.environ,
+                    "BASE": comfy.url,
+                    "ARTIFACTS": str(artifacts),
+                    "OUTPUT": str(comfy.root / "output"),
+                },
                 timeout=300,
             )
             if result.returncode:

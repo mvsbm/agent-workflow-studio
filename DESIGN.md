@@ -134,6 +134,16 @@ The first edit_existing attempt stalled because the harness did not answer the a
 
 A Japanese insurer nayose request (synthetic policy/claims/payment data, each corrupted differently, near state-of-the-art matching) run through `tests/eval/scenarios/nayose.json`. Before agent tools the agent could only build an LLM demo or leave Python files it could not run. With P5 it asked four questions, got the contract approved, wrote and got approved three tools (generator, Fellegi–Sunter + EM matcher with Japanese normalization, evaluator), built 19 nodes in three tagged steps and verified all gates. On realistic corruption (300 people, 1,129 records): pairwise precision 0.948, recall 0.980, F1 0.964, blocking recall 0.993; it found and fixed a bug in its own evaluator before reporting. Monitoring these runs found and fixed harness problems: false secret matches, keys lost between edit batches, single-query catalog, a 16-turn cap, results too large for the chat, gate checks that did not wait, a 120 s tool limit, and text limits the model kept exceeding.
 
+### Nayose benchmark the agent does not grade (`tests/eval/nayose/`)
+
+That score came from data and an evaluator the agent wrote itself. `generate.py` (stdlib, seeded) now produces the data instead: three legacy exports in the input folder (policies in Shift_JIS from a mainframe and two newer systems, claims as an Excel UTF-8 export, bank-format payments), damaged the way real data is — OCR on paper forms, agency staff who skip or copy fields (同上), call-centre staff typing names they only heard (wrong kanji, guessed readings), a mainframe with no small kana that stores rare kanji as 〓, era dates (S45.03.12, 3450312), maiden names and addresses updated on some policies and not others, municipalities renamed by mergers, payers and claimants who are family members, look-alike strangers with the same name. The answer key (who every mention is, and how it was damaged) stays outside the agent's reach; `score.py` reports pairwise and B-cubed F1, recall per damage type and per system pair, and what false merges were. A naive normalized-kana match scores pairwise F1 0.80 (recall 0.20 on maiden names, 0.23 on guessed readings, 0.35 on OCR damage). Agent tools read such data through the node's read-only `input_folder`; the agent previews it with `comfy_input_files`.
+
+First real-agent run on it (deepseek-v4-flash): process all ✓, pairwise P 0.983 / R 0.694 / F1 0.814 (naive 0.80). It hid the whole pipeline in one 800-line tool, so the canvas showed three nodes; tools could not pass large data to each other. Now a downstream Agent Tool reads upstream run folders (`inputs["_run_folders"]`, read-only, this workflow's own runs only) and tools over 500 code lines are refused with "one tool per stage". 74% of its missed pairs had identical or near-identical kana: the loss was hard vetoes on damaged birth dates, not name similarity, so embeddings would not have helped much.
+
+Local judge check: Gemma 4 E4B (Q4_0, llama.cpp, 2.1 s/pair on an M4) on 200 hard pairs (100 missed true matches, 100 different people with similar names): 68% correct, precision of "same" 0.71, recall 0.61; a same-kana rule gets 56%. Too imprecise to merge on its own; useful as a suggestion with a reason for the person reviewing.
+
+**Review tab.** A tool writes `review.json` (`pairs` to decide, `groups` to check) in its run folder; the tab shows records side by side with differing fields marked, and the user's decisions (same / different / not sure; one person / has someone else; records that are not this person) are committed as the user's `labels/review.json` and passed to later tool runs as `inputs["review_labels"]`.
+
 ## MCP decision
 
 Community ComfyUI MCP servers can edit the live canvas, and Comfy's official local MCP server is in private testing and aimed at running workflows. We do not route Pi through a third-party MCP server: it would duplicate our bridge without its safeguards (atomic undoable batches, rollback, destructive-edit and Run confirmation, auto-commit) and would add someone else's custom node with broad canvas access. Pi gets the tools directly from our extension, which is the shortest path. Exposing our own tools over MCP (P6) is the way to let other agents use the studio.
@@ -162,3 +172,69 @@ Community ComfyUI MCP servers can edit the live canvas, and Comfy's official loc
 | Save signal | ✔ Pinia `workflowStore.$onAction` fires `saveWorkflow` exactly once per save (first save and later saves), followed by `POST /userdata/workflows/<name>.json`. | User-change commits hook `saveWorkflow`. |
 | Git isolation | ✔ Separate `--git-dir`, isolated config/HOME, `core.hooksPath=/dev/null`: model-written `.git/hooks`, `.git/config` and `.gitconfig` never executed; git never tracks `.git` paths. ~24 ms per commit, ~9 ms log, ~29 ms restore-as-commit over 500 commits. | Project repo design confirmed. |
 | Add-ons absent | ✔ Confirmed: with an empty Pi profile, `pi_chat_extension.ts` fails to load ("Install/configure sol-pi…"); with the user's profile it loads and Ponytail reports `full`. | Make them optional; this real-Pi startup check (no provider call) becomes a regression test. |
+
+### Everything on the canvas: benchmark nodes, a visible matching cascade, organized layouts
+
+- **Benchmark as nodes** (`nayose_nodes.py`, template `workflows/Studio - Nayose benchmark.json`): Nayose · 1 People → 2 Insurance activity → 3 Legacy export (×3, one per system, each with a damage setting) inside a *Synthetic data* subgraph, and **Score** (hidden answer key). Every stage shows its data as tables in the node. Score's results are never shown to the agent (bridge `agentOutputs`), and it has no outputs, so nothing can feed the key back into a tool: a visible run where the agent could read per-damage scores tuned itself to them (F1 0.87, not comparable).
+- **Agent Tool nodes show what each step did**: operation (approved description), every table file in and out with rows and columns, and output samples (`data_preview.py`). Tools chain files through `inputs["_run_folders"]` (read-only, this workflow's runs only); tools over 500 code lines are refused, so the work stays split into visible stages.
+- **The matching cascade as nodes**: compare tool (one level per field per pair) → **Learn weights** (Fellegi–Sunter EM over comparison patterns, review decisions as known answers, points capped at ±6 so no field becomes a veto) → **Decision rules** (YAML rules + scorecard + thresholds; flow with counts and each branch's condition; per-branch agreement with the user's reviews; spot-check examples) → **LLM suggestions** (local model server only; suggestions with reasons in Review, never decides) → **Cluster guard** (strongest merges first, refuses merges joining records decided different or exceeding a size cap; draws the whole decision tree) → result tool.
+- **Review tab**: pairs and groups from any `review.json`, decisions committed as the user's `labels/review.json` and passed to tools and to Decision rules / Learn weights.
+- **Layout is automatic**: after structural edits the canvas is laid out left to right by data flow, previews under their source, given nodes first in their column, step groups re-fitted (`arrangeGraph`, `organizeGraph`).
+- **Agent quality loop**: before reporting a data job the agent spot-checks every decision branch, runs checks that need no answer key (coverage per source, group sizes, contradictions in groups, review band size), reads the user's review agreement, names the node to fix, changes only it and compares before/after.
+- Fair visible runs (no answer-key feedback): run 2, decision in a Decision rules node with hand-picked points: F1 0.52 (families merged by shared address/phone/account, payments never linked). Run 3, with the quality loop: F1 0.829 (P 0.991, R 0.713), every source covered, household false merges 4,679 → 17, the agent fixed a specific rule itself; recall is limited by 26k pairs left in the review band.
+
+### Two levels: a row of stage cards, details inside
+
+The flat canvas showed how the workflow is built, not what happened to the data: overlapping nodes (layout used stale sizes), the same data three times per step (tool view, sample preview, count preview), settings drowning results, identical boxes, a 4,000 px canvas unreadable at any zoom, a tangle of preview links, and the decision logic buried mid-canvas. Now:
+
+- **Overview**: `{"op": "organize"}` packs each contract step into a native subgraph; the top level is one row of **stage cards** in step order (given data first, Score last). A card shows the step's purpose, its key numbers (rows in → out, decisions per outcome, customers and blocked merges, learned match share) and its gate status, coloured by kind (data, stage, decision). Double-click opens the stage. A spike confirmed DOM cards on subgraph nodes survive runs and reloads.
+- **Inside a stage**: the tool shows its operation, data in → out and a sample; previews only for what it does not show; gates may check a tool node directly (its result text is on the node). Decision rules shows the rules in effect even when they arrive over a link, every branch with its condition, the scorecard once.
+- Contract evidence, gates and outputs look inside stages (`deepNodes`, run ids `outer:inner`); `unpack` opens a stage for editing. Layout measures real heights.
+- Run 4 (cascade available; fair, no key feedback): F1 0.873 (P 0.930, R 0.822), 6/6 steps verified, the agent built standardize → candidates → Learn weights → Decision rules → Cluster guard → write result and tuned thresholds itself; family false merges rose again (1,199), the next thing to fix.
+
+### Standard stage names, a matching split, and steps that explain themselves
+
+- Matching jobs use the standard entity-resolution stages as contract step ids, which title the stage cards: profile_data → cleanse_and_standardize → find_candidates → deterministic_matching → probabilistic_matching → (review_uncertain) → consolidate_customers → publish_results.
+- **Profile data (EDA)** node: per column fill, distinct values and value patterns (9/A/a/カ/ｶ/ひ/漢 with runs shortened), so mixed formats show at a glance.
+- **Deterministic → probabilistic**: Decision rules without a scorecard leaves unsettled pairs `undecided`; a later Decision rules keeps earlier decisions ("decided by an earlier stage") and scores only the undecided ones.
+- **Every tool explains itself**: `explain = {steps: [{what, count}], examples: [{before, after, why}]}` is shown first on the node ("What this step did", "Before → after"); tools without it are flagged. Run details, file shapes and one sample come after.
+- Layout inside every stage, connectors on the left and right; nodes reserve the height their view uses (no spill-over); analysis treats a stage holding an output node as an output.
+- Run 5 (fair): F1 0.868, P 0.855, R 0.881, 2,418 customers vs 2,210 true; the agent built the standard stages, explained each tool, ran the quality loop (added two rules, tried and reverted a third that flooded review) and organized into stages itself. Next weakness: households merged (shared address/phone/account).
+
+### From black boxes to graphs: table nodes
+
+Why stages had become black boxes: ComfyUI ships no data nodes, so every data step was an agent-written script in one Agent Tool node; the visibility work (previews, shapes, the tool's own explanation) decorated the scripts instead of replacing them. Only our own nodes (Decision rules, Learn weights, Cluster guard) were transparent.
+
+Now data jobs are graphs of **table nodes** (`table_nodes.py`, a TABLE type between them): Read table, Stack roles, Concatenate tables, Filter rows, Join tables, Normalize text, Map values, Parse dates (Japanese eras, counted per form), Extract digits, Find candidate pairs (one pass per key), Compare fields (levels per field, Jaro-Winkler, date closeness), Attach group ids, Write table. Each node reports rows in → out and before → after for the values it changed, by itself. Agent Tools remain for gaps only and are coloured amber, as are stages that contain one. A stage card for a table-step stage shows its step count and rows in → out.
+
+`workflows/Studio - Nayose reference (no code).json` solves the benchmark with these nodes only, in the standard stages (built by `scripts/build_templates.sh`): F1 0.708 (P 0.58, R 0.90) with untuned starting rules — over-merging that is visible and editable on the canvas.
+
+### The graph mirrors the architecture
+
+Source systems are parallel lanes (stages sharing a number share a column), each cleaning its own kind of dirt, merging into candidates. Matching is a cascade with real branches: Decision rules has **matched**, **different** and **unsettled** outputs; the next stage judges only the unsettled pairs (`pairs_subset`); **Your review decisions** makes the user a node (Review-tab decisions → matched / different / open); **Cluster guard** takes every stage's matched and different branches (`matched_1..3`, `different_1..3`) and its tree shows which stage decided what. Nodes label their branches with their own titles (hidden prompt). The reference workflow is rebuilt this way.
+
+### Against classic deterministic matching (Trillium-style), and configurable rules
+
+Same benchmark data, scored by `score.py` (the reference built by `scripts/build_templates.sh`; `VARIANT=deterministic|patterns` in `build_reference.cjs` prints the alternatives):
+
+| approach | precision | recall | F1 |
+|---|---|---|---|
+| certain rules only (deterministic stage alone) | 0.997 | 0.246 | 0.394 |
+| Trillium-style match-pattern grid (9 patterns, comparison levels, no learning) | 0.990 | 0.414 | 0.583 |
+| reference cascade before (untuned starting rules) | 0.583 | 0.899 | 0.708 |
+| reference cascade now | **0.961** | **0.893** | **0.926** |
+| same, held-out seeds 11 / 23 | 0.956 / 0.970 | 0.882 / 0.886 | 0.917 / 0.926 |
+
+Trillium (Precisely) matches with parsing, Japan postal tables and hand-written linking rules (comparison routines + patterns), without learning. What gets the cascade further: surname/given name split, reading frequency (rare names count more), family-member and namesake cannot-links, a maiden-name rule, extra blocking on given name + birth date, and Fellegi–Sunter points learned on the pairs the certain rules leave open. The biggest single gain (F1 0.854 → 0.926) was a bug: EM learned "value missing" as −6 points because missing values cluster in non-matches, so pairs without evidence became cannot-links that blocked transitive merges. Missing is now no evidence (0 points, not learned). What Trillium has that the reference lacks: postal-table address parsing (chome/ban) and company-name standardization — 55% of what recall still misses is company bank accounts (`ｶ)ﾔﾏﾀﾞｼｮｳｼﾞ` vs 株式会社山田商事) that never become candidates.
+
+Configuring and monitoring: rules stay a YAML list on the Decision rules node (add a line, delete a line, or ask the agent); `skip: true` keeps a rule but stops applying it (`off` is a YAML 1.1 boolean, so it cannot be the key). The node's Rules in effect table is the monitor: per rule its pairs now, on that stage's previous run (⚠ for >20% and >20 pairs), and how the user's Review decisions agree with it; the text output carries the same so the agent sees shifts. Each run folder carries `rule_counts.json` and the node id, so two stages finishing in the same second no longer share a folder.
+
+### Reading the workflow at a glance
+
+Detail at the wrong zoom hid the story: a 35-node canvas of tables is unreadable at 40%. Now (`web/glance.js`):
+
+- **Wires say what flows along them.** Nodes report a label per output (`ui.aws_wires`: "5,480 rows", "9,418 matched", "learned scorecard"); the canvas draws it at the wire's midpoint. A wire out of a stage card shows what the stage's inner node sends out. Columns are 200 apart to leave room for the labels.
+- **Zoomed out (< 60%), each node is its title and one headline** (`ui.aws_headline`, else the first line of its text; a stage card uses its first summary line) instead of tables. In Vue nodes mode nodes are HTML above the canvas, so the headline is HTML scaled by 1/zoom; on the classic canvas ComfyUI hides DOM widgets at low quality, so it is drawn on the canvas. `ui` values must be lists: a bare string arrives split into characters.
+- **Finished work is packed into stage cards automatically** at the end of an agent reply once every contract step has nodes and the latest run succeeded (the agent can unpack to edit). Run 8 had left 35 loose nodes.
+- The chat footer reports the latest run, not any earlier failure in the turn.
+- **Why is this one customer?** Cluster guard writes `customers.json` (each customer's records with their values from the compared pairs, the merges that joined them — the chain, one per join, strongest first — and the merges refused into it, with the reason). The **Customers** sidebar tab lists customers largest first (where a wrong merge hides), searches names, readings and ids, and opens one to its records side by side (values unlike the rest marked), *Joined by* and *Kept apart*. Read-only; deciding stays in Review.

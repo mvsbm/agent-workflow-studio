@@ -286,6 +286,19 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.session.repo.log()[0]["message"], "Tool approved: upper")
         with self.assertRaisesRegex(ValueError, "comfy_propose_contract"):
             await self.session.agent_action("tool_approve", {})
+        giant = code + "".join(f"x{i} = {i}\n" for i in range(500))
+        await self.session.agent_action(
+            "workspace_write",
+            {
+                "path": "tools/upper.py",
+                "data": base64.b64encode(giant.encode()).decode(),
+                "expected_sha256": self.session.workspace.perform(
+                    "workspace_read", {"path": "tools/upper.py"}
+                )["sha256"],
+            },
+        )
+        with self.assertRaisesRegex(ValueError, "one tool per stage"):
+            await self.session.agent_action("tool_propose", proposal)
 
     async def test_contract_status_comes_from_browser_evidence(self):
         self.session.contract = CONTRACT
@@ -651,6 +664,32 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.assertRaises(web.HTTPForbidden):
                 pi_chat.local_request(req, browser=True)
+
+
+class InputFilesTests(unittest.TestCase):
+    def test_lists_and_previews_text_read_only_inside_the_input_folder(self):
+        from .pi_chat import input_files
+
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp) / "input"
+            (base / "nayose").mkdir(parents=True)
+            (base / "nayose" / "a.csv").write_bytes("名前,カナ\r\n山田,ﾔﾏﾀﾞ\r\n".encode("cp932"))
+            (base / "nayose" / "b.bin").write_bytes(b"\0\1")
+            (Path(temp) / "secret.txt").write_text("no")
+            listing = input_files(base, "nayose")
+            self.assertEqual(
+                [f["path"] for f in listing["files"]], ["nayose/a.csv", "nayose/b.bin"]
+            )
+            preview = input_files(base, "nayose/a.csv")
+            self.assertEqual((preview["encoding"], preview["lines"]), ("cp932", 2))
+            self.assertEqual(preview["head"], ["名前,カナ", "山田,ﾔﾏﾀﾞ"])
+            for bad, message in (
+                ("../secret.txt", "inside"),
+                ("nayose/b.bin", "Binary"),
+                ("x.csv", "No such"),
+            ):
+                with self.assertRaisesRegex(ValueError, message):
+                    input_files(base, bad)
 
 
 class PiChatRouteTests(unittest.IsolatedAsyncioTestCase):

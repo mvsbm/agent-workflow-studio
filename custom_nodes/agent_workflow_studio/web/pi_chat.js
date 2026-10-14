@@ -39,6 +39,19 @@ function createChat() {
     if(!result.files.length)filesList.append(element('p','No saved workspace files.'));
   }
   function downloadFile(result) {checkWorkflow();const bytes=Uint8Array.from(atob(result.data),c=>c.charCodeAt(0)),url=URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'})),link=element('a',null,{href:url,download:result.path.split('/').at(-1)});root.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  // Finished work reads as stage cards: once every contract step has nodes and the latest run
+  // succeeded, pack the loose steps (the agent can unpack a stage to change it).
+  async function organizeWhenDone() {
+    const graph=app.rootGraph??app.graph;
+    if(!graph?.nodes.some(node=>node.properties?.aws_contract_step&&!node.isSubgraphNode?.()))return;
+    const {contract}=await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/contract`).then(r=>r.json());
+    const steps=(contract?.steps??[]).map((step,i)=>({id:step.id,title:`${i+1} · ${step.purpose}`}));
+    const built=new Set(graph.nodes.map(node=>node.properties?.aws_contract_step));
+    if(!steps.length||!steps.every(step=>built.has(step.id)))return;
+    await bridge.handle('edit',{operations:[{op:'organize'}],contract_steps:steps});
+    await commitWorkflow('Organize the finished steps into stage cards','agent');
+    row('notice','Organized the finished steps into stage cards. Double-click a card to see inside.');
+  }
   function executionSummary() {return turnFailed?'Native workflow failed; inspect execution errors.':turnCompleted?'Native node execution succeeded; inspect outputs for usefulness.':turnSubmitted?'Native workflow submitted; completion has not been verified.':'No native workflow was submitted by Pi this turn.';}
 
   const nativeOutputs=new Map();
@@ -172,7 +185,8 @@ function createChat() {
       }else if(record.type==='tool_execution_end'){
         const tool=toolRows.get(record.toolCallId);if(tool){tool.summary.textContent=`${record.isError?'Failed':'Done'} · ${record.toolName}`;tool.body.textContent=textOf(record.result).slice(0,16000);}scroll();
       }else if(record.type==='comfy_action'){
-        try{checkWorkflow();const result=await bridge.handle(record.action,record.args);if(record.action==='edit')await commitWorkflow(record.args?.summary||'Agent canvas edit','agent');if(current===generation&&busy&&!stopped){if(record.action==='run'&&result.submitted)turnSubmitted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.completed===true&&result.status?.status_str==='success')turnCompleted=true;if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.status_str==='error')turnFailed=true;if(record.action==='results')showNativeFiles(result);}if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,result});}
+        try{checkWorkflow();const result=await bridge.handle(record.action,record.args);if(record.action==='edit')await commitWorkflow(record.args?.summary||'Agent canvas edit','agent');if(current===generation&&busy&&!stopped){if(record.action==='run'&&result.submitted){turnSubmitted=true;turnCompleted=false;turnFailed=false;}// the footer reports the latest run
+        if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.completed===true&&result.status?.status_str==='success'){turnCompleted=true;turnFailed=false;}if(record.action==='results'&&turnSubmitted&&result.submitted&&result.status?.status_str==='error'){turnFailed=true;turnCompleted=false;}if(record.action==='results')showNativeFiles(result);}if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,result});}
         catch(error){if(current===generation&&busy&&!stopped&&socket.readyState===WebSocket.OPEN)send({type:'comfy_result',id:record.id,error:error.message});}
       }else if(record.type==='extension_ui_request'){
         if(['confirm','select','input','editor'].includes(record.method))permission(record,(response,notify)=>{if(notify!==false&&current===generation&&socket.readyState===WebSocket.OPEN)send({type:'extension_ui_response',id:record.id,...response});});
@@ -180,12 +194,12 @@ function createChat() {
         else if(record.method==='setStatus'&&record.statusKey==='comfy-addons'){try{showAddons(JSON.parse(record.statusText));}catch{}}
         else if(record.method==='set_editor_text')input.value=record.text??'';
       }else if(record.type==='agent_settled'||record.type==='command_handled'){
-        busy=false;if(record.type==='agent_settled')archiveMessage('notice',executionSummary());else saveArchive();status.textContent=record.type==='command_handled'?'Local Pi command finished.':`Reply finished · ${executionSummary()}`;if(record.type==='agent_settled'&&turnWrites&&!turnSubmitted)row('notice','Saved workspace files only; Pi did not submit a native workflow this turn. They are not node execution outputs.');if(filesSupported)requestFiles();settleDialogs();update();scroll();
+        busy=false;if(record.type==='agent_settled'){archiveMessage('notice',executionSummary());if(turnCompleted)organizeWhenDone().catch(error=>row('notice',`Could not organize into stages: ${error.message}`));}else saveArchive();status.textContent=record.type==='command_handled'?'Local Pi command finished.':`Reply finished · ${executionSummary()}`;if(record.type==='agent_settled'&&turnWrites&&!turnSubmitted)row('notice','Saved workspace files only; Pi did not submit a native workflow this turn. They are not node execution outputs.');if(filesSupported)requestFiles();settleDialogs();update();scroll();
       }else if(record.type==='chat_error'||(record.type==='response'&&record.success===false)){
         row('notice',record.error??'Pi command failed.');status.textContent=record.error??'Pi command failed.';configNote.textContent=record.error??'Pi command failed.';configuring=false;busy=false;connecting=false;pendingText=null;settleDialogs();update();
       }
     });
-    socket.addEventListener('close',()=>{if(current!==generation)return;ready=false;connecting=false;configuring=false;busy=false;pendingText=null;saveArchive();refreshFiles.disabled=false;filesSupported=false;filesList.replaceChildren();filesSummary.textContent='Workflow files';settleDialogs();status.textContent='Pi disconnected. Send a message to start a new session.';update();});
+    socket.addEventListener('close',event=>{if(current!==generation)return;ready=false;connecting=false;configuring=false;busy=false;pendingText=null;saveArchive();refreshFiles.disabled=false;filesSupported=false;filesList.replaceChildren();filesSummary.textContent='Workflow files';settleDialogs();status.textContent=`Pi disconnected${event.code&&event.code!==1000?` (code ${event.code})`:''}. Send a message to start a new session.`;update();});
     socket.addEventListener('error',()=>{if(current===generation)status.textContent='Cannot connect to Pi. Check the local ComfyUI/Pi backend.';});
   }
   async function reset() {if(configuring||resetting)return;if(busy&&!await confirm('Start a new chat?','Stop Pi and clear this conversation? Your native canvas will be preserved.'))return;resetting=true;update();if(busy){generation++;settleDialogs();socket?.close();socket=null;ready=false;connecting=false;busy=false;}await saveArchive();if(archiveError&&!await confirm('Start without saving chat history?','History could not be saved. Copy this conversation first. Start New chat and discard its unsaved messages?')){resetting=false;update();return;}archive=null;archiveAssistant=null;generation++;settleDialogs();socket?.close();socket=null;ready=false;connecting=false;busy=false;pendingText=null;assistant=null;toolRows.clear();nativeOutputs.clear();filesSupported=false;refreshFiles.disabled=false;filesList.replaceChildren();filesSummary.textContent='Workflow files';filesNote.textContent='Workspace files are not native node execution outputs.';log.replaceChildren(empty);status.textContent='New chat. Your canvas is unchanged.';addons.textContent='Extensions load on connect';addons.title='';skills.textContent='ComfyUI skills load on connect';skills.title='';boundWorkflow=null;activeConfig=undefined;configuring=false;refreshRunOption();model.textContent=preferences().pi_config?`${preferences().pi_config.provider} · ${preferences().pi_config.model}`:'Pi defaults · click to choose provider / model';workspace.textContent='Files bind to the workflow on connect';workspace.title='';resetting=false;update();}
