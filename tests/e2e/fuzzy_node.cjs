@@ -72,11 +72,13 @@ const artifacts = process.env.ARTIFACTS;
     // Harden: the plan becomes a native subgraph titled with the goal; later runs call no model.
     const hardened = await page.evaluate(async () => {
       const app = window.comfyAPI.app.app;
-      const {hardenStep} = await import('/extensions/agent_workflow_studio/fuzzy_steps.js');
       const stage = () => app.graph.nodes[0].subgraph; // the work is inside the step's stage
       const types = () => stage().nodes.map(n => n.type);
       const run = cmd => app.extensionManager.command.execute(cmd);
-      await hardenStep(stage().nodes.find(n => n.type === 'AgentWorkflowFuzzyNode'));
+      // The agent proposes hardening; the user approves (confirm), exactly as from the chat.
+      const {createCanvasBridge: bridgeFor} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      const fuzzyId = stage().nodes.find(n => n.type === 'AgentWorkflowFuzzyNode').id;
+      await bridgeFor(app, window.comfyAPI.api.api, {confirm: async () => true}).handle('harden', {stage: 'loud', node: fuzzyId});
       // Hardening is exactly one undo step: undo restores the fuzzy step, redo re-applies it.
       await run('Comfy.Undo');
       await new Promise(r => setTimeout(r, 400));

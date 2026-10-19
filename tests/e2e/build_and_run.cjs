@@ -168,6 +168,20 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     assert.deepEqual(scaffold.before, ['Stub (input → outputs)', 'Check on t']);
     assert.deepEqual(scaffold.after, ['AgentWorkflowCheck', 'StringConcatenate']);
     assert.ok(scaffold.checkFollows, 'the Check reads what now feeds its output');
+    // The user's own nodes from before the contract: a step adopts them, wiring kept.
+    const adopted = await page.evaluate(async () => {
+      const app = window.comfyAPI.app.app, L = window.LiteGraph;
+      app.graph.clear();
+      const src = L.createNode('PrimitiveString'), out = L.createNode('PreviewAny');
+      app.graph.add(src);
+      app.graph.add(out);
+      src.connect(0, out, 0);
+      const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      await createCanvasBridge(app, window.comfyAPI.api.api).handle('skeleton', {steps: [{id: 'existing', adopts: [src.id, out.id]}]});
+      const stage = app.graph.nodes.find(n => n.properties?.aws_stage === 'existing');
+      return {top: app.graph.nodes.length, inside: stage.subgraph.nodes.map(n => n.type).sort(), wires: stage.subgraph.links.size ?? Object.keys(stage.subgraph.links).length};
+    });
+    assert.deepEqual(adopted, {top: 1, inside: ['PreviewAny', 'PrimitiveString'], wires: 1});
     assert.deepEqual(errors, []);
     console.log('PASS build_and_run');
   } catch (error) {

@@ -76,5 +76,13 @@ mkdir -p "$APP_HOME/state/comfy-user/default/workflows"
 cp -n "$PACKAGE_ROOT"/workflows/*.json "$APP_HOME/state/comfy-user/default/workflows/" || true
 
 printf '\nInstalled Agent Workflow Studio at: %s\n' "$APP_HOME"
-command -v pi >/dev/null || printf 'Note: the Pi CLI (`pi`) is not on PATH. Install it, or set AGENT_WORKFLOW_STUDIO_PI_CLI.\n'
+# The agent runs on the Pi CLI. Without one on PATH, install the pinned version privately.
+if ! command -v pi >/dev/null && [[ -z "${AGENT_WORKFLOW_STUDIO_PI_CLI:-}" ]]; then
+    if command -v npm >/dev/null; then
+        npm install --prefix "$APP_HOME/pi" --no-audit --no-fund --silent "@earendil-works/pi-coding-agent@$PI_VERSION" \
+            && printf 'Installed the Pi CLI %s in %s/pi\n' "$PI_VERSION" "$APP_HOME"
+    else
+        printf 'Note: the Pi CLI is needed for the agent. Install Node.js (npm), then run install.sh again.\n'
+    fi
+fi
 printf 'Start it with: %s/run-local.sh\n' "$PACKAGE_ROOT"

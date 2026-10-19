@@ -102,14 +102,13 @@ def stage_checked(wf: dict) -> list:
     ]
 
 
-@rule(RELEASE, "Choose the workflow's inputs and outputs in App mode.")
+@rule(
+    RELEASE,
+    "Choose the workflow's outputs (and any inputs) in App mode, or with the signature edit.",
+)
 def has_signature(wf: dict) -> list:
     linear = (wf.get("extra") or {}).get("linearData") or {}
-    return (
-        []
-        if linear.get("inputs") and linear.get("outputs")
-        else [("workflow", "has no inputs/outputs chosen")]
-    )
+    return [] if linear.get("outputs") else [("workflow", "has no outputs chosen for its API")]
 
 
 @rule(RELEASE, "Harden the step into deterministic nodes, or accept its agent-written logic.")

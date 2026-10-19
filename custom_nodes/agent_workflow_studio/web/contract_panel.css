@@ -8,3 +8,5 @@
 .aw-contract-chip { font-size: 0.7rem; font-weight: 600; color: #fff; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
 .aw-contract-warning { margin: 0; font-size: 0.85rem; color: var(--p-yellow-400, #e0b84a); }
 .aw-contract pre { margin: 4px 0 0; white-space: pre-wrap; font-size: 0.75rem; background: var(--comfy-input-bg, #222); padding: 8px; border-radius: 4px; }
+.aw-contract-api { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.aw-contract-call { font-size: 11px; white-space: pre-wrap; word-break: break-all; opacity: 0.85; }

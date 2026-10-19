@@ -1,5 +1,5 @@
 {
- "id": "88b499a5-3ecb-4653-9538-404abe6782b3",
+ "id": "c2396f68-5562-40fd-980e-adedc56ba3e3",
  "revision": 0,
  "last_node_id": 60,
  "last_link_id": 107,
@@ -389,7 +389,7 @@
   },
   {
    "id": 9,
-   "type": "4967cd8b-88f2-4c04-91c3-3321573c4bab",
+   "type": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
    "pos": [
     0,
     160
@@ -450,7 +450,7 @@
   },
   {
    "id": 41,
-   "type": "c66bfe9e-a010-4a43-961d-ad6a60ff6634",
+   "type": "3467850f-f591-4a0d-9670-141570c15307",
    "pos": [
     461.821875,
     160
@@ -510,7 +510,7 @@
   },
   {
    "id": 43,
-   "type": "6653cbbf-be13-4d60-be64-05acca43c069",
+   "type": "664487c3-8d37-4236-9454-e2a9c476feae",
    "pos": [
     921.821875,
     160
@@ -568,7 +568,7 @@
   },
   {
    "id": 45,
-   "type": "86f94ee5-3ade-4450-9308-f1f690166392",
+   "type": "4bd6af95-da3f-4ca2-b2e8-d4b755bc2717",
    "pos": [
     921.821875,
     470
@@ -626,7 +626,7 @@
   },
   {
    "id": 47,
-   "type": "1053e2b0-8f7e-4be7-aaf9-0b0ea424ed7e",
+   "type": "af8a1d5c-abb5-44e9-b9b7-1e5200d7427b",
    "pos": [
     921.821875,
     780
@@ -684,7 +684,7 @@
   },
   {
    "id": 49,
-   "type": "af9535c5-88da-419c-9ae2-aa1567db1b0a",
+   "type": "95d582c0-fe26-47d3-b520-666c34c4c36e",
    "pos": [
     1381.821875,
     160
@@ -757,7 +757,7 @@
   },
   {
    "id": 51,
-   "type": "25bba3d3-e3bb-4c31-a212-df36cbdd3c2d",
+   "type": "5358613d-4b3d-40d5-9c5b-7b1b62f83818",
    "pos": [
     1841.821875,
     160
@@ -825,7 +825,7 @@
   },
   {
    "id": 53,
-   "type": "946b738f-f26b-4323-bc24-513e70045e7e",
+   "type": "f58490b7-58d6-4f8c-9117-c3a8c9f08a1f",
    "pos": [
     2301.821875,
     160
@@ -894,7 +894,7 @@
   },
   {
    "id": 55,
-   "type": "4150a74d-5346-4388-99b6-7b1d4d7ae161",
+   "type": "a5f8cc1c-ab5f-4c66-8b9f-cf2a4a970a30",
    "pos": [
     2761.821875,
     160
@@ -953,7 +953,7 @@
   },
   {
    "id": 57,
-   "type": "a2919469-867d-4047-b1ff-0feaf0f259dd",
+   "type": "aee889df-590e-404e-8afa-493964583c1f",
    "pos": [
     3221.821875,
     160
@@ -1041,7 +1041,7 @@
   },
   {
    "id": 59,
-   "type": "3c6a1a5b-b669-4176-8113-e6f7539cb3fb",
+   "type": "ffe060dd-8c50-4cfd-bece-5f4932404b36",
    "pos": [
     3681.821875,
     160
@@ -1271,7 +1271,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "4967cd8b-88f2-4c04-91c3-3321573c4bab",
+    "id": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1302,7 +1302,7 @@
     },
     "inputs": [
      {
-      "id": "b14001e2-9720-4958-a346-ea384ade292e",
+      "id": "55324fcf-49c5-4024-9e90-62de1cc2f5c0",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -1320,7 +1320,7 @@
     ],
     "outputs": [
      {
-      "id": "4021ee90-c279-4f12-a4d1-ed5066f7f103",
+      "id": "b7005eaa-a7f3-4f99-ac4e-f2a5e9c4434d",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4121,7 +4121,7 @@
     "extra": {}
    },
    {
-    "id": "c66bfe9e-a010-4a43-961d-ad6a60ff6634",
+    "id": "3467850f-f591-4a0d-9670-141570c15307",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -4152,7 +4152,7 @@
     },
     "inputs": [
      {
-      "id": "163e1d76-79c5-4721-96e1-a67be376b959",
+      "id": "29e4eb82-1685-4f63-b4e9-b314ca0409e3",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4167,7 +4167,7 @@
     ],
     "outputs": [
      {
-      "id": "78d3114f-7e27-4082-9eb3-fc51058891b2",
+      "id": "1dc4753e-eb5e-402f-9f7e-3877ff0a2f71",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4713,8 +4713,8 @@
        482
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -4758,17 +4758,20 @@
       "title": "Check · folder",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "folder"
+       "aws_watches": "folder",
+       "aws_headline": "✓ passed · 1 · Profile data gives data · 12 row(s)"
       },
       "widgets_values": [
        "non_empty",
        "1",
-       "1 · Profile data gives data"
+       "1 · Profile data gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "non_empty",
        "expect": "1",
-       "says": "1 · Profile data gives data"
+       "says": "1 · Profile data gives data",
+       "table_view": ""
       }
      }
     ],
@@ -4802,7 +4805,7 @@
     "extra": {}
    },
    {
-    "id": "6653cbbf-be13-4d60-be64-05acca43c069",
+    "id": "664487c3-8d37-4236-9454-e2a9c476feae",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -4833,7 +4836,7 @@
     },
     "inputs": [
      {
-      "id": "5e72d832-deae-4854-99af-6e136d23e474",
+      "id": "94d39afe-1f47-43ad-b78a-fc50679cbb96",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4848,7 +4851,7 @@
     ],
     "outputs": [
      {
-      "id": "99821f1e-1f04-49b2-848b-ede98768d421",
+      "id": "3d814baf-36bb-477c-a246-8b35d728c480",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -6871,8 +6874,8 @@
        506
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -6916,17 +6919,20 @@
       "title": "Check · table",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "table"
+       "aws_watches": "table",
+       "aws_headline": "✓ passed · 2 · Policy system gives data · 5,480 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "2 · Policy system gives data"
+       "2 · Policy system gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "2 · Policy system gives data"
+       "says": "2 · Policy system gives data",
+       "table_view": ""
       }
      }
     ],
@@ -7016,7 +7022,7 @@
     "extra": {}
    },
    {
-    "id": "86f94ee5-3ade-4450-9308-f1f690166392",
+    "id": "4bd6af95-da3f-4ca2-b2e8-d4b755bc2717",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -7047,7 +7053,7 @@
     },
     "inputs": [
      {
-      "id": "afc78de9-530d-4f68-8caa-11b8bccecc4a",
+      "id": "ebf02bbc-18f7-4afd-951a-e0f8f90e2423",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -7062,7 +7068,7 @@
     ],
     "outputs": [
      {
-      "id": "f286644a-f562-4a59-b804-6eaa8986cc25",
+      "id": "65aa01de-dfbb-4a38-9b9b-941b44c87460",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -9019,8 +9025,8 @@
        506
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -9064,17 +9070,20 @@
       "title": "Check · table",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "table"
+       "aws_watches": "table",
+       "aws_headline": "✓ passed · 2 · Claims system gives data · 2,699 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "2 · Claims system gives data"
+       "2 · Claims system gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "2 · Claims system gives data"
+       "says": "2 · Claims system gives data",
+       "table_view": ""
       }
      }
     ],
@@ -9164,7 +9173,7 @@
     "extra": {}
    },
    {
-    "id": "1053e2b0-8f7e-4be7-aaf9-0b0ea424ed7e",
+    "id": "af8a1d5c-abb5-44e9-b9b7-1e5200d7427b",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -9195,7 +9204,7 @@
     },
     "inputs": [
      {
-      "id": "672ed251-8479-4e3f-a6e5-a493b273f098",
+      "id": "1ad03d7b-9a27-4f52-bcc6-cf1d030d6f69",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -9210,7 +9219,7 @@
     ],
     "outputs": [
      {
-      "id": "6042ff2c-b8cd-4bb0-a03a-9b8771c2bc89",
+      "id": "e7e662f0-135e-4b01-82ba-abb7186264ba",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -10015,8 +10024,8 @@
        602
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -10060,17 +10069,20 @@
       "title": "Check · table",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "table"
+       "aws_watches": "table",
+       "aws_headline": "✓ passed · 2 · Payment system gives data · 5,396 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "2 · Payment system gives data"
+       "2 · Payment system gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "2 · Payment system gives data"
+       "says": "2 · Payment system gives data",
+       "table_view": ""
       }
      }
     ],
@@ -10128,7 +10140,7 @@
     "extra": {}
    },
    {
-    "id": "af9535c5-88da-419c-9ae2-aa1567db1b0a",
+    "id": "95d582c0-fe26-47d3-b520-666c34c4c36e",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -10159,7 +10171,7 @@
     },
     "inputs": [
      {
-      "id": "a0cf191c-b172-4345-9981-a31c6d576e2a",
+      "id": "98a98d48-8c65-4fea-9380-b45cf802aeeb",
       "name": "a",
       "type": "TABLE",
       "linkIds": [
@@ -10172,7 +10184,7 @@
       ]
      },
      {
-      "id": "9db534d1-3bfa-4f08-965a-883c25b6f9c0",
+      "id": "58fce19f-1d27-43f9-bf7b-2a0910774452",
       "name": "b",
       "type": "TABLE",
       "linkIds": [
@@ -10186,7 +10198,7 @@
       ]
      },
      {
-      "id": "ced1dc23-c8fd-489e-8174-6c0bf336fb1a",
+      "id": "356b4073-81dc-45ce-a6d2-4eaf3b5b3432",
       "name": "c",
       "type": "TABLE",
       "linkIds": [
@@ -10202,7 +10214,7 @@
     ],
     "outputs": [
      {
-      "id": "ea485f99-cb1b-4783-be9b-23b92064e345",
+      "id": "e37fb61c-34b3-4749-ba15-78e78f074483",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -10215,7 +10227,7 @@
       ]
      },
      {
-      "id": "9ecb008b-40fa-46a6-bfe2-539584339387",
+      "id": "26f6ff0c-c5b3-45a8-91e6-f3d55f0c6bcb",
       "name": "data",
       "type": "PAIRS",
       "linkIds": [
@@ -10855,8 +10867,8 @@
        518
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -10900,17 +10912,20 @@
       "title": "Check · table",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "table"
+       "aws_watches": "table",
+       "aws_headline": "✓ passed · 3 · Find candidates gives data · 13,575 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "3 · Find candidates gives data"
+       "3 · Find candidates gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "3 · Find candidates gives data"
+       "says": "3 · Find candidates gives data",
+       "table_view": ""
       }
      }
     ],
@@ -10992,7 +11007,7 @@
     "extra": {}
    },
    {
-    "id": "25bba3d3-e3bb-4c31-a212-df36cbdd3c2d",
+    "id": "5358613d-4b3d-40d5-9c5b-7b1b62f83818",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11023,7 +11038,7 @@
     },
     "inputs": [
      {
-      "id": "9587926c-bb66-4d35-997b-5c01b5c3ae25",
+      "id": "115f0532-c36c-4235-b19d-779f87c077b8",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -11039,7 +11054,7 @@
     ],
     "outputs": [
      {
-      "id": "e519445f-da34-4ff8-b73d-027f3800ee40",
+      "id": "ec9212c5-11fe-46fc-819d-e2a701e5ff7f",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -11052,7 +11067,7 @@
       ]
      },
      {
-      "id": "5b4149d0-695a-43d7-a8d5-36af1232ba2a",
+      "id": "643b6b92-1ca2-4d0e-bd6f-a97292f85c6c",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -11065,7 +11080,7 @@
       ]
      },
      {
-      "id": "27a8939e-42c6-4f54-bdb0-6edb164c4c00",
+      "id": "d3b5b18b-2161-443c-bb58-1c17797286d8",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -11577,8 +11592,8 @@
        820
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -11622,17 +11637,20 @@
       "title": "Check · matched",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "matched"
+       "aws_watches": "matched",
+       "aws_headline": "✓ passed · 4 · Deterministic matching gives data · 9,418 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "4 · Deterministic matching gives data"
+       "4 · Deterministic matching gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "4 · Deterministic matching gives data"
+       "says": "4 · Deterministic matching gives data",
+       "table_view": ""
       }
      }
     ],
@@ -11682,7 +11700,7 @@
     "extra": {}
    },
    {
-    "id": "946b738f-f26b-4323-bc24-513e70045e7e",
+    "id": "f58490b7-58d6-4f8c-9117-c3a8c9f08a1f",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11713,7 +11731,7 @@
     },
     "inputs": [
      {
-      "id": "3eccfdd5-5ab4-4db7-83a6-5b591aee9884",
+      "id": "f7d6a80b-5b81-4944-8143-50795b42a33a",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -11729,7 +11747,7 @@
     ],
     "outputs": [
      {
-      "id": "adef9f9b-a09e-45f3-8d0f-020b510cc69a",
+      "id": "573c055e-0358-47fb-ad30-133d689781aa",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -11742,7 +11760,7 @@
       ]
      },
      {
-      "id": "b967be83-8986-43d2-9457-a784da8230ce",
+      "id": "a2f1280d-5c12-474f-b076-f1de60774d4a",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -11755,7 +11773,7 @@
       ]
      },
      {
-      "id": "58bab410-e408-4802-9559-ee7c20fd3112",
+      "id": "6d9ef42e-596b-4497-9aad-a28caaf1bb0e",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -12683,8 +12701,8 @@
        820
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -12728,17 +12746,20 @@
       "title": "Check · matched",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "matched"
+       "aws_watches": "matched",
+       "aws_headline": "✓ passed · 5 · Probabilistic matching gives data · 37,028 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "5 · Probabilistic matching gives data"
+       "5 · Probabilistic matching gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "5 · Probabilistic matching gives data"
+       "says": "5 · Probabilistic matching gives data",
+       "table_view": ""
       }
      }
     ],
@@ -12804,7 +12825,7 @@
     "extra": {}
    },
    {
-    "id": "4150a74d-5346-4388-99b6-7b1d4d7ae161",
+    "id": "a5f8cc1c-ab5f-4c66-8b9f-cf2a4a970a30",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -12835,7 +12856,7 @@
     },
     "inputs": [
      {
-      "id": "cc5f60b8-ff87-48ca-a9f2-595f2b9ca940",
+      "id": "bf0ae7d4-2e6e-4919-bb58-78e5e4a4e023",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -12850,7 +12871,7 @@
     ],
     "outputs": [
      {
-      "id": "cf79c3b5-37ea-420a-bd98-9c71ca94ea1a",
+      "id": "d848de98-0b3b-44f0-a2fd-09166ea73199",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -12863,7 +12884,7 @@
       ]
      },
      {
-      "id": "9b347966-89a2-43ec-be24-76d0caf56d37",
+      "id": "f0259cf5-eed5-40fe-9e38-ae74a3f94ebe",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -13081,8 +13102,8 @@
        498
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -13126,17 +13147,20 @@
       "title": "Check · matched",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "matched"
+       "aws_watches": "matched",
+       "aws_headline": "✗ failed · 6 · Your review gives data · 0 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "6 · Your review gives data"
+       "6 · Your review gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "6 · Your review gives data"
+       "says": "6 · Your review gives data",
+       "table_view": ""
       }
      }
     ],
@@ -13178,7 +13202,7 @@
     "extra": {}
    },
    {
-    "id": "a2919469-867d-4047-b1ff-0feaf0f259dd",
+    "id": "aee889df-590e-404e-8afa-493964583c1f",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -13209,7 +13233,7 @@
     },
     "inputs": [
      {
-      "id": "7f77a0b8-e57f-4bce-837d-ae5e17dc687f",
+      "id": "1e4595a1-0bcd-489c-b386-5246cbe9de76",
       "name": "matched_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13223,7 +13247,7 @@
       ]
      },
      {
-      "id": "2a3a97ec-490c-4ad0-8eba-a89d0e364d79",
+      "id": "1f1d317e-d26d-4fff-80f3-eb7536d2cac4",
       "name": "matched_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13237,7 +13261,7 @@
       ]
      },
      {
-      "id": "74f62a07-9d47-494a-b7e5-e6a5e9d72430",
+      "id": "82549e74-aec4-448e-ae5c-dca245e8b846",
       "name": "matched_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13251,7 +13275,7 @@
       ]
      },
      {
-      "id": "c0d719b0-3516-4ee0-a3d0-c7b9c13f7581",
+      "id": "a64344f3-c5ac-487d-a9ab-436762db5fee",
       "name": "different_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13265,7 +13289,7 @@
       ]
      },
      {
-      "id": "309a4417-c6bb-4278-b68f-a58814295240",
+      "id": "6de4983e-c36e-48c9-8857-c9212c4977cb",
       "name": "different_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13279,7 +13303,7 @@
       ]
      },
      {
-      "id": "fcfda10a-d443-4778-80ed-31cd3f5f42bd",
+      "id": "230585b5-30fd-400e-8ed7-bc356393eb4d",
       "name": "different_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13295,7 +13319,7 @@
     ],
     "outputs": [
      {
-      "id": "86dbcf02-5449-42ef-952f-70ff53d2c5a4",
+      "id": "862c6d61-6097-42a9-8603-c5b0b06ffc87",
       "name": "customers",
       "type": "CUSTOMERS",
       "linkIds": [
@@ -13558,7 +13582,7 @@
            "",
            "phone=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002784/holder and policies/0002484/insured, decided differ…"
+           "would join policies/0002784/holder and policies/0002484/holder, decided differe…"
           ],
           [
            "p16501",
@@ -13613,7 +13637,7 @@
            "",
            "phone=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002943/holder and claims/0001364/insured, decided different"
+           "would join policies/0002943/holder and policies/0002741/holder, decided differe…"
           ],
           [
            "p24905",
@@ -13809,8 +13833,8 @@
        782
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -13854,17 +13878,20 @@
       "title": "Check · customers",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "customers"
+       "aws_watches": "customers",
+       "aws_headline": "✓ passed · 7 · Consolidate customers gives data · 13,385 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
        "1",
-       "7 · Consolidate customers gives data"
+       "7 · Consolidate customers gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
        "expect": "1",
-       "says": "7 · Consolidate customers gives data"
+       "says": "7 · Consolidate customers gives data",
+       "table_view": ""
       }
      }
     ],
@@ -13938,7 +13965,7 @@
     "extra": {}
    },
    {
-    "id": "3c6a1a5b-b669-4176-8113-e6f7539cb3fb",
+    "id": "ffe060dd-8c50-4cfd-bece-5f4932404b36",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -13969,7 +13996,7 @@
     },
     "inputs": [
      {
-      "id": "055086dd-bd54-4737-b49f-7d9599f0ed58",
+      "id": "38a7e75f-4083-42e8-b819-23a3082bb11a",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -13982,7 +14009,7 @@
       ]
      },
      {
-      "id": "ba8df098-6d6d-4bf7-92f2-739f4d74fffb",
+      "id": "98757692-00bd-4c68-a532-4dc6219b42be",
       "name": "groups",
       "type": "CUSTOMERS,DICT",
       "linkIds": [
@@ -13997,7 +14024,7 @@
     ],
     "outputs": [
      {
-      "id": "92684e98-f280-4a43-a1b4-c1cc7b5ab8e4",
+      "id": "b17dc10b-b814-4df7-bb62-952398271f25",
       "name": "path",
       "type": "STRING",
       "linkIds": [
@@ -14415,8 +14442,8 @@
        506
       ],
       "size": [
-       270,
-       106
+       560,
+       410
       ],
       "flags": {},
       "order": 0,
@@ -14460,17 +14487,20 @@
       "title": "Check · path",
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
-       "aws_watches": "path"
+       "aws_watches": "path",
+       "aws_headline": "✓ passed · 8 · Publish results gives data · 34 row(s)"
       },
       "widgets_values": [
        "non_empty",
        "1",
-       "8 · Publish results gives data"
+       "8 · Publish results gives data",
+       ""
       ],
       "widgets_values_named": {
        "kind": "non_empty",
        "expect": "1",
-       "says": "8 · Publish results gives data"
+       "says": "8 · Publish results gives data",
+       "table_view": ""
       }
      }
     ],
@@ -14528,6 +14558,17 @@
    "offset": [
     446.30337499999996,
     595.0305
+   ]
+  },
+  "linearData": {
+   "inputs": [
+    [
+     "9",
+     "seed"
+    ]
+   ],
+   "outputs": [
+    "59"
    ]
   }
  },

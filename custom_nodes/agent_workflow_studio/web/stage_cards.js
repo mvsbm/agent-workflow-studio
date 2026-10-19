@@ -67,7 +67,9 @@ async function refresh() {
   for (const node of stages) {
     ensureCard(node);
     const step = steps[node.properties?.aws_stage];
-    node.properties = {...node.properties, aws_card: {purpose: step?.purpose ?? '', lines: stageSummary(node.subgraph?.nodes ?? []), state: step?.state ?? ''}};
+    // A step waiting on the user's answer says so first.
+    const waiting = (step?.waiting ?? []).map(q => `⏸ Waiting on your answer: ${q}`);
+    node.properties = {...node.properties, aws_card: {purpose: step?.purpose ?? '', lines: [...waiting, ...stageSummary(node.subgraph?.nodes ?? [])], state: step?.state ?? ''}};
     render(node);
   }
   graph.setDirtyCanvas?.(true, true);

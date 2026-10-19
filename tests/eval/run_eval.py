@@ -74,7 +74,63 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
             failures.append("no nayose_result.csv written by this run")
         elif f1 < task.get("expect_pairwise_f1", 0):
             failures.append(f"pairwise F1 {f1} below {task['expect_pairwise_f1']}")
+    if task.get("expect_file"):
+        check = r.get("file_check") or {}
+        if not check.get("path"):
+            failures.append(f"no {task['expect_file']['name']} written by this run")
+        elif check["matched"] < check["needed"]:
+            failures.append(
+                f"{task['expect_file']['name']}: {check['matched']}/{check['total']} expected rows "
+                f"(need {check['needed']}); missing e.g. {check['missing'][:2]}"
+            )
     return not failures, failures
+
+
+def _norm(value: object) -> str:
+    """Compare cells loosely: case, spaces, currency marks, thousands separators, trailing .0."""
+    text = str(value or "").strip().lower().replace("¥", "").replace("円", "").replace(",", "")
+    try:
+        number = float(text)
+        return str(int(number)) if number == int(number) else str(number)
+    except ValueError:
+        return text
+
+
+def check_file(output: Path, expect: dict, started: float) -> dict:
+    """The newest file of that name written by this run, and how many expected rows it holds."""
+    import csv
+    import io
+
+    found = sorted(
+        (p for p in output.rglob(expect["name"]) if p.stat().st_mtime >= started),
+        key=lambda p: p.stat().st_mtime,
+    )
+    needed = expect.get("min_match", len(expect["rows"]))
+    if not found:
+        return {
+            "path": None,
+            "matched": 0,
+            "total": len(expect["rows"]),
+            "needed": needed,
+            "missing": [],
+        }
+    text = found[-1].read_text(encoding="utf-8-sig", errors="replace")
+    rows = [
+        {k.strip().lower(): _norm(v) for k, v in row.items() if k}
+        for row in csv.DictReader(io.StringIO(text))
+    ]
+    missing = [
+        want
+        for want in expect["rows"]
+        if not any(all(row.get(k.lower()) == _norm(v) for k, v in want.items()) for row in rows)
+    ]
+    return {
+        "path": str(found[-1]),
+        "matched": len(expect["rows"]) - len(missing),
+        "total": len(expect["rows"]),
+        "needed": needed,
+        "missing": missing,
+    }
 
 
 class Studio:
@@ -219,6 +275,10 @@ def main() -> int:
                     f"{stats['payments']} payments, {stats['mentions']} mentions",
                     flush=True,
                 )
+            for rel, content in (task.get("input_files") or {}).items():
+                target = comfy.input / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
             started = time.time()
             subprocess.run(
                 ["node", str(HERE / "eval.cjs")],
@@ -258,6 +318,8 @@ def main() -> int:
                 if found:
                     shutil.copy(found[-1], out / f"{task['id']}-result.csv")
                     result["nayose"] = nayose_score.score(key_dir, found[-1])
+            if task.get("expect_file"):
+                result["file_check"] = check_file(comfy.output, task["expect_file"], started)
             if args.publish and not args.studio:
                 result["published"] = publish(comfy, task, result)
         passed, failures = score(task, result)

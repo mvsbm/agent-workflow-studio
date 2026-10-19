@@ -18,7 +18,7 @@ class CheckTests(unittest.TestCase):
 
     def test_nothing_is_empty(self) -> None:
         self.assertEqual(judge(None, "non_empty", ""), (False, "nothing"))
-        self.assertEqual(judge("x", "non_empty", ""), (True, "1 row(s)"))
+        self.assertEqual(judge("output/report.csv", "non_empty", ""), (True, "a value"))
 
 
 if __name__ == "__main__":

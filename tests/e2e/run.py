@@ -18,6 +18,7 @@ TESTS = [
     "review_panel.cjs",
     "decision_rules.cjs",
     "matching_cascade.cjs",
+    "api.cjs",
 ]
 
 

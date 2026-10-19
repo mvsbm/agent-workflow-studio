@@ -29,14 +29,15 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       app.graph.clear();
       let ids = [];
       if (setup === 'good_morning') {
-        const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
-        const bridge = createCanvasBridge(app, window.comfyAPI.api.api);
-        const r = await bridge.handle('edit', {operations: [
-          {op: 'add', key: 'src', class_type: 'PrimitiveString', position: [50, 100]},
-          {op: 'widget', node: 'src', name: 'value', value: 'good morning'},
-          {op: 'add', key: 'out', class_type: 'PreviewAny', position: [450, 100]},
-          {op: 'connect', from: 'src', output: 0, to: 'out', input: 'source'}]});
-        ids = Object.values(r.added);
+        // A workflow the user built by hand, before any contract: plain nodes at the top level.
+        const src = window.LiteGraph.createNode('PrimitiveString'), out = window.LiteGraph.createNode('PreviewAny');
+        src.pos = [50, 100];
+        out.pos = [450, 100];
+        app.graph.add(src);
+        app.graph.add(out);
+        src.widgets.find(w => w.name === 'value').value = 'good morning';
+        src.connect(0, out, 0);
+        ids = [src.id, out.id];
       }
       app.extensionManager.workflow.activeWorkflow.changeTracker.checkState();
       localStorage.setItem(`agent-workflow-studio:pi-chat:${app.rootGraph.id}`, JSON.stringify({pi_config: config}));
@@ -120,7 +121,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       return {
         contract, tools, failures,
         // The work lives inside stages: node types include what is inside them.
-        node_types: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.type) : [n.type])), node_ids: app.rootGraph.nodes.map(n => n.id),
+        node_types: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.type) : [n.type])), node_ids: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.id) : [n.id])),
         stages: app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(n => n.title),
         loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !/Note$/.test(n.type)).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,

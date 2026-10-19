@@ -23,6 +23,8 @@ const operation = Type.Union([
   Type.Object({ op: Type.Literal("disconnect"), stage, node: ref, input: port }),
   // Re-lay out the canvas (also done automatically after adds and connects).
   Type.Object({ op: Type.Literal("arrange") }),
+  // The workflow's API signature (App mode): inputs are widgets on top-level nodes, outputs are stages (step ids).
+  Type.Object({ op: Type.Literal("signature"), inputs: Type.Array(Type.Object({ node: ref, widget: Type.String() }), {maxItems: 12}), outputs: Type.Array(ref, {minItems: 1, maxItems: 8}) }),
 ]);
 
 // The contract schema is one JSON Schema file shared with the server and editors. Tool schemas
@@ -81,7 +83,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files","comfy_harden_step"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -143,6 +145,11 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), every step's gate from the Check nodes inside its stage on the latest run: passed, failed (with the evidence), or needs_user_review when the stage has no Check.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_harden_step", label:"Harden step", description:"Ask the user to freeze a Fuzzy node's latest plan into fixed, deterministic nodes (a subgraph in its stage). Later runs call no model. Propose it once a fuzzy step's plan has run and looks right; the user approves in the chat.",
+    parameters:Type.Object({stage:Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}), node:ref}),
+    execute:async (_id,args,signal) => canvas("harden",args,signal),
   }));
   pi.registerTool(defineTool({
     name:"comfy_analyze_graph", label:"Analyze graph", description:"Check the live canvas without running it or calling a model: output nodes, nodes that will not run (they reach no output), unconnected required inputs, type mismatches, cycles, deprecated nodes, and per output the checkpoints every path must pass (good places for success gates). Runs automatically after structural edits.",

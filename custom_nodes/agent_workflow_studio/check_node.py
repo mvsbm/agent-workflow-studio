@@ -31,7 +31,7 @@ def rows_of(value: Any) -> int | None:
                 ) - (path.suffix == ".csv")
             except (OSError, ValueError):
                 return None
-    if isinstance(value, list | tuple | str):
+    if isinstance(value, list | tuple):
         return len(value)
     shape = getattr(value, "shape", None)
     return int(shape[0]) if shape else None

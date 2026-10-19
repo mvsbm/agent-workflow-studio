@@ -79,40 +79,42 @@ function createPanel() {
   const more = el('button', 'Show more', {type: 'button', className: 'p-button p-component p-button-sm p-button-text'});
   root.append(header, status, tools, list, more);
 
-  let customers = [], shown = PAGE;
+  let customers = [], total = 0, timer;
 
-  function render() {
-    const query = search.value.trim().toLowerCase();
-    const visible = query ? customers.filter(([id, c]) => id.toLowerCase().includes(query) || JSON.stringify(c.records).toLowerCase().includes(query)) : customers;
-    list.replaceChildren(...visible.slice(0, shown).map(([id, c]) => customerCard(id, c)));
-    if (!visible.length) list.append(el('p', customers.length ? 'No customer matches.' : '', {className: 'aw-review-empty'}));
-    more.hidden = visible.length <= shown;
-  }
-
-  async function load() {
+  // The server searches and pages; the tab holds only what it shows.
+  async function load(append = false) {
     if (typeof rootGraph()?.id !== 'string') {
       status.textContent = 'Open a workflow to see its customers.';
       return list.replaceChildren();
     }
     try {
-      const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(rootGraph().id)}/customers`);
+      const params = new URLSearchParams({q: search.value.trim(), offset: append ? customers.length : 0, limit: PAGE});
+      const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(rootGraph().id)}/customers?${params}`);
       const body = await response.json();
       if (!response.ok) throw Error(body.error ?? 'Could not load customers.');
+      if (!body.customers) {
+        status.textContent = 'No customers yet. Run a workflow with a Cluster guard node.';
+        customers = [];
+        return list.replaceChildren();
+      }
+      const page = Object.entries(body.customers);
+      customers = append ? [...customers, ...page] : page;
+      total = body.matches;
       // Largest first: big customers are where a wrong merge hides.
-      customers = Object.entries(body.customers ?? {}).sort((a, b) => b[1].records.length - a[1].records.length);
-      status.textContent = body.customers
-        ? `${customers.length.toLocaleString()} customers · run ${body.run} · largest first`
-        : 'No customers yet. Run a workflow with a Cluster guard node.';
-      render();
+      status.textContent = `${body.total.toLocaleString()} customers · run ${body.run} · largest first` + (search.value.trim() ? ` · ${total.toLocaleString()} match` : '');
+      if (!append) list.replaceChildren();
+      list.append(...page.map(([id, c]) => customerCard(id, c)));
+      if (!customers.length) list.append(el('p', 'No customer matches.', {className: 'aw-review-empty'}));
+      more.hidden = customers.length >= total;
     } catch (error) {
       status.textContent = error.message;
     }
   }
 
-  refresh.addEventListener('click', load);
-  search.addEventListener('input', () => { shown = PAGE; render(); });
-  more.addEventListener('click', () => { shown += PAGE; render(); });
-  root.load = load;
+  refresh.addEventListener('click', () => load());
+  search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => load(), 250); });
+  more.addEventListener('click', () => load(true));
+  root.load = () => load();
   return root;
 }
 

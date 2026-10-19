@@ -13,8 +13,8 @@ live ComfyUI graph, plans with you, then creates, edits, runs and debugs the wor
 the work itself is the graph. ✅
 
 **R3 · Fuzzy work hardens into deterministic work.** Steps start as LLM / agent-written logic where
-needed and are hardened into deterministic, visible nodes over time. 🟡 (fuzzy and agent-tool
-nodes exist; hardening is manual)
+needed and are hardened into deterministic, visible nodes over time. ✅ (the agent proposes hardening
+with `comfy_harden_step`, you approve; reporting, cleaning and checks have visible nodes)
 
 ## 2. Transparency (the core value)
 
@@ -53,7 +53,7 @@ work outside the structure is impossible; tool results carry the to-do list. ✅
 
 **R13 · Work in progress is a legal state.** Rules apply by maturity: structural always,
 completeness before a step is verified, release before publishing; stubs, untyped ports and open
-questions are to-dos, not errors. ✅ (open questions on a stage: not yet)
+questions are to-dos, not errors. ✅
 
 **R14 · Gates prove steps on the data.** A step is verified when its checks pass on the latest run
 of exactly the current graph. ✅
@@ -64,14 +64,15 @@ capability test with its fallback, run before everything else. ✅
 ## 4. Use
 
 **R16 · A workflow is an API.** A finished workflow is published at a fixed version and called with
-data in and data out; its signature is App mode's inputs/outputs. ⬜
+data in and data out; its signature is App mode's inputs/outputs. ✅ (local callers; tokens for remote ones later)
 
 **R17 · Logic is easy to configure and monitor.** Rules are added, removed or skipped in plain
 text (or by asking the agent); each rule's counts, change since the last run and agreement with
 your reviews are shown. ✅
 
 **R18 · Standalone.** Someone else can install it and have the agent build a transparent workflow
-for their own problem, not only record matching. 🟡 (installer exists; other domains unproven)
+for their own problem, not only record matching. ✅ (10/10 evals incl. sales report, feedback triage,
+invoice extraction, data quality; installer brings the Pi CLI) — open: a second model, a license
 
 ## 5. The record-matching (名寄せ) benchmark
 

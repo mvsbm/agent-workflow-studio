@@ -1,0 +1,58 @@
+// Publish the open workflow as an API: its signature is App mode's selection (extra.linearData) —
+// inputs are widgets on top-level nodes, outputs are top-level stages — and the server freezes the
+// runnable prompt at a version of the project history.
+const slug = text => String(text ?? '').toLowerCase().replace(/^\d+\s*·\s*/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'value';
+
+// A widget promoted on a subgraph card belongs to the nodes inside it that its port feeds (all of
+// them: one seed may feed several); the run names each "card:inner".
+function promoted(node, widget) {
+  if (!node.isSubgraphNode?.()) return [{node, path: node.id, name: widget}];
+  const port = node.subgraph.inputs.find(input => input.name === widget);
+  const targets = (port?.linkIds ?? []).map(id => node.subgraph.links.get?.(id) ?? node.subgraph.links[id]).filter(Boolean).map(link => {
+    const inner = node.subgraph.getNodeById(link.target_id), input = inner?.inputs?.[link.target_slot];
+    return inner && input && {node: inner, path: `${node.id}:${inner.id}`, name: input.widget?.name ?? input.name};
+  }).filter(Boolean);
+  if (!targets.length) throw Error(`${node.title}: ${widget} does not lead to a node inside.`);
+  return targets;
+}
+
+/** The workflow's API signature from App mode, with each input's type, choices and current value. */
+export function signatureOf(graph, defs) {
+  const linear = graph.extra?.linearData ?? {}, used = new Set();
+  const unique = (name, fallback) => { const pick = used.has(name) ? fallback : name; used.add(pick); return pick; };
+  const inputs = (linear.inputs ?? []).map(([id, widget]) => {
+    const top = graph.getNodeById(id);
+    if (!top) throw Error(`App mode input ${id}/${widget} is not on the canvas any more; choose it again.`);
+    // A widget promoted on a subgraph card belongs to the node inside it; the run names that "card:inner".
+    const targets = promoted(top, widget), {node, path, name} = targets[0];
+    const spec = defs[node.type]?.input, schema = spec?.required?.[name] ?? spec?.optional?.[name];
+    const choices = Array.isArray(schema?.[0]) ? schema[0] : schema?.[0] === 'COMBO' ? schema[1]?.options : undefined;
+    return {name: unique(slug(widget), `${slug(top.title)}_${slug(widget)}`), node: path, widget: name, title: top.title,
+      targets: targets.map(t => [t.path, t.name]),
+      type: choices ? 'COMBO' : schema?.[0], ...(choices ? {choices} : {}), default: top.widgets?.find(w => w.name === widget)?.value};
+  });
+  const outputs = (linear.outputs ?? []).map(id => {
+    const node = graph.getNodeById(id);
+    if (!node) throw Error(`App mode output ${id} is not on the canvas any more; choose it again.`);
+    return {name: unique(slug(node.title), `output_${id}`), node: id, title: node.title};
+  });
+  return {inputs, outputs};
+}
+
+/** Set the signature (what the agent's "signature" edit and App mode both write). */
+export function setSignature(graph, inputs, outputs) {
+  graph.extra = {...graph.extra, linearData: {inputs: inputs.map(({node, widget}) => [node, widget]), outputs}};
+}
+
+export async function publishWorkflow(app, api, name, description = '') {
+  const graph = app.rootGraph ?? app.graph;
+  const signature = signatureOf(graph, await api.getNodeDefs());
+  const {output} = await app.graphToPrompt();
+  const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/publish`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description, prompt: output, workflow: graph.serialize(), signature}),
+  });
+  const body = await response.json();
+  if (!response.ok) throw Error(body.error ?? 'Publishing failed.');
+  return body;
+}

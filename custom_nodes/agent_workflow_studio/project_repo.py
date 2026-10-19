@@ -449,11 +449,26 @@ def install_project_routes() -> None:
             )
             if not found:
                 return {"customers": None}
-            if found[-1].stat().st_size > REVIEW_FILE_LIMIT:
-                raise ValueError("customers.json is over 20 MB.")
+            # Searched and paged here, so the tab stays fast however many customers there are.
+            everything = json.loads(found[-1].read_text(encoding="utf-8"))
+            query = request.query.get("q", "").strip().lower()
+            offset = max(int(request.query.get("offset", 0) or 0), 0)
+            limit = min(max(int(request.query.get("limit", 40) or 40), 1), 200)
+            matches = sorted(
+                (
+                    (cid, c)
+                    for cid, c in everything.items()
+                    if not query
+                    or query in cid.lower()
+                    or query in json.dumps(c["records"], ensure_ascii=False).lower()
+                ),
+                key=lambda item: -len(item[1]["records"]),
+            )
             return {
                 "run": found[-1].parent.name,
-                "customers": json.loads(found[-1].read_text(encoding="utf-8")),
+                "total": len(everything),
+                "matches": len(matches),
+                "customers": dict(matches[offset : offset + limit]),
             }
 
         return await call(request, run)

@@ -15,6 +15,7 @@ from .fuzzy_node import FuzzyNode
 from .matching_nodes import NODES as MATCHING_NODES
 from .nayose_nodes import NODES as NAYOSE_NODES
 from .pi_model_config import AgentWorkflowPiModelConfig
+from .table_calc import NODES as CALC_NODES
 from .table_nodes import NODES as TABLE_NODES
 
 WEB_DIRECTORY = "./web"
@@ -32,6 +33,7 @@ class AgentWorkflowStudioExtension(ComfyExtension):
             *CHECK_NODES,
             *EDA_NODES,
             *TABLE_NODES,
+            *CALC_NODES,
             *MATCHING_NODES,
             *NAYOSE_NODES,
         ]
@@ -41,10 +43,12 @@ async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
     from .pi_chat import install_pi_chat_routes
     from .project_repo import install_project_routes
     from .routes import install_routes
+    from .workflow_api import install_api_routes
 
     install_routes()
     install_pi_chat_routes()
     install_project_routes()
+    install_api_routes()
     return AgentWorkflowStudioExtension()
 
 

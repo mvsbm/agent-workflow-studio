@@ -195,6 +195,11 @@ decide: {match: 4, review: 2}
       if (out) addCheck(stage.subgraph, {output: out.name, kind: out.type === 'STRING' ? 'non_empty' : 'rows_at_least', value: 1}, `${stage.title} gives data`);
     }
     arrangeGraph(app.graph);
+    // Its API: a seed for the synthetic data in, the published customer ids out.
+    const {setSignature} = await import('/extensions/agent_workflow_studio/publish.js');
+    const synthetic = app.graph.nodes.find(n => n.isSubgraphNode?.() && !n.properties?.aws_stage);
+    const published = app.graph.nodes.find(n => n.properties?.aws_stage === 'publish_results');
+    setSignature(app.graph, [{node: synthetic.id, widget: 'seed'}], [published.id]);
     const score = app.graph.nodes.find(n => n.type === 'AgentWorkflowNayoseScore');
     return score.properties.aws_tables?.[0]?.rows ?? [];
   }, STEPS);

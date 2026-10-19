@@ -76,7 +76,8 @@ class PiStructuredAgentTests(unittest.TestCase):
                     f"AgentWorkflow{name}"
                     for name in (
                         "Stub SplitName ReadTable WriteTable StackRoles Concatenate FilterRows JoinTables NormalizeText "
-                        "MapValues ParseDates ExtractDigits FindCandidates CompareFields AttachGroups"
+                        "MapValues ParseDates ExtractDigits FindCandidates CompareFields AttachGroups "
+                        "ParseNumbers RemoveDuplicates ComputeColumn Summarize DataChecks"
                     ).split()
                 ),
                 "AgentWorkflowLearnWeights",

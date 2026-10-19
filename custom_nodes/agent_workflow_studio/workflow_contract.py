@@ -80,17 +80,31 @@ def validate_contract(contract: object) -> dict:
                         f"Step {step['id']} takes {port} from {source}, which no earlier step gives."
                     )
         gives[step["id"]] = step.get("gives", {})
+    for q in contract["open_questions"]:
+        if isinstance(q, dict) and q["step"] not in gives:
+            raise ValueError(f"Open question “{q['question']}” waits on unknown step {q['step']}.")
     return contract
 
 
 def validate_for_approval(contract: object) -> dict:
     contract = validate_contract(contract)
-    if contract["open_questions"]:
+    # A question tied to one step may stay open (that step waits); any other blocks approval.
+    if blocking := [q for q in contract["open_questions"] if isinstance(q, str)]:
         raise ValueError(
             "Resolve the open questions with the user (comfy_ask_user) before asking for "
-            "approval: " + "; ".join(contract["open_questions"])
+            "approval, or tie each to the one step that waits for it ({question, step}): "
+            + "; ".join(blocking)
         )
     return contract
+
+
+def waiting(contract: dict) -> dict[str, list[str]]:
+    """step -> the open questions it waits for."""
+    found: dict[str, list[str]] = {}
+    for q in contract.get("open_questions", []):
+        if isinstance(q, dict):
+            found.setdefault(q["step"], []).append(q["question"])
+    return found
 
 
 def to_yaml(contract: dict) -> str:
@@ -168,7 +182,9 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
         if any(n.get("fuzzy") for n in mine):
             events.append("fuzzy_detected")
         outcome = gate_results.get(step["id"])
-        if outcome in ("passed", "failed"):
+        questions = waiting(contract).get(step["id"], [])
+        # A step waiting on the user's answer can fail its gate, but not be verified yet.
+        if outcome == "failed" or (outcome == "passed" and not questions):
             events.append(f"gate_{outcome}")
         state = "planned"
         for event in events:
@@ -179,7 +195,10 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
                 "purpose": step["purpose"],
                 "state": state,
                 "nodes": len(mine),
-                "next": NEXT_ACTIONS[state],
+                "next": f"Waiting on your answer: {'; '.join(questions)}"
+                if questions
+                else NEXT_ACTIONS[state],
+                **({"waiting": questions} if questions else {}),
             }
         )
     return result
@@ -264,7 +283,12 @@ def report(contract: dict, evidence: dict) -> dict:
             for n in evidence["nodes"]
             if not n.get("step") and not n.get("given") and not n.get("note")
         ],
-        "todo": todo(evidence),
+        "todo": [
+            f"Answer: {q} (step {step} waits; amend the contract with the answer as a decision)"
+            for step, qs in waiting(contract).items()
+            for q in qs
+        ]
+        + todo(evidence),
         "text": render(contract, states),
     }
 
@@ -325,7 +349,13 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
             ],
         ),
         ("NOT NOW", contract["not_now"]),
-        ("OPEN QUESTIONS", contract["open_questions"]),
+        (
+            "OPEN QUESTIONS",
+            [
+                q if isinstance(q, str) else f"{q['question']} (step {q['step']} waits for it)"
+                for q in contract["open_questions"]
+            ],
+        ),
     ):
         if items:
             lines += ["", f"{label}:"] + [f"  • {item}" for item in items]

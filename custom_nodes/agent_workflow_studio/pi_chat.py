@@ -40,6 +40,7 @@ ACTIONS = {
     "contract_evidence",
     "gates",
     "skeleton",
+    "harden",
     "analyze",
     "converters",
 }

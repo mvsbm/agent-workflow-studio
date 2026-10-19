@@ -1,6 +1,7 @@
 // Native graph APIs, following Comfy-Org/ComfyUI_frontend's app.ts/API queue path.
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
+import {setSignature} from './publish.js';
 // Widgets that may hold secrets: hidden from the agent and never set by it. Names like
 // max_tokens or credential_source are ordinary settings, not secrets.
 const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)token$)/i;
@@ -114,7 +115,12 @@ export function buildSkeleton(graph, steps) {
   const created = [], notes = [], numbers = stageNumbers(steps);
   for (const step of steps) {
     let stage = stageNode(graph, step.id);
-    if (!stage) {
+    // Existing work the step takes over (the user's nodes from before the contract), wiring kept.
+    const adopted = (step.adopts ?? []).map(id => graph.getNodeById(id)).filter(node => node && !node.properties?.aws_stage && !node.properties?.aws_given);
+    if (!stage && adopted.length) {
+      stage = packIntoStage(graph, adopted, step.id, numbers[step.id]);
+      if ((step.adopts ?? []).length > adopted.length) notes.push(`${stage.title}: some adopted nodes were not found at the top level.`);
+    } else if (!stage) {
       const stub = globalThis.LiteGraph.createNode('AgentWorkflowStub');
       graph.add(stub);
       stage = packIntoStage(graph, [stub], step.id, numbers[step.id]);
@@ -463,6 +469,18 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             if (!Number.isInteger(slot) || slot < 0 || !node.inputs?.[slot]) throw Error('Input not found.');
             node.disconnectInput(slot);
           }
+        } else if (op.op === 'signature') {
+          // The workflow's API: inputs are widgets on top-level nodes, outputs are top-level stages.
+          if (op.stage != null) throw Error('The signature is set at the top level (no "stage").');
+          const inputs = (op.inputs ?? []).map(({node: ref, widget}) => {
+            const node = resolve(ref, op, added);
+            if (!node || node.properties?.aws_stage) throw Error(`An API input is a widget on a top-level node (such as a given data folder), not a stage: ${ref}.`);
+            if (!node.widgets?.some(w => w.name === widget)) throw Error(`${node.title} has no widget ${widget}.`);
+            return {node: node.id, widget};
+          });
+          const outputs = (op.outputs ?? []).map(ref => { const node = resolve(ref, op, added); if (!node) throw notFound(ref); return node.id; });
+          if (!outputs.length) throw Error('Name at least one output: the stage (step id) whose results the API returns.');
+          setSignature(app.graph, inputs, outputs);
         } else if (op.op !== 'arrange') throw Error(`Unsupported operation: ${op.op}`);
       }
       Object.assign(keys, added);
@@ -513,6 +531,16 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return search(args.query, 60);
     }
     if (action === 'edit') return edit(args.operations);
+    if (action === 'harden') {
+      // Freezing a fuzzy step's latest plan into deterministic nodes is the user's call.
+      const node = resolve(args.node, {stage: args.stage}, {});
+      if (node?.type !== 'AgentWorkflowFuzzyNode') throw Error('Name a Fuzzy node and the stage it is in.');
+      if (!node.properties?.aws_plan) throw Error('Run the workflow first so the model plans this step.');
+      if (!await confirm?.('Harden this step?', `Freeze the latest plan of “${node.title}” into fixed nodes. Later runs call no model; undo or Versions restore it.`)) throw Error('The user did not approve hardening.');
+      const {hardenStep} = await import('./fuzzy_steps.js'); // a browser-only module: loaded when needed
+      const step = await hardenStep(node);
+      return {hardened: true, nodes: step ? nodes(step.subgraph).map(n => n.type) : [], message: 'Hardened: this step no longer calls the model. Run again to verify it.'};
+    }
     if (action === 'skeleton') {
       if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
       app.canvas.emitBeforeChange();

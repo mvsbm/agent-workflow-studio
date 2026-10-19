@@ -4,6 +4,7 @@
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {contractEvidence} from './pi_canvas.js';
+import {publishWorkflow} from './publish.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const STATE = {
@@ -25,6 +26,43 @@ async function request(path, options) {
   return body;
 }
 
+// The workflow as an API: what is published (endpoint, version, a call to copy) and the button to
+// publish the current version. The server refuses until the structure and release items hold.
+function apiSection() {
+  const section = el('section', null, {className: 'aw-contract-api'});
+  const info = el('div');
+  const name = el('input', null, {type: 'text', placeholder: 'api name, e.g. nayose', className: 'p-inputtext p-component', size: 18});
+  name.setAttribute('aria-label', 'API name');
+  const publish = el('button', 'Publish as API', {type: 'button', className: 'p-button p-component p-button-sm'});
+  const result = el('p', null, {role: 'status'});
+  section.append(el('h3', 'API'), info, name, publish, result);
+  const show = item => {
+    const call = `curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": …`).join(', ')}}}'`;
+    info.replaceChildren(el('div', `Published as ${item.name} · version ${item.version.slice(0, 8)} · ${item.published_at}`),
+      el('div', `Inputs: ${item.inputs.join(', ') || 'none'} · outputs: ${item.outputs.join(', ')}`),
+      el('code', call, {className: 'aw-contract-call'}),
+      Object.assign(el('a', 'OpenAPI description'), {href: `/agent-workflow-studio/api/${item.name}/openapi.json`, target: '_blank'}));
+    name.value ||= item.name;
+  };
+  section.load = async () => {
+    const response = await api.fetchApi('/agent-workflow-studio/api');
+    const mine = response.ok ? (await response.json()).apis.filter(a => a.workflow_id === rootGraph()?.id) : [];
+    if (mine.length) show(mine.at(-1));
+    else info.replaceChildren(el('div', 'Not published. Choose its inputs and outputs in App mode (or ask the agent to set the signature), then publish.'));
+  };
+  publish.addEventListener('click', async () => {
+    result.textContent = 'Publishing…';
+    try {
+      const done = await publishWorkflow(app, api, name.value.trim());
+      result.textContent = `Published version ${done.version}: POST ${done.endpoint}` + (done.todo.length ? ` · still to do: ${done.todo.join('; ')}` : '');
+      await section.load();
+    } catch (error) {
+      result.textContent = error.message;
+    }
+  });
+  return section;
+}
+
 function createPanel() {
   const root = el('section', null, {className: 'aw-contract'});
   const status = el('p', null, {className: 'aw-contract-status', role: 'status'});
@@ -32,7 +70,7 @@ function createPanel() {
   const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
   const header = el('header');
   header.append(el('h2', 'Contract'), refresh);
-  root.append(header, status, body);
+  root.append(header, status, body, apiSection());
 
   async function load() {
     if (typeof rootGraph()?.id !== 'string') {
@@ -78,9 +116,11 @@ function createPanel() {
     }
   }
 
-  refresh.addEventListener('click', load);
-  window.addEventListener(CHANGED, load);
-  root.load = load;
+  const apiPart = root.querySelector('.aw-contract-api');
+  const loadAll = () => { load(); apiPart.load().catch(() => {}); };
+  refresh.addEventListener('click', loadAll);
+  window.addEventListener(CHANGED, loadAll);
+  root.load = loadAll;
   return root;
 }
 

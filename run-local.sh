@@ -14,6 +14,11 @@ COMFY_PORT="${COMFYUI_PORT:-8188}"
 
 mkdir -p "$STATE_DIR"/{comfy-output,comfy-input,comfy-temp,comfy-user} "$LOG_DIR"
 
+# The Pi CLI the installer placed privately, when there is none on PATH.
+if ! command -v pi >/dev/null && [[ -z "${AGENT_WORKFLOW_STUDIO_PI_CLI:-}" && -x "$APP_HOME/pi/node_modules/.bin/pi" ]]; then
+    export AGENT_WORKFLOW_STUDIO_PI_CLI="$APP_HOME/pi/node_modules/.bin/pi"
+fi
+
 cd "$COMFYUI_DIR"
 .venv/bin/python main.py \
     --listen 127.0.0.1 \

@@ -121,6 +121,15 @@ class ContractTests(unittest.TestCase):
         validate_contract(changed(lambda c: c["steps"][1].update(covers=["R1"])))
         with self.assertRaisesRegex(ValueError, "open questions"):
             validate_for_approval(changed(lambda c: c["open_questions"].append("Which language?")))
+        # A question tied to the one step that waits for it does not block approval.
+        tied = changed(
+            lambda c: c["open_questions"].append({"question": "Emoji allowed?", "step": "tidy"})
+        )
+        self.assertIs(validate_for_approval(tied), tied)
+        with self.assertRaisesRegex(ValueError, "unknown step"):
+            validate_contract(
+                changed(lambda c: c["open_questions"].append({"question": "?", "step": "nope"}))
+            )
 
     def test_yaml_round_trip_keeps_strings_as_strings(self) -> None:
         tricky = changed(lambda c: c["examples"][0]["expect"].update(label="no"))
@@ -179,6 +188,13 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(states([]), {"classify": "planned", "tidy": "planned"})
         self.assertEqual(states([{"step": "classify"}]), {"classify": "built", "tidy": "planned"})
+        # A step waiting on the user's answer can be built and fail, but not be verified.
+        waits = changed(
+            lambda c: c["open_questions"].append({"question": "Emoji allowed?", "step": "tidy"})
+        )
+        tidy = derive_states(waits, [{"step": "tidy"}], {"tidy": "passed"})[1]
+        self.assertEqual((tidy["state"], tidy["waiting"]), ("built", ["Emoji allowed?"]))
+        self.assertEqual(tidy["next"], "Waiting on your answer: Emoji allowed?")
         # The skeleton's Stub and Checks do not make a stage built.
         self.assertEqual(states([{"step": "classify", "scaffold": True}])["classify"], "planned")
         self.assertEqual(states([{"step": "classify", "fuzzy": True}])["classify"], "fuzzy")

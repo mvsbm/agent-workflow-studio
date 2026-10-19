@@ -247,6 +247,17 @@
               "pattern": "^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
             },
             "description": "The stage's inputs: port name -> an earlier step's output (\"step.port\"), or a socket type for data that enters the workflow."
+          },
+          "adopts": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "description": "Ids of existing top-level nodes (the user's own work from before the contract) that this step's stage takes over, wiring kept."
           }
         },
         "required": [
@@ -313,11 +324,35 @@
       "type": "array",
       "maxItems": 16,
       "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 300
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "step": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                "description": "The step that waits for the answer; the rest can be built."
+              }
+            },
+            "required": [
+              "question",
+              "step"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
-      "description": "Must be empty before approval."
+      "description": "A plain question must be answered before approval. A question tied to one step ({question, step}) may stay open: that step is built around it and cannot be verified until it is answered (by amending the contract)."
     }
   },
   "required": [
