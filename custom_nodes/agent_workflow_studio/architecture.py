@@ -54,8 +54,13 @@ def _inner_types(definition: dict, defs: dict, depth: int = 0) -> list[str]:
 
 
 def _loose(node: dict) -> bool:
+    # Given data and the API's input nodes are the workflow's interface, not work outside a stage.
     props = node.get("properties") or {}
-    return not props.get("aws_given") and not node["type"].endswith("Note")
+    return (
+        not props.get("aws_given")
+        and not props.get("aws_input")
+        and not node["type"].endswith("Note")
+    )
 
 
 @rule(STRUCTURAL, "Build every node inside its step's stage.")

@@ -4,7 +4,7 @@
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {contractEvidence} from './pi_canvas.js';
-import {publishWorkflow} from './publish.js';
+import {publishWorkflow, runExamples} from './publish.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const STATE = {
@@ -34,8 +34,18 @@ function apiSection() {
   const name = el('input', null, {type: 'text', placeholder: 'api name, e.g. nayose', className: 'p-inputtext p-component', size: 18});
   name.setAttribute('aria-label', 'API name');
   const publish = el('button', 'Publish as API', {type: 'button', className: 'p-button p-component p-button-sm'});
+  const examples = el('button', 'Run examples', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: "Run the contract's examples as acceptance tests; publishing needs them to pass"});
   const result = el('p', null, {role: 'status'});
-  section.append(el('h3', 'API'), info, name, publish, result);
+  section.append(el('h3', 'API'), info, name, publish, examples, result);
+  examples.addEventListener('click', async () => {
+    result.textContent = 'Running the examples…';
+    try {
+      const done = await runExamples(app, api);
+      result.textContent = `Examples: ${done.passed}/${done.total} passed` + done.results.filter(r => !r.passed).map(r => ` · ${r.example}: ${r.misses.join('; ')}`).join('');
+    } catch (error) {
+      result.textContent = error.message;
+    }
+  });
   const show = item => {
     const call = `curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": …`).join(', ')}}}'`;
     info.replaceChildren(el('div', `Published as ${item.name} · version ${item.version.slice(0, 8)} · ${item.published_at}`),

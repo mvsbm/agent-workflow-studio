@@ -303,6 +303,73 @@ class ContractTests(unittest.TestCase):
             ],
         )
 
+    def test_the_design_reads_as_sentences_and_is_reviewed(self) -> None:
+        from .workflow_contract import hld, review
+
+        design = changed(
+            lambda c: (
+                c["promises"].update(
+                    inputs=[{"name": "review", "kind": "text"}],
+                    outputs=[{"name": "label", "kind": "text", "from": "tidy.label"}],
+                ),
+                c["steps"][0].update(
+                    takes={"review": "input.review"},
+                    uses="an LLM with a fixed schema",
+                    why="tone needs judgment",
+                    pattern="LLM behind a typed boundary",
+                ),
+                c["steps"][1].update(
+                    uses="Map values",
+                    why="support reads plain labels",
+                    pattern="message translator",
+                    gate={"says": "plain", "check": {"output": "label", "kind": "non_empty"}},
+                ),
+                c.update(data={"label": {"description": "positive or negative, per review"}}),
+            )
+        )
+        validate_contract(design)
+        sentences = [d["sentence"] for d in hld(design)]
+        self.assertEqual(
+            sentences[0],
+            "takes review (your input) → Decide whether the review is positive or negative using an LLM "
+            "with a fixed schema → gives label (STRING) → to 2 · Tidy, because tone needs judgment",
+        )
+        self.assertIn("→ to you (output label)", sentences[1])
+        self.assertTrue(all(ok for ok, _ in review(design)), review(design))
+        bare = {item: ok for ok, item in review(CONTRACT)}
+        self.assertFalse(bare["Every step says how and why"])
+        self.assertIn("DESIGN REVIEW:", render(design))
+        for broken, message in (
+            (lambda c: c["steps"][0].update(takes={"x": "input.nope"}), "not a promised input"),
+            (
+                lambda c: c["promises"]["outputs"][0].update({"from": "tidy.nothing"}),
+                "no step gives",
+            ),
+            (
+                lambda c: c.update(data={"a": {"description": "x", "refs": {"b_id": "b"}}}),
+                "unknown entity",
+            ),
+        ):
+            with self.subTest(message), self.assertRaisesRegex(ValueError, message):
+                validate_contract(changed(broken))
+
+    def test_declared_fields_the_run_did_not_carry_are_drift(self) -> None:
+        from .workflow_contract import alignment
+
+        design = changed(
+            lambda c: c.update(data={"label": {"description": "x", "fields": ["text", "score"]}})
+        )
+        stage = {
+            "step": "classify",
+            "title": "1 · Classify",
+            "takes": [["review", "STRING"]],
+            "gives": [["label", "STRING", ["text"]]],
+        }
+        self.assertEqual(
+            alignment(design, {"nodes": [], "stages": [stage]}),
+            ["1 · Classify gives label without score (declared in the design)."],
+        )
+
     def test_schema_file_is_valid_and_shared(self) -> None:
         from jsonschema import Draft202012Validator
 

@@ -327,11 +327,11 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(status["progress"], "1/2 steps verified")
         self.assertEqual(status["nodes_outside_steps"], ["Loose"])
-        # Gates are read from the stages' Check nodes; edits go to the canvas as the agent wrote them.
+        # Gates are read from the stages' Check nodes; edits carry the approved design's wiring, so
+        # the canvas refuses top-level changes that contradict it.
         self.assertEqual(calls[0], ("contract_evidence", {}))
-        self.assertEqual(
-            calls[1][1], {"operations": [{"op": "title", "node": 1, "title": "Label"}]}
-        )
+        self.assertEqual(calls[1][1]["operations"], [{"op": "title", "node": 1, "title": "Label"}])
+        self.assertEqual(calls[1][1]["design"]["links"], [["classify", "label", "tidy", "label"]])
 
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
         answers = {
@@ -353,7 +353,12 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
             # Approval builds the skeleton: the approved steps become the stages.
             skeleton = canvas.await_args_list[1].args
-            self.assertEqual(skeleton, ("skeleton", {"steps": CONTRACT["steps"]}))
+            self.assertEqual(skeleton[0], "skeleton")
+            self.assertEqual(skeleton[1]["steps"], CONTRACT["steps"])
+            self.assertEqual(
+                [d["title"] for d in skeleton[1]["design"]], ["1 · Classify", "2 · Tidy"]
+            )
+            self.assertTrue(any(line.startswith("✗") for line in result["design_review"]))
             self.assertEqual(result["skeleton"]["created"], ["classify", "tidy"])
             await self.session.agent_action(
                 "edit", {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}

@@ -2,7 +2,16 @@
 
 import unittest
 
-from .workflow_api import bind_inputs, check_spec, collect_outputs, openapi
+from .workflow_api import (
+    bind_inputs,
+    check_spec,
+    collect_data,
+    collect_files,
+    collect_outputs,
+    compare_example,
+    next_version,
+    openapi,
+)
 
 SPEC = {
     "name": "greet",
@@ -88,6 +97,40 @@ class WorkflowApiTests(unittest.TestCase):
         }
         self.assertEqual(
             collect_outputs(SPEC, outputs), {"greeting": {"5:2": {"text": ["hello world"]}}}
+        )
+
+    def test_examples_compare_against_the_promised_outputs(self) -> None:
+        outputs = {
+            "5:9": {"aws_output": [{"name": "greeting", "value": "Hello World"}]},
+            "5:2": {"text": ["rows 3"]},
+        }
+        data = collect_data(outputs)
+        self.assertEqual(data, {"greeting": "Hello World"})
+        self.assertEqual(compare_example({"greeting": "hello world"}, data, outputs), [])
+        self.assertEqual(
+            compare_example({"rows": "rows 3"}, data, outputs), [], "found anywhere in the results"
+        )
+        self.assertEqual(len(compare_example({"greeting": "goodbye"}, data, outputs)), 1)
+
+    def test_versions_say_what_changed(self) -> None:
+        sig = SPEC["signature"]
+        first = {"semver": "1.0.0", "signature": sig, "design": "d1"}
+        self.assertEqual(next_version(None, sig, "d1"), "1.0.0")
+        self.assertEqual(next_version(first, sig, "d1"), "1.0.1", "inside a stage: patch")
+        self.assertEqual(next_version(first, sig, "d2"), "1.1.0", "the design: minor")
+        renamed = {**sig, "inputs": [{**sig["inputs"][0], "name": "greeting"}]}
+        self.assertEqual(next_version(first, renamed, "d1"), "2.0.0", "what callers send: major")
+
+    def test_written_files_become_download_links(self) -> None:
+        files = collect_files({"7": {"aws_files": ["reports/out.csv"]}})
+        self.assertEqual(
+            files,
+            [
+                {
+                    "path": "output/reports/out.csv",
+                    "url": "/view?filename=out.csv&subfolder=reports&type=output",
+                }
+            ],
         )
 
     def test_openapi_describes_the_call(self) -> None:

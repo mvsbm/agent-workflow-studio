@@ -11,9 +11,11 @@ export function wireLabel(graph, id, slot, depth = 0) {
   const node = graph?.getNodeById?.(id);
   if (!node || depth > 4) return '';
   if (node.isSubgraphNode?.()) {
-    const inner = node.subgraph.outputs?.[slot]?.linkIds?.[0];
+    // Out of a stage: the data it gives (its port is named after the entity), and how much.
+    const port = node.subgraph.outputs?.[slot], inner = port?.linkIds?.[0];
     const link = inner == null ? null : node.subgraph.links.get?.(inner) ?? node.subgraph.links[inner];
-    return link ? wireLabel(node.subgraph, link.origin_id, link.origin_slot, depth + 1) : '';
+    const count = link ? wireLabel(node.subgraph, link.origin_id, link.origin_slot, depth + 1) : '';
+    return [port?.name, count].filter(Boolean).join(' · ');
   }
   return node.properties?.aws_wires?.[slot] ?? '';
 }

@@ -219,6 +219,12 @@ def process(r: dict) -> dict[str, bool]:
         "aligned": (r.get("contract") or {}).get("aligned", not built),
         "ran": "success" in r.get("run_statuses", []),
         "gates": "comfy_check_gates" in tools,
+        # The design pipeline: an HLD with how/why/pattern per step, an API by design, examples run.
+        "designed": bool((r.get("contract") or {}).get("designed")),
+        "api": bool((r.get("contract") or {}).get("api")),
+        "accepted": any(
+            v.startswith("agent: Acceptance") and "examples passed" in v for v in versions
+        ),
     }
     return checks
 

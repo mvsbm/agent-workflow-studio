@@ -95,7 +95,90 @@ def collect_outputs(spec: dict, outputs: dict) -> dict:
     return result
 
 
-def openapi(spec: dict, base: str = "") -> dict:
+def collect_data(outputs: dict) -> dict:
+    """The promised outputs' values, from the API output nodes that ran."""
+    return {
+        item["name"]: item["value"]
+        for value in outputs.values()
+        if isinstance(value, dict)
+        for item in value.get("aws_output") or []
+        if isinstance(item, dict) and item.get("name")
+    }
+
+
+def _loose(value: object) -> str:
+    return " ".join(str(value).split()).lower()
+
+
+def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
+    """What an example expected and the run did not deliver (empty: it passed). An expected value
+    is found in the promised output of that name, or else anywhere in the output stages' results."""
+    misses = []
+    everything = _loose(json.dumps(outputs, ensure_ascii=False, default=str))
+    for key, want in expect.items():
+        got = data.get(key)
+        if got is not None and not isinstance(got, dict | list):
+            ok = _loose(got) == _loose(want) or _loose(want) in _loose(got)
+        else:
+            found = (
+                _loose(json.dumps(got, ensure_ascii=False, default=str))
+                if got is not None
+                else everything
+            )
+            ok = _loose(want) in found
+        if not ok:
+            misses.append(
+                f"{key}: expected {want!r}, got {str(got)[:120] if got is not None else 'nothing'}"
+            )
+    return misses
+
+
+def signature_key(signature: dict) -> tuple:
+    """What callers depend on: input names and types, output names."""
+    return (
+        sorted((i["name"], str(i.get("type"))) for i in signature.get("inputs", [])),
+        sorted(o["name"] for o in signature.get("outputs", [])),
+    )
+
+
+def next_version(previous: dict | None, signature: dict, design: str) -> str:
+    """Semantic version from what changed: the API (inputs/outputs) → major, the design (HLD) →
+    minor, anything else (inside a stage) → patch."""
+    if not previous or "semver" not in previous:
+        return "1.0.0"
+    major, minor, patch = (int(x) for x in previous["semver"].split("."))
+    if signature_key(previous["signature"]) != signature_key(signature):
+        return f"{major + 1}.0.0"
+    if previous.get("design") != design:
+        return f"{major}.{minor + 1}.0"
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def collect_files(outputs: dict) -> list[dict]:
+    """Files the run wrote (under output/), as ComfyUI download links."""
+    from urllib.parse import urlencode
+
+    files = []
+    for value in outputs.values():
+        for rel in (value.get("aws_files") or []) if isinstance(value, dict) else []:
+            folder, _, name = str(rel).rpartition("/")
+            files.append(
+                {
+                    "path": f"output/{rel}",
+                    "url": "/view?"
+                    + urlencode({"filename": name, "subfolder": folder, "type": "output"}),
+                }
+            )
+    return files
+
+
+def prompt_hash(prompt: dict) -> str:
+    import hashlib
+
+    return hashlib.sha256(json.dumps(prompt, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def _openapi_run(spec: dict, base: str = "") -> dict:
     """An OpenAPI description of the call, generated from the signature."""
     properties = {
         item["name"]: {
@@ -162,6 +245,30 @@ def openapi(spec: dict, base: str = "") -> dict:
     }
 
 
+def openapi(spec: dict, base: str = "") -> dict:
+    """An OpenAPI description of the call (run, or start a job and poll it), from the signature."""
+    doc = _openapi_run(spec, base)
+    doc["info"]["version"] = spec.get("semver") or doc["info"]["version"]
+    run = doc["paths"][f"/agent-workflow-studio/api/{spec['name']}/run"]["post"]
+    doc["paths"][f"/agent-workflow-studio/api/{spec['name']}/jobs"] = {
+        "post": {
+            "summary": "Start the same call as a job (for long runs); poll it at the returned address",
+            "requestBody": run["requestBody"],
+            "responses": {"200": {"description": "The job started: {job, status, poll}."}},
+        }
+    }
+    doc["paths"]["/agent-workflow-studio/api/jobs/{job}"] = {
+        "get": {
+            "summary": "A job's status, and when done the same result as run",
+            "parameters": [
+                {"name": "job", "in": "path", "required": True, "schema": {"type": "string"}}
+            ],
+            "responses": run["responses"],
+        }
+    }
+    return doc
+
+
 def install_api_routes() -> None:
     import asyncio
     import time
@@ -173,14 +280,29 @@ def install_api_routes() -> None:
     from .architecture import COMPLETENESS, check
     from .project_repo import ProjectRepo, projects_root
     from .routes import _is_local_request
+    from .workflow_contract import hld
 
     routes, root = PromptServer.instance.routes, projects_root()
 
     def load(name: str) -> dict:
+        """The latest published version, or name@1 / name@1.2 / name@1.2.3 for a pinned one."""
+        name, _, wanted = name.partition("@")
         path = published_dir(root) / f"{name}.json"
         if not NAME.fullmatch(name) or not path.is_file():
             raise ValueError(f"No published API named {name!r}.")
-        return json.loads(path.read_text(encoding="utf-8"))
+        if not wanted:
+            return json.loads(path.read_text(encoding="utf-8"))
+        versions = sorted(
+            (
+                p
+                for p in (published_dir(root) / name).glob("*.json")
+                if f"{p.stem}.".startswith(f"{wanted}.")
+            ),
+            key=lambda p: tuple(int(x) for x in p.stem.split(".")),
+        )
+        if not versions:
+            raise ValueError(f"{name} has no published version {wanted}.")
+        return json.loads(versions[-1].read_text(encoding="utf-8"))
 
     async def guarded(request, handler):
         if not _is_local_request(request):
@@ -200,22 +322,46 @@ def install_api_routes() -> None:
             if blocking:
                 raise ValueError("Not ready to publish: " + "; ".join(blocking))
             repo = ProjectRepo(root, request.match_info["workflow_id"])
+            # The contract's examples are acceptance tests: they must have passed on exactly this graph.
+            if (repo.load_contract() or {}).get("examples"):
+                last = last_acceptance(repo)
+                if (
+                    not last
+                    or last["prompt_hash"] != prompt_hash(spec["prompt"])
+                    or last["passed"] < last["total"]
+                ):
+                    raise ValueError(
+                        "Run the contract's examples (acceptance tests) on this exact workflow first; all must pass."
+                    )
+            # A publish is always its own version in the history, with what was published.
+            published = {"kind": "publish", "name": spec["name"], "signature": spec["signature"]}
+            message = f"Publish API {spec['name']}"
             sha = await asyncio.to_thread(
-                repo.commit, spec["workflow"], f"Publish API {spec['name']}", "user"
+                repo.add_record, published, message, spec["workflow"], "user"
             )
+            contract = repo.load_contract()
+            # The approved HLD; without a contract there is no design, so only the signature can bump.
+            design = prompt_hash({"hld": hld(contract)}) if contract else ""
+            latest = published_dir(root) / f"{spec['name']}.json"
+            previous = json.loads(latest.read_text(encoding="utf-8")) if latest.is_file() else None
             record = {
                 **{k: spec[k] for k in ("name", "prompt", "workflow", "signature")},
                 "description": str(spec.get("description", ""))[:500],
                 "workflow_id": repo.id,
                 "version": sha,
+                "semver": next_version(previous, spec["signature"], design),
+                "design": design,
                 "published_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }
-            published_dir(root).mkdir(parents=True, exist_ok=True)
-            (published_dir(root) / f"{spec['name']}.json").write_text(
-                json.dumps(record, ensure_ascii=False), encoding="utf-8"
+            (published_dir(root) / spec["name"]).mkdir(parents=True, exist_ok=True)
+            data = json.dumps(record, ensure_ascii=False)
+            (published_dir(root) / spec["name"] / f"{record['semver']}.json").write_text(
+                data, encoding="utf-8"
             )
+            latest.write_text(data, encoding="utf-8")
             return {
                 "name": spec["name"],
+                "semver": record["semver"],
                 "version": sha[:8],
                 "endpoint": f"/agent-workflow-studio/api/{spec['name']}/run",
                 "openapi": f"/agent-workflow-studio/api/{spec['name']}/openapi.json",
@@ -223,6 +369,62 @@ def install_api_routes() -> None:
                     f"{v['where']}: {v['problem']}" for v in found if v["kind"] == COMPLETENESS
                 ],
             }
+
+        return await guarded(request, handler)
+
+    def last_acceptance(repo) -> dict | None:
+        folder = repo.tree / "records"
+        for path in sorted(folder.glob("*.json"), reverse=True) if folder.is_dir() else []:
+            record = json.loads(path.read_text(encoding="utf-8"))
+            if record.get("kind") == "acceptance":
+                return record
+        return None
+
+    @routes.post("/agent-workflow-studio/projects/{workflow_id}/acceptance")
+    async def acceptance(request):
+        async def handler():
+            spec = await request.json()
+            repo = ProjectRepo(root, request.match_info["workflow_id"])
+            examples = (repo.load_contract() or {}).get("examples") or []
+            if not examples:
+                raise ValueError("The contract has no examples to run.")
+            check_spec({**spec, "name": "acceptance"})
+            names = {i["name"] for i in spec["signature"].get("inputs", [])}
+            results = []
+            for example in examples:
+                given = {k: v for k, v in example["given"].items() if k in names}
+                prompt_id, history = await run_prompt(
+                    bind_inputs(spec, given), spec["workflow"], 900
+                )
+                outputs = (history or {}).get("outputs") or {}
+                ok = bool(history) and history["status"].get("status_str") == "success"
+                misses = (
+                    compare_example(
+                        example["expect"], collect_data(outputs), collect_outputs(spec, outputs)
+                    )
+                    if ok
+                    else ["the run did not succeed"]
+                )
+                results.append(
+                    {
+                        "example": example["id"],
+                        "passed": not misses,
+                        "misses": misses,
+                        "unused_given": sorted(set(example["given"]) - names),
+                        "prompt_id": prompt_id,
+                    }
+                )
+            passed = sum(r["passed"] for r in results)
+            record = {
+                "kind": "acceptance",
+                "prompt_hash": prompt_hash(spec["prompt"]),
+                "passed": passed,
+                "total": len(results),
+                "results": results,
+            }
+            message = f"Acceptance · {passed}/{len(results)} examples passed"
+            sha = await asyncio.to_thread(repo.add_record, record, message, spec["workflow"])
+            return {**record, "version": sha[:8]}
 
         return await guarded(request, handler)
 
@@ -253,60 +455,123 @@ def install_api_routes() -> None:
 
         return await guarded(request, handler)
 
+    async def run_prompt(prompt: dict, workflow: dict, timeout: float) -> tuple[str, dict | None]:
+        """Queue a prompt on ComfyUI's own queue and wait: (prompt id, history, or None if still running)."""
+        base = f"http://127.0.0.1:{PromptServer.instance.port}"
+        async with aiohttp.ClientSession() as session:
+            # The workflow rides along as ComfyUI's own run metadata: nodes find their project by it.
+            payload = {"prompt": prompt, "extra_data": {"extra_pnginfo": {"workflow": workflow}}}
+            async with session.post(f"{base}/prompt", json=payload) as response:
+                queued = await response.json()
+            if response.status != 200:
+                raise ValueError(
+                    f"ComfyUI refused the run: {json.dumps(queued.get('error') or queued)[:500]}"
+                )
+            prompt_id, waited = queued["prompt_id"], 0.0
+            while waited < timeout:
+                async with session.get(f"{base}/history/{prompt_id}") as response:
+                    history = (await response.json()).get(prompt_id)
+                if history and history.get("status", {}).get("completed") is not None:
+                    return prompt_id, history
+                await asyncio.sleep(0.5)
+                waited += 0.5
+        return prompt_id, None
+
+    async def execute(spec: dict, inputs: dict, timeout: float) -> dict:
+        """One call: fill the inputs, run, return the promised outputs, files and the version that ran."""
+        prompt = bind_inputs(spec, inputs)
+        version = {"semver": spec.get("semver"), "version": spec["version"][:8]}
+        prompt_id, history = await run_prompt(prompt, spec["workflow"], timeout)
+        if history is None:
+            return {"status": "running", "prompt_id": prompt_id, **version}
+        status, outputs = history["status"], history.get("outputs") or {}
+        errors = [m[1] for m in status.get("messages", []) if m[0] == "execution_error"]
+        return {
+            "status": "success" if status.get("status_str") == "success" else "error",
+            **version,
+            "prompt_id": prompt_id,
+            "data": collect_data(outputs),
+            "files": collect_files(outputs),
+            "outputs": collect_outputs(spec, outputs),
+            **(
+                {
+                    "errors": [
+                        {k: e.get(k) for k in ("node_type", "exception_message")} for e in errors
+                    ]
+                }
+                if errors
+                else {}
+            ),
+        }
+
+    async def call_body(request) -> tuple[dict, float]:
+        body = (await request.json() if request.can_read_body else {}) or {}
+        return body.get("inputs") or {}, min(float(body.get("timeout", 600)), 3600)
+
     @routes.post("/agent-workflow-studio/api/{name}/run")
     async def run(request):
         async def handler():
             spec = load(request.match_info["name"])
-            body = await request.json() if request.can_read_body else {}
-            prompt = bind_inputs(spec, (body or {}).get("inputs") or {})
-            timeout = min(float((body or {}).get("timeout", 600)), 3600)
-            base = f"http://127.0.0.1:{PromptServer.instance.port}"
-            async with aiohttp.ClientSession() as session:
-                # The workflow rides along as ComfyUI's own run metadata: nodes find their project by it.
-                payload = {
-                    "prompt": prompt,
-                    "extra_data": {"extra_pnginfo": {"workflow": spec["workflow"]}},
-                }
-                async with session.post(f"{base}/prompt", json=payload) as response:
-                    queued = await response.json()
-                if response.status != 200:
-                    raise ValueError(
-                        f"ComfyUI refused the run: {json.dumps(queued.get('error') or queued)[:500]}"
-                    )
-                prompt_id, waited = queued["prompt_id"], 0.0
-                while waited < timeout:
-                    async with session.get(f"{base}/history/{prompt_id}") as response:
-                        history = (await response.json()).get(prompt_id)
-                    if history and history.get("status", {}).get("completed") is not None:
-                        break
-                    await asyncio.sleep(0.5)
-                    waited += 0.5
-                else:
-                    return {
-                        "status": "running",
-                        "prompt_id": prompt_id,
-                        "version": spec["version"][:8],
-                    }
-            status = history["status"]
-            errors = [m[1] for m in status.get("messages", []) if m[0] == "execution_error"]
-            return {
-                "status": "success" if status.get("status_str") == "success" else "error",
+            inputs, timeout = await call_body(request)
+            return await execute(spec, inputs, timeout)
+
+        return await guarded(request, handler)
+
+    # Long runs as jobs: start, then poll. Kept in memory: a restart forgets unfinished jobs.
+    jobs: dict[str, dict] = {}
+
+    @routes.post("/agent-workflow-studio/api/{name}/jobs")
+    async def start_job(request):
+        async def handler():
+            import uuid
+
+            spec = load(request.match_info["name"])
+            inputs, timeout = await call_body(request)
+            bind_inputs(spec, inputs)  # refuse bad inputs now, not later
+            job = uuid.uuid4().hex[:16]
+            jobs[job] = {
+                "status": "running",
+                "semver": spec.get("semver"),
                 "version": spec["version"][:8],
-                "prompt_id": prompt_id,
-                "outputs": collect_outputs(spec, history.get("outputs") or {}),
-                **(
-                    {
-                        "errors": [
-                            {k: e.get(k) for k in ("node_type", "exception_message")}
-                            for e in errors
-                        ]
+            }
+
+            async def work():
+                try:
+                    jobs[job] = await execute(spec, inputs, max(timeout, 3600))
+                except Exception as error:  # noqa: BLE001 — a job reports its failure instead of vanishing
+                    jobs[job] = {
+                        "status": "error",
+                        "errors": [{"exception_message": str(error)[:500]}],
                     }
-                    if errors
-                    else {}
-                ),
+
+            asyncio.get_running_loop().create_task(work())
+            return {
+                "job": job,
+                "status": "running",
+                "poll": f"/agent-workflow-studio/api/jobs/{job}",
             }
 
         return await guarded(request, handler)
 
+    @routes.get("/agent-workflow-studio/api/jobs/{job}")
+    async def job_status(request):
+        async def handler():
+            if request.match_info["job"] not in jobs:
+                raise ValueError("No such job (jobs are kept until the studio restarts).")
+            return {"job": request.match_info["job"], **jobs[request.match_info["job"]]}
 
-__all__ = ["bind_inputs", "check_spec", "collect_outputs", "install_api_routes", "openapi"]
+        return await guarded(request, handler)
+
+
+__all__ = [
+    "bind_inputs",
+    "check_spec",
+    "collect_data",
+    "collect_files",
+    "collect_outputs",
+    "compare_example",
+    "install_api_routes",
+    "next_version",
+    "openapi",
+    "prompt_hash",
+]

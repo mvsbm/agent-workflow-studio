@@ -141,7 +141,7 @@ decide: {match: 2, review: 1}
     await page.screenshot({path: path.join(artifacts, 'matching-stages.png')});
     // Between stage cards, a wire shows what the stage's inner node sends out.
     const stages = await glance();
-    assert.ok(stages.wires.some(w => /^[\d,]+ pairs$/.test(w)), stages.wires.join(' | '));
+    assert.ok(stages.wires.some(w => /[\d,]+ pairs$/.test(w)), stages.wires.join(' | '));
     assert.deepEqual(errors, []);
     console.log('PASS matching_cascade');
   } catch (error) {

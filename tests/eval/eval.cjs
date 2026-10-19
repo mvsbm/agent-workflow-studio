@@ -107,12 +107,16 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       let contract = null;
       try {
         const base = `/agent-workflow-studio/projects/${encodeURIComponent(app.rootGraph.id)}`;
-        const {contract: current, gates} = await (await fetch(`${base}/contract`)).json();
+        const {contract: current} = await (await fetch(`${base}/contract`)).json();
         if (current) {
           const {contractEvidence} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
-          const evidence = await contractEvidence(app, window.comfyAPI.api.api, gates);
+          const evidence = await contractEvidence(app, window.comfyAPI.api.api);
           const status = await (await fetch(`${base}/contract/status`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)})).json();
-          contract = {aligned: status.aligned, drift: status.drift, progress: status.progress, freshness: status.freshness};
+          // The design as agreed: how many steps carry how/why/pattern, entities, outputs mapped, examples.
+          const steps = current.steps ?? [];
+          contract = {aligned: status.aligned, drift: status.drift, progress: status.progress, freshness: status.freshness, todo: status.todo,
+            designed: steps.length > 0 && steps.every(s => s.uses && s.why && s.pattern), entities: Object.keys(current.data ?? {}),
+            api: (current.promises?.outputs ?? []).some(o => o.from), examples: (current.examples ?? []).length};
         }
       } catch (error) { contract = {error: String(error)}; }
       const tools = [...document.querySelectorAll('.aw-pi-host summary, .aw-pi-host details > summary')].map(s => s.textContent.trim()).filter(t => /^(Done|Failed) · /.test(t));
@@ -123,7 +127,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
         // The work lives inside stages: node types include what is inside them.
         node_types: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.type) : [n.type])), node_ids: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.id) : [n.id])),
         stages: app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(n => n.title),
-        loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !/Note$/.test(n.type)).map(n => n.title),
+        loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !n.properties?.aws_input && !/Note$/.test(n.type)).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,
         run_statuses: statuses, versions: (log.commits ?? []).map(c => `${c.author}: ${c.message}`),
         chat: document.querySelector('.aw-pi-host')?.innerText.slice(-3000) ?? '',

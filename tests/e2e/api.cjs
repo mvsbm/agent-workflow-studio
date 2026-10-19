@@ -48,9 +48,21 @@ const artifacts = process.env.ARTIFACTS;
       const call = async inputs => (await api.fetchApi('/agent-workflow-studio/api/greet-e2e/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({inputs})})).json();
       const ran = await call({value: 'hi'});
       const wrong = await call({value: 3});
+      // A change inside a stage republishes as a patch; the old version stays callable, pinned.
+      await bridge.handle('edit', {operations: [{op: 'widget', stage: 'greet', node: 'cat', name: 'string_b', value: ' there'}]});
+      const patched = await publishWorkflow(app, api, 'greet-e2e');
+      const pinned = await (await api.fetchApi('/agent-workflow-studio/api/greet-e2e@1.0.0/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({inputs: {value: 'hi'}})})).json();
+      // A long call as a job: start it, poll until it is done.
+      const started = await (await api.fetchApi('/agent-workflow-studio/api/greet-e2e/jobs', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({inputs: {value: 'yo'}})})).json();
+      let job;
+      for (let i = 0; i < 60; i++) {
+        job = await (await api.fetchApi(started.poll)).json();
+        if (job.status !== 'running') break;
+        await new Promise(r => setTimeout(r, 500));
+      }
       const openapi = await (await api.fetchApi('/agent-workflow-studio/api/greet-e2e/openapi.json')).json();
       const listing = await (await api.fetchApi('/agent-workflow-studio/api')).json();
-      return {refused, published, ran, wrong, openapi, listing};
+      return {refused, published, ran, wrong, openapi, listing, patched, pinned, job};
     });
     assert.match(result.refused, /outputs/, 'publishing without a signature is refused');
     assert.match(result.published.version, /^[0-9a-f]{8}$/);
@@ -59,6 +71,12 @@ const artifacts = process.env.ARTIFACTS;
     assert.match(JSON.stringify(result.ran.outputs.show), /hi world/, 'the caller\'s input flowed through the frozen workflow');
     assert.match(JSON.stringify(result.ran.outputs.greet), /"passed":true/, 'the stage Check result comes with it');
     assert.match(result.wrong.error, /must be string/);
+    assert.equal(result.published.semver, '1.0.0');
+    assert.equal(result.patched.semver, '1.0.1', 'a change inside a stage is a patch');
+    assert.equal(result.pinned.semver, '1.0.0');
+    assert.match(JSON.stringify(result.pinned.outputs.show), /hi world/, 'the pinned version still behaves as published');
+    assert.equal(result.job.status, 'success', JSON.stringify(result.job));
+    assert.match(JSON.stringify(result.job.outputs.show), /yo there/, 'the job ran the latest version');
     assert.equal(result.openapi.paths['/agent-workflow-studio/api/greet-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.value.type, 'string');
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));
     // The Contract tab shows what is published and how to call it.

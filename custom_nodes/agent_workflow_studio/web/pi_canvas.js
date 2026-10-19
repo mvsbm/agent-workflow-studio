@@ -29,7 +29,7 @@ export function withStageOutputs(graph, defs) {
 
 // A contract step is a stage: a subgraph whose ports are the step's typed inputs and outputs.
 // The skeleton (one stage per step, wired, a Stub inside, a Check per gate) is built on approval.
-const SCAFFOLD = new Set(['AgentWorkflowStub', 'AgentWorkflowCheck']);
+const SCAFFOLD = new Set(['AgentWorkflowStub', 'AgentWorkflowCheck', 'AgentWorkflowApiOutput']);
 const humanize = id => id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
 
@@ -41,7 +41,7 @@ export function packIntoStage(graph, members, step, number) {
   if (!stage) throw Error(`Could not make a stage for step ${step}.`);
   stage.title = stage.subgraph.name = `${number} · ${humanize(step)}`;
   stage.properties = {...stage.properties, aws_stage: step, aws_stage_order: number};
-  stage.setSize([260, 200]); // a stage card's size, so the layout right after packing is final
+  stage.setSize([320, 240]); // a stage card's size (room for its design sentence), so the layout right after packing is final
   return stage;
 }
 
@@ -57,7 +57,12 @@ export function stageNumbers(steps) {
   return number;
 }
 
-const portType = (steps, source) => {
+// A promised input's kind as a socket type, and the node that holds it at the top level.
+const INPUT_KINDS = {number: ['FLOAT', 'PrimitiveFloat'], integer: ['INT', 'PrimitiveInt'], count: ['INT', 'PrimitiveInt'], boolean: ['BOOLEAN', 'PrimitiveBoolean']};
+const inputKind = kind => INPUT_KINDS[String(kind).toLowerCase()] ?? ['STRING', 'PrimitiveString'];
+
+const portType = (steps, source, promises) => {
+  if (source.startsWith('input.')) return inputKind(promises?.inputs?.find(i => i.name === source.slice(6))?.kind)[0];
   if (!source.includes('.')) return source;
   const [step, port] = source.split('.');
   return steps.find(s => s.id === step)?.gives?.[port] ?? '*';
@@ -71,11 +76,18 @@ function feederOf(subgraph, port) {
   return link ? {node: subgraph.getNodeById(link.origin_id), slot: link.origin_slot} : null;
 }
 
+/** The columns last seen flowing out of a stage's output port (from its feeding node's sample table). */
+export function observedFields(subgraph, port) {
+  const tables = feederOf(subgraph, port)?.node?.properties?.aws_tables ?? [];
+  const sample = [...tables].reverse().find(t => / · sample$/.test(t.title ?? ''));
+  return sample?.columns ?? null;
+}
+
 /** Point every Check watching an output port at what now feeds that port. */
 function rewatch(subgraph, port) {
   const feeder = feederOf(subgraph, port);
   if (!feeder?.node) return;
-  for (const check of nodes(subgraph).filter(n => n.type === 'AgentWorkflowCheck' && n.properties?.aws_watches === port)) feeder.node.connect(feeder.slot, check, 0);
+  for (const watcher of nodes(subgraph).filter(n => SCAFFOLD.has(n.type) && n.type !== 'AgentWorkflowStub' && n.properties?.aws_watches === port)) feeder.node.connect(feeder.slot, watcher, 0);
 }
 
 const linkIn = (graph, id) => (id == null ? null : graph.links?.get?.(id) ?? graph.links?.[id]);
@@ -111,8 +123,11 @@ export function addCheck(subgraph, check, says) {
 /** Build (or extend) the canvas skeleton for the approved steps: a stage per step with typed ports,
  *  wired from the steps it takes from, a Stub passing data through until it is built, and a Check
  *  for each gate. Existing stages are kept; a stage whose step is gone is marked, never deleted. */
-export function buildSkeleton(graph, steps) {
-  const created = [], notes = [], numbers = stageNumbers(steps);
+export function buildSkeleton(graph, steps, {promises, design} = {}) {
+  const created = [], notes = [];
+  // Titles come from the approved design (the HLD) when given; numbering mirrors it otherwise.
+  const numbers = design ? Object.fromEntries(design.map(d => [d.id, Number(/^(\d+)/.exec(d.title)?.[1] ?? 1)])) : stageNumbers(steps);
+  const sentence = Object.fromEntries((design ?? []).map(d => [d.id, d.sentence]));
   for (const step of steps) {
     let stage = stageNode(graph, step.id);
     // Existing work the step takes over (the user's nodes from before the contract), wiring kept.
@@ -127,14 +142,18 @@ export function buildSkeleton(graph, steps) {
       created.push(step.id);
     }
     stage.title = stage.subgraph.name = `${numbers[step.id]} · ${humanize(step.id)}`;
-    stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false};
+    // A built stage whose design sentence changed is stale until its Checks pass again.
+    const before = stage.properties?.aws_design, now = sentence[step.id];
+    const stale = Boolean(stage.properties?.aws_stale) || (!created.includes(step.id) && before && now && before !== now);
+    if (stale && !stage.properties?.aws_stale) notes.push(`${stage.title}: its design changed; recheck what is inside it.`);
+    stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false, ...(now ? {aws_design: now} : {}), aws_stale: stale};
     const sg = stage.subgraph;
     const ensure = (ports, name, type, add) => {
       const port = ports.find(p => p.name === name);
       if (!port) add(name, type);
       else if (port.type !== type) notes.push(`${stage.title}: ${name} is ${port.type}, the contract now says ${type}; rewire or change the stage.`);
     };
-    for (const [name, source] of Object.entries(step.takes ?? {})) ensure(sg.inputs, name, portType(steps, source), (n, t) => sg.addInput(n, t));
+    for (const [name, source] of Object.entries(step.takes ?? {})) ensure(sg.inputs, name, portType(steps, source, promises), (n, t) => sg.addInput(n, t));
     for (const [name, type] of Object.entries(step.gives ?? {})) ensure(sg.outputs, name, type, (n, t) => sg.addOutput(n, t));
     const stub = created.includes(step.id) && nodes(sg).find(n => n.type === 'AgentWorkflowStub');
     if (stub && (!sg.inputs.length || !sg.outputs.length)) sg.remove(stub); // nothing to pass through: the stage starts empty
@@ -145,9 +164,40 @@ export function buildSkeleton(graph, steps) {
     }
     const check = step.gate?.check;
     if (check?.output && !nodes(sg).some(n => n.type === 'AgentWorkflowCheck' && n.properties?.aws_watches === check.output)) addCheck(sg, check, step.gate.says);
+    // API-native: each promised output this step delivers is returned by an API output node on its port.
+    for (const promised of (promises?.outputs ?? []).filter(o => o.from?.startsWith(`${step.id}.`))) {
+      const port = promised.from.split('.')[1];
+      if (nodes(sg).some(n => n.type === 'AgentWorkflowApiOutput' && n.properties?.aws_watches === port)) continue;
+      const node = globalThis.LiteGraph.createNode('AgentWorkflowApiOutput');
+      sg.add(node);
+      node.title = `API output · ${promised.name}`;
+      node.properties = {...node.properties, aws_watches: port};
+      const name = node.widgets?.find(w => w.name === 'name');
+      if (name) name.value = promised.name;
+      rewatch(sg, port);
+    }
+  }
+  // The API's inputs (the contract's promised inputs) as top-level nodes the stages take from.
+  const inputs = {};
+  for (const input of promises?.inputs ?? []) {
+    let node = nodes(graph).find(n => n.properties?.aws_input === input.name);
+    if (!node) {
+      node = globalThis.LiteGraph.createNode(inputKind(input.kind)[1]);
+      graph.add(node);
+      node.title = `Input · ${input.name}`;
+      node.properties = {...node.properties, aws_input: input.name};
+      const widget = node.widgets?.find(w => w.name === 'value');
+      if (widget && input.example != null) widget.value = input.example;
+    }
+    inputs[input.name] = node;
   }
   for (const step of steps) {
     for (const [name, source] of Object.entries(step.takes ?? {})) {
+      if (source.startsWith('input.')) {
+        const node = inputs[source.slice(6)], b = stageNode(graph, step.id), into = b?.inputs?.findIndex(i => i.name === name);
+        if (node && into >= 0 && b.inputs[into].link == null) node.connect(0, b, into);
+        continue;
+      }
       if (!source.includes('.')) continue;
       const [from, port] = source.split('.'), a = stageNode(graph, from), b = stageNode(graph, step.id);
       const out = a?.outputs?.findIndex(o => o.name === port), into = b?.inputs?.findIndex(i => i.name === name);
@@ -160,11 +210,14 @@ export function buildSkeleton(graph, steps) {
       notes.push(`${node.title} is no longer a contract step: move what you need out of it, then remove it.`);
     }
   }
+  // The signature (App mode): the promised inputs in, the stages delivering promised outputs out.
+  const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => stageNode(graph, o.from.split('.')[0])?.id).filter(id => id != null))];
+  if (outputs.length) setSignature(graph, Object.values(inputs).map(node => ({node: node.id, widget: 'value'})), outputs);
   arrangeGraph(graph);
   // What is already in place, so the agent builds only what is missing.
   const stages = steps.map(step => {
     const stage = stageNode(graph, step.id), sg = stage.subgraph;
-    return {step: step.id, title: stage.title,
+    return {step: step.id, title: stage.title, design: stage.properties.aws_design,
       takes: sg.inputs.map((p, i) => `${p.name}: ${p.type}${stage.inputs[i]?.link != null ? ' (wired)' : ' (connect at the top level)'}`),
       gives: sg.outputs.map(p => `${p.name}: ${p.type}`),
       inside: nodes(sg).map(n => (n.type === 'AgentWorkflowCheck' ? `Check on ${n.properties?.aws_watches}` : n.type === 'AgentWorkflowStub' ? 'Stub (input → outputs)' : n.title))};
@@ -222,7 +275,7 @@ export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX lea
   if (stages.length) {
     // Organized into stages: given sources, then one column per stage in step order, then the rest.
     const rest = main.filter(node => !stages.includes(node));
-    const sources = rest.filter(node => node.properties?.aws_given && !parents.get(node.id).length);
+    const sources = rest.filter(node => (node.properties?.aws_given || node.properties?.aws_input) && !parents.get(node.id).length);
     // Stages sharing a step number are parallel lanes (e.g. one per source system): one column.
     const lanes = [];
     for (const stage of stages) {
@@ -305,6 +358,12 @@ export function latestMatchingRun(history, workflowId, executable) {
   return run ? {run, current: JSON.stringify(run.prompt[2]) === executable} : null;
 }
 
+async function digest(text) {
+  const bytes = new TextEncoder().encode(text);
+  const hash = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(hash)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 /** Evidence for deriving contract step states: the stages and the nodes inside them (a node's step
  *  is the stage it sits in), the saved workflow (for the architecture rules) and, when the latest run
  *  of this workflow ran exactly the current graph, each step's Check results on that run. */
@@ -313,11 +372,11 @@ export async function contractEvidence(app, api) {
   const stages = nodes(graph).filter(node => node.properties?.aws_stage);
   const evidence = {
     nodes: [
-      ...nodes(graph).filter(node => !node.properties?.aws_stage).map(node => ({id: String(node.id), title: node.title, class_type: node.type, step: null, given: !!node.properties?.aws_given, note: /Note$/.test(node.type ?? '')})),
+      ...nodes(graph).filter(node => !node.properties?.aws_stage).map(node => ({id: String(node.id), title: node.title, class_type: node.type, step: null, given: !!(node.properties?.aws_given || node.properties?.aws_input), note: /Note$/.test(node.type ?? '')})),
       ...stages.flatMap(stage => deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => !node.isSubgraphNode?.()).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, step: stage.properties.aws_stage, scaffold: SCAFFOLD.has(node.type), fuzzy: node.type === 'AgentWorkflowFuzzyNode'}))),
     ],
-    stages: stages.map(stage => ({step: stage.properties.aws_stage, title: stage.title, orphaned: !!stage.properties.aws_orphaned,
-      takes: (stage.subgraph.inputs ?? []).map(p => [p.name, p.type]), gives: (stage.subgraph.outputs ?? []).map(p => [p.name, p.type])})),
+    stages: stages.map(stage => ({step: stage.properties.aws_stage, title: stage.title, orphaned: !!stage.properties.aws_orphaned, stale: !!stage.properties.aws_stale,
+      takes: (stage.subgraph.inputs ?? []).map(p => [p.name, p.type]), gives: (stage.subgraph.outputs ?? []).map(p => [p.name, p.type, observedFields(stage.subgraph, p.name)])})),
     workflow: graph.serialize(),
     gate_results: {}, run: null,
   };
@@ -326,10 +385,20 @@ export async function contractEvidence(app, api) {
   // "No output node" is judged by the gates themselves: on an empty canvas it is progress, not drift.
   evidence.analysis = {outputs: analysis.outputs.map(o => o.title), problems: analysis.problems.filter(p => p.kind !== 'no_output_node').map(p => p.message)};
   const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
-  const match = latestMatchingRun(history, graph.id, JSON.stringify((await app.graphToPrompt()).output));
+  const executable = JSON.stringify((await app.graphToPrompt()).output);
+  const match = latestMatchingRun(history, graph.id, executable);
+  const fingerprint = await digest(executable);
   if (match) {
     evidence.run = {prompt_id: match.run.prompt[1], current: match.current};
-    if (match.current && match.run.status?.completed) for (const gate of gateResults(match.run, graph)) evidence.gate_results[gate.step] = gate.status;
+    if (match.current && match.run.status?.completed) {
+      for (const gate of gateResults(match.run, graph)) evidence.gate_results[gate.step] = gate.status;
+      // Kept with the workflow, so the status survives a restart (ComfyUI's history does not).
+      graph.extra = {...graph.extra, aws_verified: {fingerprint, at: new Date().toISOString().slice(0, 16), gates: evidence.gate_results}};
+    }
+  } else if (graph.extra?.aws_verified?.fingerprint === fingerprint) {
+    // No run in this session yet, but exactly this graph was verified before.
+    evidence.run = {prompt_id: null, current: true, at: graph.extra.aws_verified.at};
+    evidence.gate_results = {...graph.extra.aws_verified.gates};
   }
   return evidence;
 }
@@ -367,7 +436,21 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
   const outputSlot = (node, name) => typeof name === 'number' ? name : node.outputs?.findIndex(output => output.name === name);
   const notFound = ref => Error(`Node not found: ${ref}. Read the workflow: nodes inside a stage are listed under it; give that "stage".`);
 
-  async function edit(operations) {
+  // The approved design's wiring (from the contract): top-level edits that contradict it are refused,
+  // so the canvas cannot drift from the design; changing the design is an amendment the user approves.
+  function declaredFor(design, stage, port) {
+    return [...design.links.filter(([, , s, p]) => s === stage && p === port).map(([a, b]) => `${a}.${b}`),
+      ...design.inputs.filter(([, s, p]) => s === stage && p === port).map(([n]) => `input.${n}`)];
+  }
+  function guard(design, from, out, to, slot) {
+    if (!design || !to?.properties?.aws_stage) return;
+    const port = to.inputs[slot]?.name, declared = declaredFor(design, to.properties.aws_stage, port);
+    const source = from.properties?.aws_stage ? `${from.properties.aws_stage}.${from.outputs[out]?.name}` : from.properties?.aws_input ? `input.${from.properties.aws_input}` : null;
+    if (!source && !declared.length) return; // the user's given data into a port the design leaves open
+    if (!declared.includes(source)) throw Error(`Not in the approved design: ${source ?? from.title} → ${to.title} (${port}). The design wires ${declared.join(', ') || 'nothing'} there. To change the design, propose an amended contract.`);
+  }
+
+  async function edit(operations, design) {
     if (!Array.isArray(operations) || !operations.length || operations.length > 32) throw Error('Use 1–32 edit operations.');
     const graph = app.graph;
     const defs = await catalog();
@@ -453,6 +536,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             if (!from || !to || !Number.isInteger(out) || !from.outputs?.[out]) throw Error('Invalid connection source.');
             const slot = inputSlot(to,op.input);
             if (!Number.isInteger(slot) || slot < 0 || !to.inputs?.[slot]) throw Error('Invalid connection target.');
+            if (op.stage == null) guard(design, from, out, to, slot);
             const existing = linkIn(where, to.inputs[slot].link);
             if (existing && existing.origin_id === from.id && existing.origin_slot === out) continue; // already wired
             if (existing && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
@@ -463,10 +547,12 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           if (!node) throw notFound(op.node);
           if (op.op === 'remove') {
             if (node.properties?.aws_stage && !node.properties.aws_orphaned) throw Error('A stage is a contract step: to drop it, propose a revised contract without that step.');
+            if (node.properties?.aws_input) throw Error("An API input comes from the contract's promised inputs: to drop it, propose an amended contract.");
             where.remove(node);
           } else {
             const slot = inputSlot(node,op.input);
             if (!Number.isInteger(slot) || slot < 0 || !node.inputs?.[slot]) throw Error('Input not found.');
+            if (design && op.stage == null && node.properties?.aws_stage && declaredFor(design, node.properties.aws_stage, node.inputs[slot].name).length) throw Error(`The approved design wires ${node.title} (${node.inputs[slot].name}); to change it, propose an amended contract.`);
             node.disconnectInput(slot);
           }
         } else if (op.op === 'signature') {
@@ -530,7 +616,11 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (Array.isArray(args.queries)) return {results:Object.fromEntries(args.queries.slice(0,8).map(q => [q, search(q, 20)]))};
       return search(args.query, 60);
     }
-    if (action === 'edit') return edit(args.operations);
+    if (action === 'edit') return edit(args.operations, args.design);
+    if (action === 'examples') {
+      const {runExamples} = await import('./publish.js');
+      return runExamples(app, api);
+    }
     if (action === 'harden') {
       // Freezing a fuzzy step's latest plan into deterministic nodes is the user's call.
       const node = resolve(args.node, {stage: args.stage}, {});
@@ -544,7 +634,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'skeleton') {
       if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
       app.canvas.emitBeforeChange();
-      try { const result = buildSkeleton(app.graph, args.steps); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
+      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
     }
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.

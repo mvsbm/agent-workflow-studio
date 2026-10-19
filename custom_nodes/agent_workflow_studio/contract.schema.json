@@ -246,7 +246,7 @@
               "type": "string",
               "pattern": "^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
             },
-            "description": "The stage's inputs: port name -> an earlier step's output (\"step.port\"), or a socket type for data that enters the workflow."
+            "description": "The stage's inputs: port name -> an earlier step's output (\"step.port\"), a promised input (\"input.<name>\"), or a socket type for data entering."
           },
           "adopts": {
             "type": "array",
@@ -258,6 +258,24 @@
               ]
             },
             "description": "Ids of existing top-level nodes (the user's own work from before the contract) that this step's stage takes over, wiring kept."
+          },
+          "uses": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "HLD: how, in plain words (e.g. table nodes, rules + learned points, an LLM)."
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "description": "HLD: because … (the reason this step exists or is shaped this way)."
+          },
+          "pattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "The design pattern the step follows (e.g. pipes and filters, content-based router, review queue)."
           }
         },
         "required": [
@@ -300,6 +318,16 @@
               "agent"
             ],
             "description": "user only for answers the user actually gave."
+          },
+          "pattern": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "The design pattern this decision applies, if any."
+          },
+          "principle": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The engineering principle behind it (e.g. single responsibility, determinism)."
           }
         },
         "required": [
@@ -353,6 +381,55 @@
         ]
       },
       "description": "A plain question must be answered before approval. A question tied to one step ({question, step}) may stay open: that step is built around it and cannot be verified until it is answered (by amending the contract)."
+    },
+    "data": {
+      "type": "object",
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "description": "The data entities (ERD): what flows between steps. A port named like an entity carries it.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "key": {
+            "type": "array",
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            }
+          },
+          "refs": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "description": "field -> the entity it points to."
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "required": [
@@ -388,6 +465,11 @@
             "number",
             "boolean"
           ]
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$",
+          "description": "Outputs: the step output that delivers it (\"step.port\"); makes it part of the API."
         }
       },
       "required": [

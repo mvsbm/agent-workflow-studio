@@ -73,13 +73,30 @@ def validate_contract(contract: object) -> dict:
             )
         # Stages are wired from earlier steps only, so the skeleton is a graph that can run.
         for port, source in step.get("takes", {}).items():
-            if "." in source:
+            if source.startswith("input."):
+                if source[6:] not in {i["name"] for i in contract["promises"]["inputs"]}:
+                    raise ValueError(
+                        f"Step {step['id']} takes {port} from {source}, which is not a promised input."
+                    )
+            elif "." in source:
                 src, out = source.split(".")
                 if out not in gives.get(src, {}):
                     raise ValueError(
                         f"Step {step['id']} takes {port} from {source}, which no earlier step gives."
                     )
         gives[step["id"]] = step.get("gives", {})
+    for out in contract["promises"]["outputs"]:
+        if "from" in out:
+            src, port = out["from"].split(".")
+            if port not in gives.get(src, {}):
+                raise ValueError(
+                    f"Promised output {out['name']} comes from {out['from']}, which no step gives."
+                )
+    entities = contract.get("data") or {}
+    for name, entity in entities.items():
+        for field, target in (entity.get("refs") or {}).items():
+            if target not in entities:
+                raise ValueError(f"Entity {name}: {field} refers to unknown entity {target}.")
     for q in contract["open_questions"]:
         if isinstance(q, dict) and q["step"] not in gives:
             raise ValueError(f"Open question “{q['question']}” waits on unknown step {q['step']}.")
@@ -173,7 +190,7 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
     gate_results: step -> status of its Check nodes on the latest run of exactly this graph
     ("passed", "failed", ...). A stage holding only its Stub and Checks is still planned.
     """
-    result = []
+    result, designs = [], {d["id"]: d["sentence"] for d in hld(contract)}
     for step in contract["steps"]:
         mine = [n for n in nodes if n.get("step") == step["id"] and not n.get("scaffold")]
         events = []
@@ -193,6 +210,7 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
             {
                 "step": step["id"],
                 "purpose": step["purpose"],
+                "design": designs[step["id"]],
                 "state": state,
                 "nodes": len(mine),
                 "next": f"Waiting on your answer: {'; '.join(questions)}"
@@ -229,11 +247,18 @@ def alignment(contract: dict, evidence: dict) -> list[str]:
         }
         have = {
             **{f"takes {k}": v for k, v in stage.get("takes", [])},
-            **{f"gives {k}": v for k, v in stage.get("gives", [])},
+            **{f"gives {k}": v for k, v, *_ in stage.get("gives", [])},
         }
         for port, kind in wanted.items():
             if port in have and have[port] != kind and "*" not in (have[port], kind):
                 drift.append(f"{stage['title']} {port} as {have[port]}; the contract says {kind}.")
+        # Data drift: a declared entity field that the last run did not carry.
+        for name, _kind, *seen in stage.get("gives", []):
+            fields = (contract.get("data") or {}).get(name, {}).get("fields") or []
+            if seen and seen[0] and (missing := [f for f in fields if f not in seen[0]]):
+                drift.append(
+                    f"{stage['title']} gives {name} without {', '.join(missing)} (declared in the design)."
+                )
     for step in contract["steps"]:
         built = [n for n in nodes if n.get("step") == step["id"]]
         if step["approach"] == "fixed" and any(n.get("fuzzy") for n in built):
@@ -267,6 +292,8 @@ def report(contract: dict, evidence: dict) -> dict:
     freshness = (
         "No run of this workflow yet."
         if not run
+        else f"Based on the run of {run['at'].replace('T', ' ')} of this exact graph (kept with the workflow)."
+        if run.get("current") and run.get("at")
         else "Based on the latest run of this exact graph."
         if run.get("current")
         else "The graph changed since the last run; run it again to check gates."
@@ -284,6 +311,11 @@ def report(contract: dict, evidence: dict) -> dict:
             if not n.get("step") and not n.get("given") and not n.get("note")
         ],
         "todo": [
+            f"{st['title']}: its design changed; recheck the nodes inside and run until its Checks pass"
+            for st in evidence.get("stages", [])
+            if st.get("stale")
+        ]
+        + [
             f"Answer: {q} (step {step} waits; amend the contract with the answer as a decision)"
             for step, qs in waiting(contract).items()
             for q in qs
@@ -291,6 +323,142 @@ def report(contract: dict, evidence: dict) -> dict:
         + todo(evidence),
         "text": render(contract, states),
     }
+
+
+SHORT = 220  # an HLD sentence a person reads at a glance
+TYPED = {"TABLE", "PAIRS", "DECISIONS", "CUSTOMERS"}  # data hand-offs that deserve a named entity
+
+
+def stage_numbers(contract: dict) -> dict[str, int]:
+    """Each step's number: one more than the deepest step it takes from (so independent lanes
+    share a number); steps declaring no inputs run in order. Mirrors stageNumbers in pi_canvas.js."""
+    number: dict[str, int] = {}
+    steps = contract["steps"]
+    for i, step in enumerate(steps):
+        takes = list(step.get("takes", {}).values())
+        sources = [
+            number.get(t.split(".")[0], 0) for t in takes if "." in t and not t.startswith("input.")
+        ]
+        number[step["id"]] = (
+            (max(sources) + 1)
+            if sources
+            else 1
+            if takes
+            else (number[steps[i - 1]["id"]] + 1 if i else 1)
+        )
+    return number
+
+
+def title(step_id: str, number: int) -> str:
+    return f"{number} · {step_id.replace('_', ' ').capitalize()}"
+
+
+def hld(contract: dict) -> list[dict]:
+    """The high-level design: one sentence per step, derived from the contract's steps.
+    takes → does, using → gives → to, because."""
+    numbers, steps = stage_numbers(contract), contract["steps"]
+    titles = {s["id"]: title(s["id"], numbers[s["id"]]) for s in steps}
+    out = []
+    for step in steps:
+        takes = [
+            f"{port} (your input)"
+            if src.startswith("input.")
+            else f"{port} from {titles.get(src.split('.')[0], src)}"
+            if "." in src
+            else f"{port} ({src})"
+            for port, src in step.get("takes", {}).items()
+        ]
+        to = [
+            titles[s["id"]]
+            for s in steps
+            if any(v.startswith(f"{step['id']}.") for v in s.get("takes", {}).values())
+        ]
+        to += [
+            f"you (output {o['name']})"
+            for o in contract["promises"]["outputs"]
+            if o.get("from", "").startswith(f"{step['id']}.")
+        ]
+        parts = [
+            f"takes {', '.join(takes)}" if takes else "",
+            step["purpose"].rstrip(". ") + (f" using {step['uses']}" if step.get("uses") else ""),
+            "gives " + ", ".join(f"{k} ({v})" for k, v in step.get("gives", {}).items())
+            if step.get("gives")
+            else "",
+            f"to {', '.join(to)}" if to else "",
+        ]
+        sentence = " → ".join(p for p in parts if p) + (
+            f", because {step['why']}" if step.get("why") else ""
+        )
+        out.append(
+            {
+                "id": step["id"],
+                "title": titles[step["id"]],
+                "sentence": sentence,
+                "pattern": step.get("pattern", ""),
+            }
+        )
+    return out
+
+
+def review(contract: dict) -> list[tuple[bool, str]]:
+    """The design review checklist, from the contract alone: what a good design has before building."""
+    steps, promises, data = contract["steps"], contract["promises"], contract.get("data") or {}
+    consumed = {v for s in steps for v in s.get("takes", {}).values()} | {
+        o.get("from") for o in promises["outputs"]
+    }
+    handoffs = [
+        f"{s['id']}.{k}"
+        for s in steps
+        for k, v in s.get("gives", {}).items()
+        if v in TYPED and f"{s['id']}.{k}" in consumed
+    ]
+    musts = {r["id"] for r in contract["requests"] if r["priority"] == "must"}
+    examples = {r for e in contract["examples"] for r in e["covers"]}
+    used_inputs = {
+        v[6:] for s in steps for v in s.get("takes", {}).values() if v.startswith("input.")
+    }
+    return [
+        (
+            all(s.get("gives") and "*" not in s["gives"].values() for s in steps),
+            "Every step gives typed data",
+        ),
+        (
+            all((s["gate"].get("check") or {}).get("output") for s in steps),
+            "Every step's result is checked on its data",
+        ),
+        (all(s.get("uses") and s.get("why") for s in steps), "Every step says how and why"),
+        (all(s.get("pattern") for s in steps), "Every step names its design pattern"),
+        (
+            all(len(d["sentence"]) <= SHORT for d in hld(contract)),
+            f"Every step reads as one short sentence (≤ {SHORT} characters: say less, the stage shows the rest)",
+        ),
+        (
+            all(h.split(".")[1] in data for h in handoffs),
+            "Every hand-off between steps is a named data entity",
+        ),
+        (
+            all(o.get("from") for o in promises["outputs"])
+            and used_inputs >= {i["name"] for i in promises["inputs"]},
+            "The API is defined: every input is used, every output comes from a step",
+        ),
+        (musts <= examples, "Every must-request has an example (it becomes an acceptance test)"),
+        (
+            all(s["gate"].get("check") for s in steps if s["approach"] != "fixed"),
+            "AI steps sit behind a check",
+        ),
+    ]
+
+
+def wiring(contract: dict) -> dict:
+    """The top-level wires the approved design allows: step to step, and promised input to step."""
+    links, inputs = [], []
+    for step in contract["steps"]:
+        for port, source in step.get("takes", {}).items():
+            if source.startswith("input."):
+                inputs.append([source[6:], step["id"], port])
+            elif "." in source:
+                links.append([*source.split("."), step["id"], port])
+    return {"links": links, "inputs": inputs}
 
 
 def render(contract: dict, states: list[dict] | None = None) -> str:
@@ -317,11 +485,14 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
                 + (f", e.g. {p['example']}" if "example" in p else "")
                 for p in ports
             ]
-    lines += ["", "STEPS:"]
-    for n, step in enumerate(contract["steps"], 1):
-        state = f" — {status[step['id']]}" if step["id"] in status else ""
+    lines += ["", "DESIGN (one sentence per step; each step becomes a stage on the canvas):"]
+    designs = {d["id"]: d for d in hld(contract)}
+    for step in contract["steps"]:
+        d, state = designs[step["id"]], f" — {status[step['id']]}" if step["id"] in status else ""
         lines.append(
-            f"  {n}. {step['purpose']} [{approach[step['approach']]}] covers {', '.join(step['covers'])}{state}"
+            f"  {d['title']}: {d['sentence']} [{approach[step['approach']]}"
+            + (f"; {d['pattern']}" if d["pattern"] else "")
+            + f"] covers {', '.join(step['covers'])}{state}"
         )
         ports = [
             *(f"takes {k} ← {v}" for k, v in step.get("takes", {}).items()),
@@ -338,12 +509,23 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
             else " (you confirm this one)"
         )
         lines.append(f"     ✓ Done when: {step['gate']['says']}{how}")
+    if contract.get("data"):
+        lines += ["", "DATA (what flows between steps):"]
+        for name, e in contract["data"].items():
+            key = f" key {', '.join(e['key'])}" if e.get("key") else ""
+            refs = "".join(f" · {f} → {t}" for f, t in (e.get("refs") or {}).items())
+            lines.append(f"  • {name}: {e['description']}{key}{refs}")
+    lines += ["", "DESIGN REVIEW:"] + [
+        f"  {'✓' if ok else '✗'} {item}" for ok, item in review(contract)
+    ]
     for label, items in (
         (
             "DECISIONS",
             [
                 f"{d['id']} {d['decision']} — why: {d['why']}"
                 + (f" (instead of {d['instead_of']})" if d.get("instead_of") else "")
+                + (f" · pattern: {d['pattern']}" if d.get("pattern") else "")
+                + (f" · principle: {d['principle']}" if d.get("principle") else "")
                 + f" · by {'you' if d['by'] == 'user' else 'the agent'}"
                 for d in contract["decisions"]
             ],
@@ -376,6 +558,10 @@ __all__ = [
     "from_yaml",
     "render",
     "alignment",
+    "hld",
+    "wiring",
+    "review",
+    "stage_numbers",
     "report",
     "to_yaml",
     "validate_contract",

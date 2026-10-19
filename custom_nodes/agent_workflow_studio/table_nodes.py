@@ -79,8 +79,8 @@ def report(
     }
     facts.update(notes or {})
     tables = [table(title, [{"": k, "value": v} for k, v in facts.items()], 30, 140)]
+    examples = []
     if before and changed:
-        examples = []
         for old, new in zip(before["rows"], after["rows"], strict=False):
             diffs = {
                 c: (old.get(c), new.get(c))
@@ -97,15 +97,33 @@ def report(
     unit = "pairs" if "pair" in after["name"] else "rows"
     count = f"{len(after['rows']):,} {unit}"
     first = next(iter((notes or {}).items()), None)
+    # What the node did, in one line: for a fix, how many values changed and one real example.
+    changed_values = (
+        sum(
+            str(old.get(c) or "") != str(new.get(c) or "")
+            for old, new in zip(before["rows"], after["rows"], strict=False)
+            for c in changed
+        )
+        if before and changed
+        else 0
+    )
+    if changed_values and examples:
+        e = examples[0]
+        noun = "value" if changed_values == 1 else "values"
+        line = (
+            f"{changed_values:,} {noun} changed, e.g. {e['column']}: {e['before']} → {e['after']}"
+        )
+    else:
+        line = (f"{len(before['rows']):,} → {count}" if before else count) + (
+            f" · {first[0]} {first[1]}" if first else ""
+        )
+    same = before is not None and len(before["rows"]) == len(after["rows"])
     return {
         "aws_tables": tables,
         "text": (f"{title.upper()} · " + " · ".join(f"{k} {v}" for k, v in facts.items()),),
-        # Read at a glance: the label on the wire out, and the node's one line when zoomed out.
-        "aws_wires": [count],
-        "aws_headline": (
-            (f"{len(before['rows']):,} → {count}" if before else count)
-            + (f" · {first[0]} {first[1]}" if first else ""),
-        ),
+        # Read at a glance: a wire is labelled where the amount changes, and the node's one line.
+        "aws_wires": ["" if same else count],
+        "aws_headline": (line[:160],),
     }
 
 
@@ -215,7 +233,9 @@ class WriteTable(io.ComfyNode):
             writer.writerows(t["rows"])
         out = make(path.stem, [{c: r.get(c) for c in cols} for r in t["rows"]], cols)
         rel = str(path.relative_to(root))
-        return io.NodeOutput(rel, ui=report("Write table", t, out, {"file": f"output/{rel}"}))
+        ui = report("Write table", t, out, {"file": f"output/{rel}"})
+        ui["aws_files"] = [rel]  # an API call returns it as a download
+        return io.NodeOutput(rel, ui=ui)
 
 
 # --- shape ------------------------------------------------------------------------------------

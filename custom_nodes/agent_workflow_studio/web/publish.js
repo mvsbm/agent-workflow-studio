@@ -27,7 +27,9 @@ export function signatureOf(graph, defs) {
     const targets = promoted(top, widget), {node, path, name} = targets[0];
     const spec = defs[node.type]?.input, schema = spec?.required?.[name] ?? spec?.optional?.[name];
     const choices = Array.isArray(schema?.[0]) ? schema[0] : schema?.[0] === 'COMBO' ? schema[1]?.options : undefined;
-    return {name: unique(slug(widget), `${slug(top.title)}_${slug(widget)}`), node: path, widget: name, title: top.title,
+    // A contract's promised input keeps its promised name: examples, the API and OpenAPI all speak it.
+    const label = top.properties?.aws_input ?? slug(widget);
+    return {name: unique(label, `${slug(top.title)}_${slug(widget)}`), node: path, widget: name, title: top.title,
       targets: targets.map(t => [t.path, t.name]),
       type: choices ? 'COMBO' : schema?.[0], ...(choices ? {choices} : {}), default: top.widgets?.find(w => w.name === widget)?.value};
   });
@@ -54,5 +56,19 @@ export async function publishWorkflow(app, api, name, description = '') {
   });
   const body = await response.json();
   if (!response.ok) throw Error(body.error ?? 'Publishing failed.');
+  return body;
+}
+
+/** Run the contract's examples as acceptance tests through the same path the API uses. */
+export async function runExamples(app, api) {
+  const graph = app.rootGraph ?? app.graph;
+  const signature = signatureOf(graph, await api.getNodeDefs());
+  const {output} = await app.graphToPrompt();
+  const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/acceptance`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({prompt: output, workflow: graph.serialize(), signature}),
+  });
+  const body = await response.json();
+  if (!response.ok) throw Error(body.error ?? 'The examples could not run.');
   return body;
 }

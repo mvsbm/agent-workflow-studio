@@ -135,7 +135,7 @@ class ProjectRepo:
             name = next((n for n in self._git(*listing).split() if wanted(n)), None)
             return (name, self._git("show", f"{sha}:{name}")) if name else None
 
-    def add_record(self, record: dict, message: str, workflow: dict) -> str:
+    def add_record(self, record: dict, message: str, workflow: dict, author: str = "agent") -> str:
         """Commit a run record under records/ together with the workflow that ran."""
         data = json.dumps(record, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
         digest = hashlib.sha256(data.encode()).hexdigest()[:12]
@@ -147,7 +147,7 @@ class ProjectRepo:
             (self.tree / name).write_text(data)
             (self.tree / "workflow.json").write_text(snapshot)
             self._git("add", name, "workflow.json")
-            self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author="agent")
+            self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author=author)
             return self._git("rev-parse", "HEAD").strip()
 
     def save_contract(self, contract: dict) -> str:

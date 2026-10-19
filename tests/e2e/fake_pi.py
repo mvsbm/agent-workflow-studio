@@ -98,7 +98,9 @@ CONTRACT = {
     "examples": [{"id": "E1", "covers": ["R1"], "given": {}, "expect": {"text": "hello world"}}],
     "promises": {
         "inputs": [],
-        "outputs": [{"name": "text", "kind": "text", "example": "hello world"}],
+        "outputs": [
+            {"name": "text", "kind": "text", "example": "hello world", "from": "greet.text"}
+        ],
     },
     "steps": [
         {
@@ -386,6 +388,7 @@ def comfy_tools_notice():
                 "comfyui-node-organization",
                 "comfyui-workflow-debugging",
                 "comfyui-workflow-contracts",
+                "comfyui-design-patterns",
             ],
             "default_loaded": True,
         },

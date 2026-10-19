@@ -19,6 +19,7 @@ TESTS = [
     "decision_rules.cjs",
     "matching_cascade.cjs",
     "api.cjs",
+    "design.cjs",
 ]
 
 

@@ -26,7 +26,7 @@ from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_g
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
 from .project_repo import ProjectRepo
-from .workflow_contract import render, report, validate_for_approval
+from .workflow_contract import hld, render, report, review, validate_for_approval, wiring
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
@@ -41,6 +41,7 @@ ACTIONS = {
     "gates",
     "skeleton",
     "harden",
+    "examples",
     "analyze",
     "converters",
 }
@@ -61,6 +62,7 @@ REQUIRED_SKILLS = {
     "comfyui-connector-management",
     "comfyui-node-organization",
     "comfyui-workflow-contracts",
+    "comfyui-design-patterns",
 }
 MAX_MESSAGE = 1_048_576
 # Above this a tool is doing several stages at once (counted without blank lines).
@@ -578,6 +580,9 @@ class PiChatSession:
                 "Adding nodes needs an approved contract. Clarify the requirements with "
                 "comfy_ask_user, then propose the contract with comfy_propose_contract."
             )
+        if action == "edit" and self.contract is not None:
+            # The approved design's wiring: the canvas refuses top-level edits that contradict it.
+            arguments = {**arguments, "design": wiring(self.contract)}
         result = await self.canvas_action(action, arguments)
         if structural:
             result = {**result, "graph_check": await self.check_graph()}
@@ -645,11 +650,16 @@ class PiChatSession:
             }
         sha = await asyncio.to_thread(self.repo.save_contract, contract)
         self.contract = contract
-        # The approved steps become the canvas skeleton: a typed, wired stage per step.
-        skeleton = await self.canvas_action("skeleton", {"steps": contract["steps"]})
+        # The approved design becomes the canvas skeleton: a typed, wired stage per step, the API's
+        # inputs as top-level nodes and its signature; titles and sentences come from the HLD.
+        skeleton = await self.canvas_action(
+            "skeleton",
+            {"steps": contract["steps"], "promises": contract["promises"], "design": hld(contract)},
+        )
         return {
             "approved": True,
             "version": sha[:8],
+            "design_review": [f"{'✓' if ok else '✗'} {item}" for ok, item in review(contract)],
             "skeleton": skeleton,
             "next": 'Build each stage: edit with "stage": "<step id>", replacing its Stub.',
         }

@@ -64,7 +64,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       inside: node.subgraph?.nodes.map(n => n.type).sort(),
     })).sort((a, b) => a.title.localeCompare(b.title))));
     assert.deepEqual(stages, [
-      {title: '1 · Greet', step: 'greet', inside: ['AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']},
+      {title: '1 · Greet', step: 'greet', inside: ['AgentWorkflowApiOutput', 'AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']},
       {title: '2 · Show', step: 'show', inside: ['PreviewAny']},
     ]);
 
@@ -74,9 +74,24 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.waitForFunction(() => /steps verified/.test(document.querySelector('.aw-contract-status')?.textContent ?? ''), null, {timeout: 15000});
     assert.equal(await contractStatus.textContent(), '✓ Aligned with the contract · 1/2 steps verified · Based on the latest run of this exact graph.');
     assert.deepEqual(await page.locator('.aw-contract-chip').allTextContents(), ['Verified', 'Built']);
+    // The verification is kept with the workflow (fingerprint of exactly what ran), so it survives a restart.
+    assert.equal(await page.evaluate(comfy(app => app.graph.extra.aws_verified?.gates?.greet)), 'passed');
     assert.match(await page.locator('.aw-contract pre').textContent(), /PURPOSE: Show the text hello world\./);
     await page.screenshot({path: path.join(artifacts, 'contract-tab.png')});
 
+
+    // The contract's example is an acceptance test through the API path; passing it allows publishing.
+    const accepted = await page.evaluate(async () => {
+      const {runExamples, publishWorkflow} = await import('/extensions/agent_workflow_studio/publish.js');
+      const app = window.comfyAPI.app.app, api = window.comfyAPI.api.api;
+      const examples = await runExamples(app, api);
+      const published = await publishWorkflow(app, api, 'hello-e2e');
+      const call = await (await api.fetchApi('/agent-workflow-studio/api/hello-e2e/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})).json();
+      return {passed: examples.passed, total: examples.total, published: published.version, data: call.data};
+    });
+    assert.deepEqual({passed: accepted.passed, total: accepted.total}, {passed: 1, total: 1});
+    assert.match(accepted.published, /^[0-9a-f]{8}$/);
+    assert.deepEqual(accepted.data, {text: 'hello world'});
 
     // The agent's own view of the canvas must include the connections.
     const seen = await page.evaluate(async () => {
@@ -85,7 +100,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       try { return await bridge.handle('read', {}); } finally { bridge.dispose(); }
     });
     assert.deepEqual(seen.nodes.map(n => n.stage.step), ['greet', 'show']);
-    assert.deepEqual(seen.nodes[0].stage.nodes.map(n => n.class_type).sort(), ['AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']);
+    assert.deepEqual(seen.nodes[0].stage.nodes.map(n => n.class_type).sort(), ['AgentWorkflowApiOutput', 'AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']);
     assert.equal(seen.links.length, 1, 'greet.text → show.text');
 
     const history = await page.evaluate(async () => (await window.comfyAPI.api.api.getHistory(5)).History ?? null);
@@ -94,7 +109,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
 
     // Each agent edit batch is one native undo step: the move batch, then the whole build.
     const undo = () => page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
-    const work = () => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).filter(n => !['AgentWorkflowStub', 'AgentWorkflowCheck'].includes(n.type)).length;
+    const work = () => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).filter(n => !['AgentWorkflowStub', 'AgentWorkflowCheck', 'AgentWorkflowApiOutput'].includes(n.type)).length;
     const inside = () => page.evaluate(work);
     const settles = n => page.waitForFunction(([source, n]) => new Function(`return (${source})()`)() === n, [work.toString(), n], {timeout: 10000});
     await undo();
@@ -114,21 +129,23 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
     const versions = page.locator('.aw-versions-item');
     const count = n => page.waitForFunction(n => document.querySelectorAll('.aw-versions-item').length === n, n, {timeout: 15000});
-    await count(5);
+    await count(7);
     const messages = await page.locator('.aw-versions-message').allTextContents();
     assert.match(messages[0], /^Save versions-e2e/);
-    assert.equal(messages[1], 'Agent canvas edit');
-    assert.equal(messages[2], 'Build hello world: source, concatenate, preview');
-    assert.equal(messages[3], 'Stages from the approved contract');
-    assert.equal(messages[4], 'Contract approved: Show the text hello world.');
-    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent', 'Agent', 'Agent', 'You']);
+    assert.equal(messages[1], 'Publish API hello-e2e');
+    assert.equal(messages[2], 'Acceptance · 1/1 examples passed');
+    assert.equal(messages[3], 'Agent canvas edit');
+    assert.equal(messages[4], 'Build hello world: source, concatenate, preview');
+    assert.equal(messages[5], 'Stages from the approved contract');
+    assert.equal(messages[6], 'Contract approved: Show the text hello world.');
+    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'You', 'Agent', 'Agent', 'Agent', 'Agent', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.
-    await versions.nth(2).locator('.aw-versions-toggle').click();
-    await versions.nth(2).getByText(/^\+3 nodes/).waitFor({timeout: 10000});
-    await versions.nth(2).getByRole('button', {name: 'Restore this version'}).click();
+    await versions.nth(4).locator('.aw-versions-toggle').click();
+    await versions.nth(4).getByText(/^\+3 nodes/).waitFor({timeout: 10000});
+    await versions.nth(4).getByRole('button', {name: 'Restore this version'}).click();
     await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).length >= 4, null, {timeout: 10000});
-    await count(6);
+    await count(8);
     assert.match(await page.locator('.aw-versions-message').first().textContent(), /^Restore [0-9a-f]{8}$/);
     await page.screenshot({path: path.join(artifacts, 'versions.png')});
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });

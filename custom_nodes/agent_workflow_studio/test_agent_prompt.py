@@ -40,6 +40,17 @@ class AgentPromptTests(unittest.TestCase):
             with self.subTest(operation=operation):
                 self.assertIn(f"`{operation}`", PROMPT)
 
+    def test_the_extension_expects_exactly_the_bundled_skills(self) -> None:
+        # Pi refuses to start when the count differs, so a new skill must update both.
+        import re
+
+        from .pi_chat import REQUIRED_SKILLS
+
+        skills = {p.parent.name for p in (Path(__file__).parent / "skills").glob("*/SKILL.md")}
+        self.assertEqual(skills, REQUIRED_SKILLS)
+        expected = int(re.search(r"loaded\.skills\.length!==(\d+)", EXTENSION).group(1))
+        self.assertEqual(expected, len(skills))
+
     def test_placeholders_are_filled_by_the_extension(self) -> None:
         for placeholder in re.findall(r"\{\{[A-Z_]+\}\}", PROMPT):
             with self.subTest(placeholder=placeholder):

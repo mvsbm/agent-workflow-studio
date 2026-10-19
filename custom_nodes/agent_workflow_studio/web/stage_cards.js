@@ -23,7 +23,7 @@ function render(node) {
   if (!card) return;
   const {purpose, lines, state} = node.properties?.aws_card ?? {};
   card.replaceChildren();
-  if (purpose) card.append(Object.assign(document.createElement('div'), {className: 'aw-card-purpose', textContent: purpose}));
+  if (purpose) card.append(Object.assign(document.createElement('div'), {className: 'aw-card-purpose', textContent: purpose, title: purpose}));
   for (const line of lines ?? []) card.append(Object.assign(document.createElement('div'), {className: 'aw-card-line', textContent: line}));
   if (state) {
     const chip = Object.assign(document.createElement('span'), {className: 'aw-card-chip', textContent: state.toUpperCase()});
@@ -43,7 +43,7 @@ function ensureCard(node) {
   // Display only: never sent to the backend as an input.
   node.addDOMWidget('stage_card', 'aws_stage_card', card, {serialize: false, getMinHeight: () => 140});
   node.aws_card = card;
-  if (node.size[0] < 260 || node.size[1] < 200) node.setSize([Math.max(node.size[0], 260), Math.max(node.size[1], 200)]);
+  if (node.size[0] < 320 || node.size[1] < 240) node.setSize([Math.max(node.size[0], 320), Math.max(node.size[1], 240)]);
   render(node);
 }
 
@@ -69,7 +69,10 @@ async function refresh() {
     const step = steps[node.properties?.aws_stage];
     // A step waiting on the user's answer says so first.
     const waiting = (step?.waiting ?? []).map(q => `⏸ Waiting on your answer: ${q}`);
-    node.properties = {...node.properties, aws_card: {purpose: step?.purpose ?? '', lines: [...waiting, ...stageSummary(node.subgraph?.nodes ?? [])], state: step?.state ?? ''}};
+    // A stage whose design changed is stale until its Checks pass again.
+    if (step?.state === 'verified' && node.properties?.aws_stale) node.properties = {...node.properties, aws_stale: false};
+    const stale = node.properties?.aws_stale ? ['⚠ Design changed — recheck this stage'] : [];
+    node.properties = {...node.properties, aws_card: {purpose: step?.design ?? step?.purpose ?? '', lines: [...stale, ...waiting, ...stageSummary(node.subgraph?.nodes ?? [])], state: step?.state ?? ''}};
     render(node);
   }
   graph.setDirtyCanvas?.(true, true);
@@ -81,7 +84,7 @@ app.registerExtension({
     const style = document.createElement('style');
     style.textContent = `
       .aw-card { display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.3; padding: 2px 4px; overflow: hidden; }
-      .aw-card-purpose { opacity: 0.8; font-style: italic; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+      .aw-card-purpose { opacity: 0.8; font-style: italic; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
       .aw-card-line { font-variant-numeric: tabular-nums; }
       .aw-card-chip { align-self: flex-start; color: #fff; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 3px; }
       .aw-card-hint { opacity: 0.45; font-size: 10px; }`;

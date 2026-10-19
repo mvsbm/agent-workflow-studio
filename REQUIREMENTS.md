@@ -61,6 +61,30 @@ of exactly the current graph. ✅
 **R15 · Platform assumptions are tested.** Every ComfyUI behaviour the design relies on has a
 capability test with its fallback, run before everything else. ✅
 
+## 3b. From plan to running design
+
+**R27 · Plan → contract → HLD → LLD, one pipeline for every job.** The user and the agent agree the
+intent, then a high-level design in plain sentences (takes → does, using → gives → to, because), then
+the agent builds the low-level design inside each stage. Every element traces to its parent (request →
+step → stage → node / Check; entity → port → field). ✅ (skeleton, cards and Data view derive from it)
+
+**R28 · The graph is the HLD, LLD and ERD.** Top level = HLD (stage cards with their sentence, wires
+named by entity); inside a stage = LLD; the Data tab = ERD (entities, keys, relations, fields as seen). ✅
+
+**R29 · Engineering by design.** The agent designs with named architecture and step patterns and checks
+engineering principles (single responsibility, typed boundaries, determinism, idempotency, privacy),
+records choices as decisions (ADR-style), and passes a design review before proposing. ✅
+
+**R30 · API-native by design.** The contract's promised inputs and outputs are the API from the start
+(input nodes, signature and API outputs come with the skeleton); examples are acceptance tests that gate
+publishing; versions follow what changed (API → major, design → minor, inside a stage → patch); long
+calls run as jobs; written files come back as downloads. ✅
+
+**R31 · Drift is prevented, not only reported.** Edits that contradict the approved design are refused
+(undeclared wires between stages, removing designed wires or API inputs); structure is generated from the
+design; design changes are amendments the user approves, and the stages they touch are marked stale until
+their Checks pass again; declared data fields the run does not carry are flagged. ✅
+
 ## 4. Use
 
 **R16 · A workflow is an API.** A finished workflow is published at a fixed version and called with

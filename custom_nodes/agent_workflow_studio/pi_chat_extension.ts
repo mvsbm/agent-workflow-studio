@@ -60,7 +60,7 @@ export default async function (pi: ExtensionAPI) {
   // Only bundled, trusted skills: never discover instructions in editable workspaces.
   const skillDirectory=fileURLToPath(new URL("./skills/",import.meta.url));
   const loaded=loadSkillsFromDir({dir:skillDirectory,source:"comfyui-chat"});
-  if(loaded.diagnostics.length||loaded.skills.length!==5) throw new Error("Bundled ComfyUI skills could not be verified.");
+  if(loaded.diagnostics.length||loaded.skills.length!==6) throw new Error("Bundled ComfyUI skills could not be verified.");
   const skills={names:loaded.skills.map(skill=>skill.name).sort(),default_loaded:true};
   // The environment/tool guide lives in prompts/ so it can be read and reviewed as Markdown.
   const agentPrompt=readFileSync(fileURLToPath(new URL("./prompts/comfyui_agent.md",import.meta.url)),"utf8");
@@ -83,7 +83,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files","comfy_harden_step"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files","comfy_harden_step","comfy_run_examples"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -137,7 +137,7 @@ export default async function (pi: ExtensionAPI) {
     },
   }));
   pi.registerTool(defineTool({
-    name:"comfy_propose_contract", label:"Propose contract", description:"Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps, decisions, not-now, open questions (must be empty). Each step is a stage: give its typed ports (takes: an earlier step's output 'step.port' or a type for data entering; gives: port -> type) and a gate whose check names one of its outputs. On approval the canvas gets the skeleton: one wired stage per step with a Stub inside and a Check per gate.",
+    name:"comfy_propose_contract", label:"Propose contract", description:"Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps, decisions, not-now, open questions (must be empty). It is the design (HLD): each step is a stage with typed ports (takes: an earlier step's output 'step.port', a promised input 'input.<name>' or a type; gives: port -> type), uses (how), why (because), pattern, and a gate whose check names one of its outputs; data names the entities passed between steps; promised outputs say which step gives them (from), which makes the workflow an API; examples become acceptance tests. On approval the canvas gets the skeleton: one wired stage per step, the API's input nodes and signature, a Stub, a Check per gate and an API output per promised output. The result includes the design review.",
     parameters:Type.Object({contract:Type.Unsafe(contractSchema)}),
     execute:async (_id,args,signal) => canvas("contract_propose",{contract:args.contract},signal),
   }));
@@ -145,6 +145,10 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), every step's gate from the Check nodes inside its stage on the latest run: passed, failed (with the evidence), or needs_user_review when the stage has no Check.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_run_examples", label:"Run examples", description:"Run the contract's examples as acceptance tests through the workflow's API path (given → the promised inputs, expect → the promised outputs). Results are recorded as a version; publishing needs them all to pass on exactly this graph.",
+    parameters:Type.Object({}), execute:async (_id,_args,signal) => canvas("examples",{},signal),
   }));
   pi.registerTool(defineTool({
     name:"comfy_harden_step", label:"Harden step", description:"Ask the user to freeze a Fuzzy node's latest plan into fixed, deterministic nodes (a subgraph in its stage). Later runs call no model. Propose it once a fuzzy step's plan has run and looks right; the user approves in the chat.",
