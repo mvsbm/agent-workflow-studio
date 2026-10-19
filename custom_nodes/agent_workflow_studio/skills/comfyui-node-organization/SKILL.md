@@ -1,21 +1,19 @@
 ---
 name: comfyui-node-organization
-description: Keep the canvas readable — one group per contract step, short numbered titles, a preview under every stage, automatic left-to-right layout, and given nodes left alone.
+description: Keep the canvas readable — work inside each step's stage, short titles in the user's terms, show each thing once, decisions as their own node, given nodes left alone.
 ---
 # ComfyUI node organization
 
-The user reads the canvas to understand the work. Organize for that reader.
+The user reads the canvas to understand the work. Most of its order is structural: each contract step is a **stage** (a subgraph card on the top level, its nodes inside), created when the contract is approved, wired by its typed ports, laid out automatically left to right. Nodes cannot go outside a stage. What is left to you:
 
-**Layout is automatic.** After every edit that adds or connects nodes the canvas is re-laid out: data flows left to right in columns by depth, a preview sits directly under the node it shows, notes go above. Do not compute coordinates; omit `position` when adding nodes. Use `{"op": "arrange"}` to tidy on request. Each contract step's nodes are framed by a group titled with the step (from the `step` tag on `add`), so tag every node you add.
+**Titles.** Every node gets a short title saying what it does in the user's terms: `Find candidate pairs`, not `AgentWorkflowFindCandidates`. Stage titles come from the step ids.
 
-**Titles.** Every node you add gets a short title saying what it does in the user's terms, numbered by step: `2 · Find candidate pairs`, not `AgentWorkflowAgentTool`. Previews are titled for what they prove: `2 · Candidate pairs (sample)`, and a gate's preview carries the exact title the gate names.
+**Replace the Stub.** A planned stage holds a Stub that passes its input on. Build the real nodes and wire them from the stage's input ports to its output ports, in one batch; the Stub disappears and the stage's Check follows whatever feeds its output by itself.
 
-**Show each thing once.** An Agent Tool node already shows its operation, every file in and out with rows and columns, a sample, and its own result text. Do not add Preview nodes that repeat that. A gate can check the tool node itself (its title); add a Preview only for something the tool node does not show. Do not add notes that repeat what titles show.
+**Show each thing once.** Table nodes and Agent Tools already show rows in → out, before → after and samples; wires show what flows along them. Do not add Preview nodes or notes that repeat that.
 
-**Finish with stages.** When every step is built and its gate passes, run `{"op": "organize"}` (the studio also does it at the end of your reply once every step has nodes and the latest run succeeded): each step becomes one stage subgraph, and the top level becomes one row of stage cards joined by the main data path, each showing what the stage did, its key numbers and its status. The user double-clicks a card to see inside. To change a packed step: `unpack` it, edit, `organize` again.
+**Decisions are their own node.** In matching or triage, the decision is a Decision rules node between the compare step and what uses the decisions, never inside a tool.
 
-**Decisions are their own node.** In matching or triage, the decision is a Decision rules node between the compare stage and what uses the decisions, never inside a tool.
+**Given nodes** (`given: true` in `comfy_read_workflow`) were provided by the user or a template. Build on and connect to them; do not remove, rename or rewire them.
 
-**Given nodes** (`given: true` in `comfy_read_workflow`) were provided by the user or a template. Build on and connect to them; do not remove, rename or rewire them. They may move with the automatic layout.
-
-**When asked to reorganize existing work:** only titles and layout change. Keep every widget value, link, mode and property; layout is not permission to simplify or delete. Read back afterwards to confirm the topology is unchanged.
+**When asked to reorganize existing work:** only titles and layout change. Keep every widget value, link, mode and property. Read back afterwards to confirm the topology is unchanged.

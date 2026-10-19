@@ -26,34 +26,144 @@ export function withStageOutputs(graph, defs) {
   return {...defs, ...extra};
 }
 
-/** Pack each contract step's nodes into one named stage subgraph (the overview shows one card per step). */
-export function packStages(graph, steps) {
-  const packed = [];
-  for (const {id, title} of steps) {
-    const members = nodes(graph).filter(node => node.properties?.aws_contract_step === id && !node.properties?.aws_stage);
-    if (!members.length) continue;
-    const before = new Set(nodes(graph));
-    graph.convertToSubgraph(new Set(members));
-    const stage = nodes(graph).find(node => !before.has(node) && node.isSubgraphNode?.());
-    if (!stage) throw Error(`Could not pack step ${id} into a stage.`);
-    // Short title on the card ("3 · Learn weights"); the step's full purpose is shown on its face.
-    const number = /^\s*(\d+)/.exec(title)?.[1] ?? String(steps.findIndex(step => step.id === id) + 1);
-    const name = id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
-    stage.title = `${number} · ${name}`;
-    stage.subgraph.name = stage.title;
-    stage.properties = {...stage.properties, aws_stage_order: Number(number)};
-    stage.setSize([260, 200]); // a stage card's size, so the layout right after packing is final
-    stage.properties = {...stage.properties, aws_stage: id, aws_contract_step: id};
-    packed.push(id);
-  }
-  return packed;
+// A contract step is a stage: a subgraph whose ports are the step's typed inputs and outputs.
+// The skeleton (one stage per step, wired, a Stub inside, a Check per gate) is built on approval.
+const SCAFFOLD = new Set(['AgentWorkflowStub', 'AgentWorkflowCheck']);
+const humanize = id => id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
+
+/** Pack nodes into one stage subgraph for a contract step, titled "N · Step name". */
+export function packIntoStage(graph, members, step, number) {
+  const before = new Set(nodes(graph));
+  graph.convertToSubgraph(new Set(members));
+  const stage = nodes(graph).find(node => !before.has(node) && node.isSubgraphNode?.());
+  if (!stage) throw Error(`Could not make a stage for step ${step}.`);
+  stage.title = stage.subgraph.name = `${number} · ${humanize(step)}`;
+  stage.properties = {...stage.properties, aws_stage: step, aws_stage_order: number};
+  stage.setSize([260, 200]); // a stage card's size, so the layout right after packing is final
+  return stage;
 }
 
-/** Open a packed stage back into its nodes so they can be edited. */
-export function unpackStage(graph, id) {
-  const stage = nodes(graph).find(node => node.properties?.aws_stage === id);
-  if (!stage) throw Error(`No packed stage for step ${id}.`);
-  graph.unpackSubgraph(stage);
+/** Each step's number: one more than the deepest step it takes from, so independent steps (one
+ *  lane per source system) share a number and a column. Steps declaring no inputs run in order. */
+export function stageNumbers(steps) {
+  const number = {};
+  steps.forEach((step, i) => {
+    const takes = Object.values(step.takes ?? {});
+    const from = takes.filter(source => source.includes('.')).map(source => number[source.split('.')[0]] ?? 0);
+    number[step.id] = from.length ? Math.max(...from) + 1 : takes.length ? 1 : (i ? number[steps[i - 1].id] + 1 : 1);
+  });
+  return number;
+}
+
+const portType = (steps, source) => {
+  if (!source.includes('.')) return source;
+  const [step, port] = source.split('.');
+  return steps.find(s => s.id === step)?.gives?.[port] ?? '*';
+};
+
+/** The node feeding a stage's output port, from inside the stage. */
+function feederOf(subgraph, port) {
+  const index = subgraph.outputs.findIndex(output => output.name === port);
+  const id = subgraph.outputs[index]?.linkIds?.[0];
+  const link = id == null ? null : subgraph.links.get?.(id) ?? subgraph.links[id];
+  return link ? {node: subgraph.getNodeById(link.origin_id), slot: link.origin_slot} : null;
+}
+
+/** Point every Check watching an output port at what now feeds that port. */
+function rewatch(subgraph, port) {
+  const feeder = feederOf(subgraph, port);
+  if (!feeder?.node) return;
+  for (const check of nodes(subgraph).filter(n => n.type === 'AgentWorkflowCheck' && n.properties?.aws_watches === port)) feeder.node.connect(feeder.slot, check, 0);
+}
+
+const linkIn = (graph, id) => (id == null ? null : graph.links?.get?.(id) ?? graph.links?.[id]);
+
+/** Scaffolding (a Stub's wires, a Check's input) is replaced freely; the user's own wires are not. */
+function scaffoldLink(graph, target, slot) {
+  const link = linkIn(graph, target.inputs?.[slot]?.link);
+  return target.type === 'AgentWorkflowCheck' || graph.getNodeById?.(link?.origin_id)?.type === 'AgentWorkflowStub';
+}
+
+/** A Stub that no longer feeds any of the stage's outputs has been replaced: drop it, and let the
+ *  Checks follow what feeds their outputs now. */
+function dropReplacedStubs(subgraph) {
+  for (const stub of nodes(subgraph).filter(n => n.type === 'AgentWorkflowStub')) {
+    const feeds = (stub.outputs?.[0]?.links ?? []).map(id => linkIn(subgraph, id)).some(link => link && link.target_id === subgraph.outputNode?.id);
+    if (!feeds) subgraph.remove(stub);
+  }
+  for (const output of subgraph.outputs ?? []) rewatch(subgraph, output.name);
+}
+
+export function addCheck(subgraph, check, says) {
+  const node = globalThis.LiteGraph.createNode('AgentWorkflowCheck');
+  subgraph.add(node);
+  node.title = `Check · ${check.output}`;
+  node.properties = {...node.properties, aws_watches: check.output};
+  const set = (name, value) => { const widget = node.widgets?.find(w => w.name === name); if (widget && value != null) widget.value = String(value); };
+  set('kind', check.kind);
+  set('expect', check.value ?? '');
+  set('says', says);
+  rewatch(subgraph, check.output);
+}
+
+/** Build (or extend) the canvas skeleton for the approved steps: a stage per step with typed ports,
+ *  wired from the steps it takes from, a Stub passing data through until it is built, and a Check
+ *  for each gate. Existing stages are kept; a stage whose step is gone is marked, never deleted. */
+export function buildSkeleton(graph, steps) {
+  const created = [], notes = [], numbers = stageNumbers(steps);
+  for (const step of steps) {
+    let stage = stageNode(graph, step.id);
+    if (!stage) {
+      const stub = globalThis.LiteGraph.createNode('AgentWorkflowStub');
+      graph.add(stub);
+      stage = packIntoStage(graph, [stub], step.id, numbers[step.id]);
+      created.push(step.id);
+    }
+    stage.title = stage.subgraph.name = `${numbers[step.id]} · ${humanize(step.id)}`;
+    stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false};
+    const sg = stage.subgraph;
+    const ensure = (ports, name, type, add) => {
+      const port = ports.find(p => p.name === name);
+      if (!port) add(name, type);
+      else if (port.type !== type) notes.push(`${stage.title}: ${name} is ${port.type}, the contract now says ${type}; rewire or change the stage.`);
+    };
+    for (const [name, source] of Object.entries(step.takes ?? {})) ensure(sg.inputs, name, portType(steps, source), (n, t) => sg.addInput(n, t));
+    for (const [name, type] of Object.entries(step.gives ?? {})) ensure(sg.outputs, name, type, (n, t) => sg.addOutput(n, t));
+    const stub = created.includes(step.id) && nodes(sg).find(n => n.type === 'AgentWorkflowStub');
+    if (stub && (!sg.inputs.length || !sg.outputs.length)) sg.remove(stub); // nothing to pass through: the stage starts empty
+    else if (stub) {
+      sg.inputNode.slots[0].connect(stub.inputs[0], stub);
+      // The stub passes its input on: it can stand in for every output of the same type.
+      sg.outputs.forEach((output, i) => { if (output.type === sg.inputs[0].type || output.type === '*') sg.outputNode.slots[i].connect(stub.outputs[0], stub); });
+    }
+    const check = step.gate?.check;
+    if (check?.output && !nodes(sg).some(n => n.type === 'AgentWorkflowCheck' && n.properties?.aws_watches === check.output)) addCheck(sg, check, step.gate.says);
+  }
+  for (const step of steps) {
+    for (const [name, source] of Object.entries(step.takes ?? {})) {
+      if (!source.includes('.')) continue;
+      const [from, port] = source.split('.'), a = stageNode(graph, from), b = stageNode(graph, step.id);
+      const out = a?.outputs?.findIndex(o => o.name === port), into = b?.inputs?.findIndex(i => i.name === name);
+      if (out >= 0 && into >= 0 && b.inputs[into].link == null) a.connect(out, b, into);
+    }
+  }
+  for (const node of nodes(graph)) {
+    if (node.properties?.aws_stage && !steps.some(s => s.id === node.properties.aws_stage)) {
+      node.properties = {...node.properties, aws_orphaned: true};
+      notes.push(`${node.title} is no longer a contract step: move what you need out of it, then remove it.`);
+    }
+  }
+  arrangeGraph(graph);
+  // What is already in place, so the agent builds only what is missing.
+  const stages = steps.map(step => {
+    const stage = stageNode(graph, step.id), sg = stage.subgraph;
+    return {step: step.id, title: stage.title,
+      takes: sg.inputs.map((p, i) => `${p.name}: ${p.type}${stage.inputs[i]?.link != null ? ' (wired)' : ' (connect at the top level)'}`),
+      gives: sg.outputs.map(p => `${p.name}: ${p.type}`),
+      inside: nodes(sg).map(n => (n.type === 'AgentWorkflowCheck' ? `Check on ${n.properties?.aws_watches}` : n.type === 'AgentWorkflowStub' ? 'Stub (input → outputs)' : n.title))};
+  });
+  return {created, notes, stages, how: 'Build each stage in one batch: add its nodes, wire them from "input" ports to "output" ports. Stages are already wired to each other; a Check follows its output and a Stub disappears once replaced.'};
 }
 
 const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?.findIndex(input => input.name === name || input.widget?.name === name);
@@ -154,24 +264,13 @@ export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX lea
   for (const node of flow) if (node.isSubgraphNode?.() && node.subgraph) arrangeGraph(node.subgraph, {gapX, gapY});
 }
 
-/** Judge success gates against a run's outputs, grouped by the producing node's title. */
-export function evaluateGates(gates, outputsByTitle) {
-  return gates.map(({step, description, check}) => {
-    if (!check) return {step, description, status: 'needs_user_review'};
-    const outputs = outputsByTitle[check.node_title.trim().toLowerCase()];
-    if (!outputs) return {step, description, status: 'no_output', evidence: `No output from a node titled "${check.node_title}" in the latest run. Only output nodes (Preview, Save) produce outputs; point the check at one.`};
-    const texts = outputs.flatMap(output => output.text ?? []).map(String);
-    const images = outputs.reduce((count, output) => count + (output.images?.length ?? 0), 0);
-    const passed = {
-      non_empty: () => texts.some(text => text.trim()) || images > 0,
-      contains: () => texts.some(text => text.includes(String(check.value))),
-      equals: () => texts.some(text => text === String(check.value)),
-      regex: () => texts.some(text => new RegExp(String(check.value)).test(text)),
-      image_count_at_least: () => images >= Number(check.value),
-    }[check.kind]?.();
-    if (passed === undefined) return {step, description, status: 'no_output', evidence: `Unknown check ${check.kind}.`};
-    const evidence = check.kind === 'image_count_at_least' ? `${images} image(s)` : texts.join(' | ').slice(0, 300);
-    return {step, description, status: passed ? 'passed' : 'failed', evidence};
+/** Each step's gate from the Check nodes inside its stage, on one run's outputs (keyed "stage:…:node"):
+ *  passed when all pass; needs_user_review when the stage has no Check. */
+export function gateResults(record, graph) {
+  return nodes(graph).filter(node => node.properties?.aws_stage).map(stage => {
+    const checks = deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => node.type === 'AgentWorkflowCheck').map(({node, runId}) => ({title: node.title, result: record?.outputs?.[runId]?.aws_check?.[0]}));
+    const status = !checks.length ? 'needs_user_review' : checks.some(c => !c.result) ? 'no_output' : checks.every(c => c.result.passed) ? 'passed' : 'failed';
+    return {step: stage.properties.aws_stage, status, checks: checks.map(c => ({title: c.title, passed: c.result?.passed ?? null, evidence: c.result?.evidence ?? 'did not run'}))};
   });
 }
 
@@ -193,17 +292,6 @@ export function agentOutputs(record) {
   return Object.fromEntries(Object.entries(record.outputs ?? {}).filter(([id]) => !USER_ONLY.has(record.prompt?.[2]?.[id]?.class_type)));
 }
 
-/** Outputs of a finished run grouped by the producing node's (lowercased) title. */
-function outputsByTitle(record, graph) {
-  const titles = Object.fromEntries(deepNodes(graph).map(({node, runId}) => [runId, node.title]));
-  const byTitle = {};
-  for (const [id, output] of Object.entries(agentOutputs(record))) {
-    const title = (titles[id] ?? record.prompt?.[2]?.[id]?._meta?.title ?? '').trim().toLowerCase();
-    if (title) (byTitle[title] ??= []).push(output);
-  }
-  return byTitle;
-}
-
 /** The most recent run of this workflow in /history, and whether it ran exactly the current graph. */
 export function latestMatchingRun(history, workflowId, executable) {
   const runs = Object.values(history ?? {}).filter(run => run.prompt?.[3]?.extra_pnginfo?.workflow?.id === workflowId);
@@ -211,64 +299,33 @@ export function latestMatchingRun(history, workflowId, executable) {
   return run ? {run, current: JSON.stringify(run.prompt[2]) === executable} : null;
 }
 
-/** Evidence for deriving contract step states: step tags on nodes and, when the latest run of
- *  this workflow ran exactly the current graph, each gate's outcome on that run. */
-export async function contractEvidence(app, api, gates) {
+/** Evidence for deriving contract step states: the stages and the nodes inside them (a node's step
+ *  is the stage it sits in), the saved workflow (for the architecture rules) and, when the latest run
+ *  of this workflow ran exactly the current graph, each step's Check results on that run. */
+export async function contractEvidence(app, api) {
   const graph = app.rootGraph ?? app.graph;
+  const stages = nodes(graph).filter(node => node.properties?.aws_stage);
   const evidence = {
-    // Nodes packed into stages count as themselves; the stage container is only a frame.
-    nodes: deepNodes(graph).filter(({node}) => !node.properties?.aws_stage).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, step: node.properties?.aws_contract_step ?? null, given: !!node.properties?.aws_given, fuzzy: node.type === 'AgentWorkflowFuzzyNode'})),
+    nodes: [
+      ...nodes(graph).filter(node => !node.properties?.aws_stage).map(node => ({id: String(node.id), title: node.title, class_type: node.type, step: null, given: !!node.properties?.aws_given, note: /Note$/.test(node.type ?? '')})),
+      ...stages.flatMap(stage => deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => !node.isSubgraphNode?.()).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, step: stage.properties.aws_stage, scaffold: SCAFFOLD.has(node.type), fuzzy: node.type === 'AgentWorkflowFuzzyNode'}))),
+    ],
+    stages: stages.map(stage => ({step: stage.properties.aws_stage, title: stage.title, orphaned: !!stage.properties.aws_orphaned,
+      takes: (stage.subgraph.inputs ?? []).map(p => [p.name, p.type]), gives: (stage.subgraph.outputs ?? []).map(p => [p.name, p.type])})),
+    workflow: graph.serialize(),
     gate_results: {}, run: null,
   };
   const defs = await api.getNodeDefs();
   const analysis = analyzeGraph(graph.serialize(), withStageOutputs(graph, defs));
-  // Output nodes packed inside stages count too: gates may point at them.
-  const inner = deepNodes(graph).filter(({runId, node}) => runId.includes(':') && defs[node.type]?.output_node).map(({node}) => node.title);
-  // "No output node" is judged by the contract check itself: on an empty canvas it is progress, not drift.
-  const outputs = [...analysis.outputs.map(o => o.title), ...inner];
-  const problems = analysis.problems.filter(p => p.kind !== 'no_output_node');
-  evidence.analysis = {outputs, problems: problems.map(p => p.message)};
+  // "No output node" is judged by the gates themselves: on an empty canvas it is progress, not drift.
+  evidence.analysis = {outputs: analysis.outputs.map(o => o.title), problems: analysis.problems.filter(p => p.kind !== 'no_output_node').map(p => p.message)};
   const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
   const match = latestMatchingRun(history, graph.id, JSON.stringify((await app.graphToPrompt()).output));
   if (match) {
     evidence.run = {prompt_id: match.run.prompt[1], current: match.current};
-    if (match.current && match.run.status?.completed) {
-      for (const gate of evaluateGates(gates ?? [], outputsByTitle(match.run, graph))) evidence.gate_results[gate.step] = gate.status;
-    }
+    if (match.current && match.run.status?.completed) for (const gate of gateResults(match.run, graph)) evidence.gate_results[gate.step] = gate.status;
   }
   return evidence;
-}
-
-/** Draw each contract step as a native group around the nodes tagged with it (inside an edit). */
-function fitStepGroups(graph, steps) {
-  const LGraphGroup = globalThis.LiteGraph?.LGraphGroup;
-  if (!LGraphGroup) return;
-  const known = (graph.extra ??= {}).aws_step_groups ??= {};
-  const groups = () => graph._groups ?? graph.groups ?? [];
-  for (const {id, title} of steps) {
-    const members = nodes(graph).filter(node => node.properties?.aws_contract_step === id);
-    let group = groups().find(g => g.title === (known[id] ?? title));
-    if (!members.length || members.every(node => node.properties?.aws_stage)) { // a packed stage is its own frame
-      if (group) graph.remove(group);
-      delete known[id];
-      continue;
-    }
-    if (!group) graph.add(group = new LGraphGroup(title));
-    group.title = title;
-    // From pos/size, not resizeTo: bounding boxes of just-added nodes are only computed on draw.
-    const pad = 24, head = globalThis.LiteGraph.NODE_TITLE_HEIGHT ?? 30;
-    const x0 = Math.min(...members.map(n => n.pos[0])) - pad, y0 = Math.min(...members.map(n => n.pos[1])) - head - pad - head;
-    const x1 = Math.max(...members.map(n => n.pos[0] + n.size[0])) + pad, y1 = Math.max(...members.map(n => n.pos[1] + n.size[1])) + pad;
-    group.pos = [x0, y0];
-    group.size = [x1 - x0, y1 - y0];
-    known[id] = title;
-  }
-}
-
-/** Lay the canvas out and re-fit the step groups it already has (titles kept). */
-export function organizeGraph(graph) {
-  arrangeGraph(graph);
-  fitStepGroups(graph, Object.entries(graph.extra?.aws_step_groups ?? {}).map(([id, title]) => ({id, title})));
 }
 
 export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => false} = {}) {
@@ -284,15 +341,43 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   };
-  const resolve = (ref, added) => app.graph.getNodeById(added[ref] ?? keys[ref] ?? ref);
+  // Where an operation works: inside its step's stage, or (without "stage") the top level, where only
+  // stages and the user's given nodes live. Keys remember their stage.
+  const scope = stage => {
+    if (stage == null) return app.graph;
+    if (typeof stage !== 'string') throw Error('"stage" is a contract step id.');
+    const node = stageNode(app.graph, stage);
+    if (!node) throw Error(`No stage for step "${stage}". Stages come from the approved contract; to add a step, propose a revised contract.`);
+    return node.subgraph;
+  };
+  const resolve = (ref, op, added) => {
+    const graph = scope(op.stage), key = added[ref] ?? keys[ref];
+    if (key) {
+      if ((key.stage ?? null) !== (op.stage ?? null)) throw Error(`Node "${ref}" is ${key.stage ? `in stage "${key.stage}"` : 'at the top level'}: give "stage": ${JSON.stringify(key.stage ?? null)}.`);
+      return graph.getNodeById(key.id);
+    }
+    return (op.stage == null && stageNode(graph, ref)) || graph.getNodeById(ref);
+  };
+  const outputSlot = (node, name) => typeof name === 'number' ? name : node.outputs?.findIndex(output => output.name === name);
+  const notFound = ref => Error(`Node not found: ${ref}. Read the workflow: nodes inside a stage are listed under it; give that "stage".`);
 
-  async function edit(operations, contractSteps) {
+  async function edit(operations) {
     if (!Array.isArray(operations) || !operations.length || operations.length > 32) throw Error('Use 1–32 edit operations.');
     const graph = app.graph;
     const defs = await catalog();
     if (app.graph !== graph) throw Error('The active workflow changed; inspect it and retry.');
-    const destructive = operations.some(op => op.op === 'remove' || op.op === 'disconnect' ||
-      (op.op === 'connect' && app.graph.getNodeById(op.to)?.inputs?.[inputSlot(app.graph.getNodeById(op.to),op.input)]?.link != null));
+    const occupied = op => {
+      try {
+        if (op.to === 'output' || op.from === 'input') return false;
+        const to = resolve(op.to, op, {}), slot = inputSlot(to, op.input), where = scope(op.stage);
+        const from = resolve(op.from, op, {}), existing = linkIn(where, to?.inputs?.[slot]?.link);
+        if (!existing || (existing.origin_id === from?.id && existing.origin_slot === outputSlot(from, op.output))) return false;
+        return !scaffoldLink(where, to, slot);
+      } catch { return false; }
+    };
+    // Removing a Stub is replacing scaffolding, not the user's work: no confirmation.
+    const scaffold = op => { try { return resolve(op.node, op, {})?.type === 'AgentWorkflowStub'; } catch { return false; } };
+    const destructive = operations.some(op => (op?.op === 'remove' && !scaffold(op)) || op?.op === 'disconnect' || (op?.op === 'connect' && occupied(op)));
     const beforeApproval = JSON.stringify(app.graph.serialize());
     if (destructive) {
       if (!await confirm?.('Change existing connections or remove nodes?', JSON.stringify(operations,null,2))) throw Error('Destructive canvas edits were not authorized.');
@@ -304,24 +389,25 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     try {
       for (const op of operations) {
         if (!op || typeof op !== 'object') throw Error('Invalid edit operation.');
+        if (op.step != null) throw Error('Nodes belong to the stage they are in: use "stage": "<step id>" instead of "step".');
+        const where = scope(op.stage);
         if (op.op === 'add') {
+          if (op.stage == null) throw Error('Add nodes inside a stage: give "stage": "<step id>". The top level holds only the stages and your given nodes.');
           if (typeof op.key !== 'string' || !op.key || Object.hasOwn(added,op.key)) throw Error('New nodes need unique nonempty keys.');
           if (Object.hasOwn(keys,op.key)) throw Error(`Key "${op.key}" already names a node in this chat; reference it, or use a new key.`);
           if (!Object.hasOwn(defs,op.class_type)) throw Error(`Node is not installed: ${op.class_type}`);
           const node = globalThis.LiteGraph.createNode(op.class_type);
           if (!node) throw Error(`Cannot create native node: ${op.class_type}`);
           if (op.title != null) {if (typeof op.title !== 'string' || op.title.length > 200) throw Error('Invalid node title.'); node.title = op.title;}
-          // Tie the node to its contract step; the contract's step states are derived from these tags.
-          if (op.step != null) {if (typeof op.step !== 'string' || !/^[a-z][a-z0-9_]{0,31}$/.test(op.step)) throw Error('Invalid contract step id.'); node.properties = {...node.properties, aws_contract_step: op.step};}
-          const right = nodes(app.graph).reduce((x,n) => Math.max(x,n.pos[0]+n.size[0]),0);
+          const right = nodes(where).reduce((x,n) => Math.max(x,n.pos[0]+n.size[0]),0);
           const position = op.position ?? [right+80,80];
           if (!Array.isArray(position) || position.length !== 2 || !position.every(Number.isFinite)) throw Error('Invalid node position.');
           node.pos = position;
-          app.graph.add(node);
-          added[op.key] = node.id;
+          where.add(node);
+          added[op.key] = {stage: op.stage, id: node.id};
         } else if (op.op === 'move' || op.op === 'title') {
-          const node=resolve(op.node,added);
-          if (!node) throw Error(`Node not found: ${op.node}. If its step is packed into a stage, unpack it first: {"op": "unpack", "step": "<step id>"}.`);
+          const node = resolve(op.node, op, added);
+          if (!node) throw notFound(op.node);
           if (op.op === 'move') {
             if (!Array.isArray(op.position)||op.position.length!==2||!op.position.every(Number.isFinite)) throw Error('Invalid node position.');
             node.pos=op.position;
@@ -330,7 +416,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             node.title=op.title;
           }
         } else if (op.op === 'widget') {
-          const node = resolve(op.node,added), widget = node?.widgets?.find(w => w.name === op.name);
+          const node = resolve(op.node, op, added), widget = node?.widgets?.find(w => w.name === op.name);
           if (!widget || secret.test(op.name)) throw Error(`Widget unavailable or protected: ${op.name}`);
           const spec = defs[node.type]?.input, schema = spec?.required?.[op.name] ?? spec?.optional?.[op.name];
           const type = schema?.[0], options = schema?.[1] ?? {};
@@ -343,36 +429,48 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           widget.value = op.value;
           widget.callback?.(op.value,app.canvas,node);
         } else if (op.op === 'connect') {
-          const from = resolve(op.from,added), to = resolve(op.to,added);
-          if (!from || !to || !Number.isInteger(op.output) || !from.outputs?.[op.output]) throw Error('Invalid connection source.');
-          // Current native inputs already coexist with their widgets.
-          const slot = inputSlot(to,op.input);
-          if (!Number.isInteger(slot) || slot < 0 || !to.inputs?.[slot]) throw Error('Invalid connection target.');
-          if (to.inputs[slot].link != null && !destructive) throw Error('Replacing an occupied input needs fresh approval.');
-          if (!from.connect(op.output,to,slot)) throw Error('Native port types do not connect.');
+          // Inside a stage, "input" is the stage's input ports and "output" its output ports, by name.
+          if (op.stage != null && op.from === 'input') {
+            const to = resolve(op.to, op, added), port = where.inputs.findIndex(p => p.name === op.output), slot = inputSlot(to, op.input);
+            if (port < 0) throw Error(`Stage ${op.stage} has no input port ${op.output}; its ports: ${where.inputs.map(p => p.name).join(', ') || 'none'}.`);
+            if (!to?.inputs?.[slot]) throw Error('Invalid connection target.');
+            if (to.inputs[slot].link != null && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
+            if (!where.inputNode.slots[port].connect(to.inputs[slot], to)) throw Error('Native port types do not connect.');
+          } else if (op.stage != null && op.to === 'output') {
+            const from = resolve(op.from, op, added), port = where.outputs.findIndex(p => p.name === op.input), slot = outputSlot(from, op.output);
+            if (port < 0) throw Error(`Stage ${op.stage} has no output port ${op.input}; its ports: ${where.outputs.map(p => p.name).join(', ') || 'none'}.`);
+            if (!from?.outputs?.[slot]) throw Error('Invalid connection source.');
+            if (!where.outputNode.slots[port].connect(from.outputs[slot], from)) throw Error('Native port types do not connect.');
+            dropReplacedStubs(where); // the stage's Checks follow what now feeds the port
+          } else {
+            const from = resolve(op.from, op, added), to = resolve(op.to, op, added), out = from && outputSlot(from, op.output);
+            if (!from || !to || !Number.isInteger(out) || !from.outputs?.[out]) throw Error('Invalid connection source.');
+            const slot = inputSlot(to,op.input);
+            if (!Number.isInteger(slot) || slot < 0 || !to.inputs?.[slot]) throw Error('Invalid connection target.');
+            const existing = linkIn(where, to.inputs[slot].link);
+            if (existing && existing.origin_id === from.id && existing.origin_slot === out) continue; // already wired
+            if (existing && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
+            if (!from.connect(out,to,slot)) throw Error('Native port types do not connect.');
+          }
         } else if (op.op === 'remove' || op.op === 'disconnect') {
-          const node = resolve(op.node,added);
-          if (!node) throw Error(`Node not found: ${op.node}. If its step is packed into a stage, unpack it first: {"op": "unpack", "step": "<step id>"}.`);
-          if (op.op === 'remove') app.graph.remove(node);
-          else {
+          const node = resolve(op.node, op, added);
+          if (!node) throw notFound(op.node);
+          if (op.op === 'remove') {
+            if (node.properties?.aws_stage && !node.properties.aws_orphaned) throw Error('A stage is a contract step: to drop it, propose a revised contract without that step.');
+            where.remove(node);
+          } else {
             const slot = inputSlot(node,op.input);
             if (!Number.isInteger(slot) || slot < 0 || !node.inputs?.[slot]) throw Error('Input not found.');
             node.disconnectInput(slot);
           }
-        } else if (op.op === 'organize') {
-          if (!Array.isArray(contractSteps)) throw Error('Organizing into stages needs an approved contract.');
-          packStages(app.graph, contractSteps);
-        } else if (op.op === 'unpack') {
-          unpackStage(app.graph, op.step);
         } else if (op.op !== 'arrange') throw Error(`Unsupported operation: ${op.op}`);
       }
       Object.assign(keys, added);
       // Keep the canvas readable without the agent computing coordinates: re-lay out after
       // structural edits (and on request); the whole batch is still one undo step.
-      if (operations.some(op => ['add', 'connect', 'arrange', 'organize', 'unpack'].includes(op.op))) arrangeGraph(app.graph);
-      if (Array.isArray(contractSteps)) fitStepGroups(app.graph, contractSteps);
+      if (operations.some(op => ['add', 'connect', 'remove', 'arrange'].includes(op.op))) arrangeGraph(app.graph);
       app.graph.setDirtyCanvas(true,true);
-      return {added, node_count:nodes(app.graph).length, message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
+      return {added: Object.fromEntries(Object.entries(added).map(([key, {id}]) => [key, id])), message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
     } catch (error) {
       // Restore the current graph, not a new workflow/tab or root graph.
       app.graph.configure(snapshot);
@@ -382,20 +480,22 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     }
   }
 
+  // One node as the agent reads it; a stage also lists its ports and the nodes and wires inside.
+  const describe = node => ({id:node.id,class_type:node.type,title:node.title,mode:node.mode,
+    ...(node.properties?.aws_given ? {given:true} : {}),
+    inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:input.link})),
+    outputs:(node.outputs??[]).map((output,index) => ({index,name:output.name,type:output.type})),
+    widgets:(node.widgets??[]).filter(w => !['button','aws_table_view','aws_plan_view','aws_stage_card'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
+    ...(node.properties?.aws_stage ? {stage:{step:node.properties.aws_stage, ...(node.properties.aws_orphaned ? {orphaned:true} : {}),
+      nodes:nodes(node.subgraph).map(describe), links:links(node.subgraph).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot}))}}
+      : node.isSubgraphNode?.() ? {subgraph:{name:node.subgraph?.name,nodes:nodes(node.subgraph ?? {}).map(inner => ({id:inner.id,class_type:inner.type,title:inner.title}))}} : {}),
+  });
+
   async function handle(action, args={}) {
     if (action === 'read') return {
       selected: Object.values(app.canvas.selected_nodes ?? {}).map(node => node.id),
-      nodes:nodes(app.graph).map(node => ({id:node.id,class_type:node.type,title:node.title,mode:node.mode,position:Array.from(node.pos),size:Array.from(node.size),
-        // given: provided by the user or a template, an input to the work, not part of a contract step.
-        ...(node.properties?.aws_given ? {given:true} : {}), ...(node.properties?.aws_contract_step ? {step:node.properties.aws_contract_step} : {}),
-        inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:input.link})),
-        outputs:(node.outputs??[]).map((output,index) => ({index,name:output.name,type:output.type})),
-        widgets:(node.widgets??[]).filter(w => !['button','aws_table_view','aws_plan_view'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
-        // A subgraph node's type is an opaque UUID; describe what it contains.
-        ...(node.isSubgraphNode?.() ? {subgraph:{name:node.subgraph?.name,nodes:nodes(node.subgraph ?? {}).map(inner => ({id:inner.id,class_type:inner.type,title:inner.title}))}} : {}),
-      })),
-      groups:(app.graph._groups??[]).map(group=>({title:group.title,bounding:Array.from(group._bounding??[])})),
-      links:links(app.graph).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot})),
+      nodes: nodes(app.graph).map(describe),
+      links: links(app.graph).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot})),
     };
     if (action === 'catalog') {
       const defs = await catalog();
@@ -412,7 +512,12 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (Array.isArray(args.queries)) return {results:Object.fromEntries(args.queries.slice(0,8).map(q => [q, search(q, 20)]))};
       return search(args.query, 60);
     }
-    if (action === 'edit') return edit(args.operations, args.contract_steps);
+    if (action === 'edit') return edit(args.operations);
+    if (action === 'skeleton') {
+      if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
+      app.canvas.emitBeforeChange();
+      try { const result = buildSkeleton(app.graph, args.steps); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
+    }
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.
       const executable = async () => JSON.stringify((await app.graphToPrompt()).output);
@@ -440,7 +545,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     }
     if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? '')) === true};
     if (action === 'tool_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this tool?'), String(args.text ?? '')) === true};
-    if (action === 'contract_evidence') return contractEvidence(app, api, Array.isArray(args.gates) ? args.gates : []);
+    if (action === 'contract_evidence') return contractEvidence(app, api);
     if (action === 'gates') {
       if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');
       await waitForRun();
@@ -448,7 +553,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (!response.ok) throw Error('Cannot read native execution history.');
       const record = (await response.json())[latestPrompt];
       if (!record?.status?.completed) throw Error('The latest run has not completed yet.');
-      return {prompt_id: latestPrompt, gates: evaluateGates(Array.isArray(args.gates) ? args.gates : [], outputsByTitle(record, app.graph))};
+      return {prompt_id: latestPrompt, gates: gateResults(record, app.graph)};
     }
     if (action === 'results') {
       await waitForRun();

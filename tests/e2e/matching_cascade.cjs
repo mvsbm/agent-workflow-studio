@@ -80,6 +80,22 @@ decide: {match: 2, review: 1}
     const clusters = fs.readdirSync(tools).flatMap(w => fs.readdirSync(path.join(tools, w)).filter(d => d.startsWith('cluster_guard-')).map(d => path.join(tools, w, d)));
     assert.ok(fs.readFileSync(path.join(clusters[0], 'clusters.csv'), 'utf8').startsWith('mention,customer'));
     await page.screenshot({path: path.join(artifacts, 'matching-cascade.png')});
+    // Typed sockets: an unsettled branch (PAIRS) cannot feed Cluster guard (DECISIONS); a Stub takes its input's type.
+    const typed = await page.evaluate(() => {
+      const app = window.comfyAPI.app.app, g = app.graph, L = window.LiteGraph;
+      const rules = g.nodes.find(n => n.type === 'AgentWorkflowDecisionRules'), guard = g.nodes.find(n => n.type === 'AgentWorkflowClusterGuard');
+      const out = name => rules.outputs.findIndex(o => o.name === name), into = name => guard.inputs.findIndex(i => i.name === name);
+      const refused = !rules.connect(out('unsettled'), guard, into('matched_1'));
+      const stub = L.createNode('AgentWorkflowStub');
+      g.add(stub);
+      rules.connect(out('unsettled'), stub, 0);
+      const result = {refused, types: rules.outputs.map(o => o.type), stub: stub.outputs[0].type};
+      g.remove(stub);
+      return result;
+    });
+    assert.ok(typed.refused, 'unsettled pairs must not reach Cluster guard');
+    assert.deepEqual(typed.types, ['DECISIONS', 'STRING', 'DECISIONS', 'DECISIONS', 'PAIRS']);
+    assert.equal(typed.stub, 'PAIRS');
     // Customers tab: the largest customer opens to its records and the chain of matches that joined them.
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-customers'); });
     const largest = page.locator('.aw-review-list details').first();
@@ -110,8 +126,8 @@ decide: {match: 2, review: 1}
     // Organize into stages: one card per step on top, the nodes inside; runs still work.
     await page.evaluate(async () => {
       const app = window.comfyAPI.app.app;
-      const {packStages, arrangeGraph} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
-      packStages(app.graph, [{id: 'weights', title: '1 · Learn weights'}, {id: 'decide', title: '2 · Decide'}, {id: 'customers', title: '3 · Customers'}]);
+      const {packIntoStage, arrangeGraph} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      ['weights', 'decide', 'customers'].forEach((id, i) => packIntoStage(app.graph, app.graph.nodes.filter(n => n.properties?.aws_contract_step === id), id, i + 1));
       arrangeGraph(app.graph);
       await app.queuePrompt(0, 1);
     });

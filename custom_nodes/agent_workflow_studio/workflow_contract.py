@@ -62,10 +62,24 @@ def validate_contract(contract: object) -> dict:
         raise ValueError(
             f"No step covers request(s) {', '.join(missing)}; add a step or move them to not_now."
         )
+    gives = {}
     for step in contract["steps"]:
         check = step["gate"].get("check")
         if check and check["kind"] != "non_empty" and "value" not in check:
             raise ValueError(f"Step {step['id']}: a {check['kind']} check needs a value.")
+        if check and "output" in check and check["output"] not in step.get("gives", {}):
+            raise ValueError(
+                f"Step {step['id']}: the check is on {check['output']}, which the step does not give."
+            )
+        # Stages are wired from earlier steps only, so the skeleton is a graph that can run.
+        for port, source in step.get("takes", {}).items():
+            if "." in source:
+                src, out = source.split(".")
+                if out not in gives.get(src, {}):
+                    raise ValueError(
+                        f"Step {step['id']} takes {port} from {source}, which no earlier step gives."
+                    )
+        gives[step["id"]] = step.get("gives", {})
     return contract
 
 
@@ -138,30 +152,16 @@ def from_plan_v1(plan: dict) -> dict:
     )
 
 
-def gates(contract: dict) -> list[dict]:
-    """Gate checks in the shape the browser's evaluator expects."""
-    out = []
-    for step in contract["steps"]:
-        check = step["gate"].get("check")
-        if check:
-            check = {
-                "node_title": check["node"],
-                "kind": check["kind"],
-                **({"value": check["value"]} if "value" in check else {}),
-            }
-        out.append({"step": step["id"], "description": step["gate"]["says"], "check": check})
-    return out
-
-
 def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str]) -> list[dict]:
     """Each step's state from evidence, by folding canonical events through TRANSITIONS.
 
-    nodes: canvas nodes as {"step": id|None, "fuzzy": bool}; gate_results: step -> status of
-    the latest gate check since the last structural change ("passed", "failed", ...).
+    nodes: canvas nodes as {"step": the stage it is in, "fuzzy": bool, "scaffold": bool};
+    gate_results: step -> status of its Check nodes on the latest run of exactly this graph
+    ("passed", "failed", ...). A stage holding only its Stub and Checks is still planned.
     """
     result = []
     for step in contract["steps"]:
-        mine = [n for n in nodes if n.get("step") == step["id"]]
+        mine = [n for n in nodes if n.get("step") == step["id"] and not n.get("scaffold")]
         events = []
         if mine:
             events.append("nodes_added")
@@ -185,51 +185,56 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
     return result
 
 
-def step_titles(contract: dict) -> list[dict]:
-    """Canvas group titles for the steps, e.g. "2 · Classify the review"."""
-
-    def short(text: str, limit: int = 60) -> str:
-        if len(text) <= limit:
-            return text
-        cut = text.rfind(" ", 0, limit - 1)
-        return text[: cut if cut > 0 else limit - 1].rstrip(" ,.;:") + "…"
-
-    return [
-        {"id": s["id"], "title": f"{n} · {short(s['purpose'])}"}
-        for n, s in enumerate(contract["steps"], 1)
-    ]
-
-
 def alignment(contract: dict, evidence: dict) -> list[str]:
     """Where the canvas disagrees with the contract (empty when aligned). Not-yet-built steps are
-    progress, not drift. evidence["analysis"] holds the graph check: output titles and problems."""
+    progress, not drift. evidence: nodes, stages (with their ports) and the graph check."""
     steps = {s["id"]: s for s in contract["steps"]}
     nodes = evidence["nodes"]
     analysis = evidence.get("analysis") or {}
-    outputs = {t.strip().lower() for t in analysis.get("outputs", [])}
     drift = []
     # Given nodes (provided by the user or a template) are inputs to the work, not steps of it.
     if stray := [
-        n.get("title") or "untitled" for n in nodes if not n.get("step") and not n.get("given")
+        n.get("title") or "untitled"
+        for n in nodes
+        if not n.get("step") and not n.get("given") and not n.get("note")
     ]:
-        drift.append(f"Not part of any step: {', '.join(stray[:6])}.")
-    if orphans := sorted({n["step"] for n in nodes if n.get("step") and n["step"] not in steps}):
-        drift.append(f"Nodes belong to steps the contract no longer has: {', '.join(orphans)}.")
+        drift.append(f"Outside every stage: {', '.join(stray[:6])}.")
+    for stage in evidence.get("stages", []):
+        step = steps.get(stage["step"])
+        if not step:
+            drift.append(f"{stage['title']} is no longer a contract step.")
+            continue
+        wanted = {
+            **{f"takes {k}": v for k, v in step.get("takes", {}).items() if "." not in v},
+            **{f"gives {k}": v for k, v in step.get("gives", {}).items()},
+        }
+        have = {
+            **{f"takes {k}": v for k, v in stage.get("takes", [])},
+            **{f"gives {k}": v for k, v in stage.get("gives", [])},
+        }
+        for port, kind in wanted.items():
+            if port in have and have[port] != kind and "*" not in (have[port], kind):
+                drift.append(f"{stage['title']} {port} as {have[port]}; the contract says {kind}.")
     for step in contract["steps"]:
         built = [n for n in nodes if n.get("step") == step["id"]]
-        if not built:
-            continue
         if step["approach"] == "fixed" and any(n.get("fuzzy") for n in built):
             drift.append(f"Step {step['id']} is fixed in the contract but uses a Fuzzy node.")
-        check = step["gate"].get("check")
-        if check and check["node"].strip().lower() not in outputs:
-            drift.append(
-                f"Step {step['id']}'s gate checks “{check['node']}”, which is not an output node on the canvas."
-            )
-    if nodes and not outputs:
-        drift.append("Nothing will run: the graph has no output node.")
     drift += [f"Graph problem: {problem}" for problem in analysis.get("problems", [])[:6]]
     return drift
+
+
+def todo(evidence: dict) -> list[str]:
+    """What the architecture still asks for (unfinished work, not errors), from the saved workflow."""
+    from .architecture import COMPLETENESS, check
+
+    if not evidence.get("workflow"):
+        return []
+    return [
+        f"{v['where']}: {v['problem']} — {v['fix']}"
+        + ("" if v["kind"] == COMPLETENESS else f" ({v['kind']})")
+        for v in check(evidence["workflow"])
+        if v["rule"] != "node_in_a_stage"  # already in drift, with the titles
+    ]
 
 
 def report(contract: dict, evidence: dict) -> dict:
@@ -257,8 +262,9 @@ def report(contract: dict, evidence: dict) -> dict:
         "nodes_outside_steps": [
             n.get("title") or "untitled"
             for n in evidence["nodes"]
-            if not n.get("step") and not n.get("given")
+            if not n.get("step") and not n.get("given") and not n.get("note")
         ],
+        "todo": todo(evidence),
         "text": render(contract, states),
     }
 
@@ -293,9 +299,19 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
         lines.append(
             f"  {n}. {step['purpose']} [{approach[step['approach']]}] covers {', '.join(step['covers'])}{state}"
         )
+        ports = [
+            *(f"takes {k} ← {v}" for k, v in step.get("takes", {}).items()),
+            *(f"gives {k}: {v}" for k, v in step.get("gives", {}).items()),
+        ]
+        if ports:
+            lines.append(f"     Stage: {' · '.join(ports)}")
         check = step["gate"].get("check")
         how = (
-            f" (checked automatically on “{check['node']}”)" if check else " (you confirm this one)"
+            f" (a Check on {check['output']}: {check['kind']}"
+            + (f" {check['value']}" if "value" in check else "")
+            + ")"
+            if check and check.get("output")
+            else " (you confirm this one)"
         )
         lines.append(f"     ✓ Done when: {step['gate']['says']}{how}")
     for label, items in (
@@ -328,11 +344,9 @@ __all__ = [
     "derive_states",
     "from_plan_v1",
     "from_yaml",
-    "gates",
     "render",
     "alignment",
     "report",
-    "step_titles",
     "to_yaml",
     "validate_contract",
     "validate_for_approval",

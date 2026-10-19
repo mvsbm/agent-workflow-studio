@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 from .pi_chat_workspace import workspace_id_for_graph
-from .workflow_contract import from_plan_v1, from_yaml, gates, render, report, to_yaml
+from .workflow_contract import from_plan_v1, from_yaml, render, report, to_yaml
 
 # Pairs: same/different/unsure; customers: correct/wrong; a record in a customer: not_this_person.
 REVIEW_DECISIONS = {"same", "different", "unsure", "correct", "wrong", "not_this_person"}
@@ -274,24 +274,55 @@ def _snapshot(workflow: dict) -> str:
 
 
 def node_diff(before: dict, after: dict) -> dict:
+    # The work lives inside stages (subgraph definitions): compare their nodes and wires too.
+    def definitions(graph):
+        return [
+            d for d in (graph.get("definitions") or {}).get("subgraphs", []) if isinstance(d, dict)
+        ]
+
     def nodes(graph):
-        return {n["id"]: n for n in graph.get("nodes", []) if isinstance(n, dict) and "id" in n}
+        found = {n["id"]: n for n in graph.get("nodes", []) if isinstance(n, dict) and "id" in n}
+        for d in definitions(graph):
+            for n in d.get("nodes", []):
+                if isinstance(n, dict) and "id" in n:
+                    key = f"{d['id']}:{n['id']}"
+                    found[key] = {**n, "id": key, "stage": d.get("name")}
+        return found
 
     def links(graph):
-        # Serialized links are [id, from_node, from_slot, to_node, to_slot, type].
-        return {tuple(link[1:5]) for link in graph.get("links") or [] if isinstance(link, list)}
+        # Serialized links are [id, from_node, from_slot, to_node, to_slot, type]; inside a stage, objects.
+        found = {tuple(link[1:5]) for link in graph.get("links") or [] if isinstance(link, list)}
+        for d in definitions(graph):
+            for link in d.get("links") or []:
+                if isinstance(link, dict):
+                    found.add(
+                        (
+                            d["id"],
+                            *(
+                                link.get(k)
+                                for k in ("origin_id", "origin_slot", "target_id", "target_slot")
+                            ),
+                        )
+                    )
+        return found
 
     def label(node):
-        return {"id": node["id"], "type": node.get("type"), "title": node.get("title")}
+        return {
+            "id": node["id"],
+            "type": node.get("type"),
+            "title": node.get("title"),
+            **({"stage": node["stage"]} if node.get("stage") else {}),
+        }
 
     old, new = nodes(before), nodes(after)
     watched = ("type", "title", "mode", "widgets_values")
     return {
-        "added": [label(new[i]) for i in new.keys() - old.keys()],
-        "removed": [label(old[i]) for i in old.keys() - new.keys()],
+        # Sorted, so a version's diff reads the same every time.
+        "added": [label(new[i]) for i in sorted(new.keys() - old.keys(), key=str)],
+        "removed": [label(old[i]) for i in sorted(old.keys() - new.keys(), key=str)],
         "changed": [
             label(new[i])
-            for i in new.keys() & old.keys()
+            for i in sorted(new.keys() & old.keys(), key=str)
             if any(new[i].get(k) != old[i].get(k) for k in watched)
         ],
         "links_added": len(links(after) - links(before)),
@@ -369,7 +400,7 @@ def install_project_routes() -> None:
     async def contract(request):
         def run(repo):
             current = repo.load_contract()
-            return {"contract": current, "gates": gates(current) if current else []}
+            return {"contract": current}
 
         return await call(request, run)
 

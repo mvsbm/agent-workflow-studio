@@ -327,16 +327,16 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(status["progress"], "1/2 steps verified")
         self.assertEqual(status["nodes_outside_steps"], ["Loose"])
-        # Gates to evaluate come from the approved contract; edits carry the step group titles.
-        self.assertEqual([g["step"] for g in calls[0][1]["gates"]], ["classify", "tidy"])
+        # Gates are read from the stages' Check nodes; edits go to the canvas as the agent wrote them.
+        self.assertEqual(calls[0], ("contract_evidence", {}))
         self.assertEqual(
-            calls[1][1]["contract_steps"][0]["title"],
-            "1 · Decide whether the review is positive or negative.",
+            calls[1][1], {"operations": [{"op": "title", "node": 1, "title": "Label"}]}
         )
 
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
         answers = {
             "contract_approve": {"approved": True},
+            "skeleton": {"created": ["classify", "tidy"], "notes": []},
             "edit": {"ok": True},
             "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
             "contract_evidence": {"nodes": [], "analysis": {"outputs": [], "problems": []}},
@@ -351,6 +351,10 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             approval = canvas.await_args_list[0].args
             self.assertEqual(approval[0], "contract_approve")
             self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
+            # Approval builds the skeleton: the approved steps become the stages.
+            skeleton = canvas.await_args_list[1].args
+            self.assertEqual(skeleton, ("skeleton", {"steps": CONTRACT["steps"]}))
+            self.assertEqual(result["skeleton"]["created"], ["classify", "tidy"])
             await self.session.agent_action(
                 "edit", {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}
             )
@@ -366,10 +370,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.session, "canvas_action", AsyncMock(return_value={"gates": []})
         ) as canvas:
             await self.session.agent_action("contract_gates", {})
-        action, args = canvas.await_args.args
-        self.assertEqual(action, "gates")
-        self.assertEqual([g["step"] for g in args["gates"]], ["classify", "tidy"])
-        self.assertEqual(args["gates"][0]["check"]["kind"], "regex")
+        self.assertEqual(canvas.await_args.args, ("gates", {}))
         # A later chat on the same workflow inherits the approved plan.
         later = pi_chat.PiChatSession(
             Socket(),

@@ -9,20 +9,20 @@ import { registerWorkspaceFiles } from "./pi_chat_files.ts";
 const ref = Type.Union([Type.String(), Type.Number()]);
 // [x, y]. Not a TypeBox tuple: its array-form "items" is invalid JSON Schema 2020-12, which some providers enforce.
 const xy = Type.Array(Type.Number(), {minItems:2, maxItems:2});
+const port = Type.Union([Type.String(), Type.Integer({minimum:0})]);
+// Where an operation works: inside a stage (a contract step id), or without it the top level, which
+// holds only the stages and the user's given nodes. Inside a stage, "input" / "output" name its ports.
+const stage = Type.Optional(Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$", description:"Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."}));
 const operation = Type.Union([
-  Type.Object({ op: Type.Literal("add"), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(xy), step: Type.Optional(Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$", description:"Id of the contract step this node belongs to."})) }),
-  Type.Object({ op: Type.Literal("move"), node: ref, position: xy }),
-  Type.Object({ op: Type.Literal("title"), node: ref, title: Type.String({maxLength:200}) }),
-  Type.Object({ op: Type.Literal("widget"), node: ref, name: Type.String(), value: Type.Unknown() }),
-  Type.Object({ op: Type.Literal("connect"), from: ref, output: Type.Integer({minimum:0}), to: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
-  Type.Object({ op: Type.Literal("remove"), node: ref }),
-  Type.Object({ op: Type.Literal("disconnect"), node: ref, input: Type.Union([Type.String(), Type.Integer({minimum:0})]) }),
+  Type.Object({ op: Type.Literal("add"), stage: Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$", description:"The stage (contract step id) the node goes in."}), key: Type.String(), class_type: Type.String(), title: Type.Optional(Type.String()), position: Type.Optional(xy) }),
+  Type.Object({ op: Type.Literal("move"), stage, node: ref, position: xy }),
+  Type.Object({ op: Type.Literal("title"), stage, node: ref, title: Type.String({maxLength:200}) }),
+  Type.Object({ op: Type.Literal("widget"), stage, node: ref, name: Type.String(), value: Type.Unknown() }),
+  Type.Object({ op: Type.Literal("connect"), stage, from: Type.Union([ref, Type.Literal("input")], {description:'A node key/id; inside a stage "input" is its input ports (output = the port name). At the top level a step id names its stage.'}), output: port, to: Type.Union([ref, Type.Literal("output")], {description:'A node key/id; inside a stage "output" is its output ports (input = the port name).'}), input: port }),
+  Type.Object({ op: Type.Literal("remove"), stage, node: ref }),
+  Type.Object({ op: Type.Literal("disconnect"), stage, node: ref, input: port }),
   // Re-lay out the canvas (also done automatically after adds and connects).
   Type.Object({ op: Type.Literal("arrange") }),
-  // Pack each contract step into one stage subgraph (the overview shows one card per step).
-  Type.Object({ op: Type.Literal("organize") }),
-  // Open a packed stage back into its nodes to edit them.
-  Type.Object({ op: Type.Literal("unpack"), step: Type.String({pattern:"^[a-z][a-z0-9_]{0,31}$"}) }),
 ]);
 
 // The contract schema is one JSON Schema file shared with the server and editors. Tool schemas
@@ -99,7 +99,7 @@ export default async function (pi: ExtensionAPI) {
     execute:async (_id,args,signal) => canvas("catalog",args,signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_edit_workflow", label:"Edit native canvas", description:"Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. New-node keys stay valid for the rest of this chat, so later batches can reference earlier nodes by key. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
+    name:"comfy_edit_workflow", label:"Edit native canvas", description:"Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. Nodes live inside stages (one per contract step): give \"stage\" for every operation inside one; inside, \"input\"/\"output\" are the stage's ports by name; build a whole stage per batch: its nodes wired from its input ports to its output ports (the Stub disappears and the Check follows by itself; stages are already wired to each other). Without \"stage\", operations work at the top level, which holds only stages (named by step id) and the user's given nodes. New-node keys stay valid for the rest of this chat, so later batches can reference earlier nodes by key. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
     parameters:Type.Object({operations:Type.Array(operation,{minItems:1,maxItems:32}),summary:Type.Optional(Type.String({maxLength:200,description:"One line saying what this batch does and why; recorded as the version message."}))}),
     execute:async (_id,args,signal) => {
       // The native browser verifies existing links and asks once for all
@@ -135,12 +135,12 @@ export default async function (pi: ExtensionAPI) {
     },
   }));
   pi.registerTool(defineTool({
-    name:"comfy_propose_contract", label:"Propose contract", description:"Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Intent only: purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps with gates, decisions, not-now, open questions (must be empty).",
+    name:"comfy_propose_contract", label:"Propose contract", description:"Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps, decisions, not-now, open questions (must be empty). Each step is a stage: give its typed ports (takes: an earlier step's output 'step.port' or a type for data entering; gives: port -> type) and a gate whose check names one of its outputs. On approval the canvas gets the skeleton: one wired stage per step with a Stub inside and a Check per gate.",
     parameters:Type.Object({contract:Type.Unsafe(contractSchema)}),
     execute:async (_id,args,signal) => canvas("contract_propose",{contract:args.contract},signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), check every step's success gate from the approved contract against the latest run's outputs. Gates without a check are listed for the user to confirm.",
+    name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), every step's gate from the Check nodes inside its stage on the latest run: passed, failed (with the evidence), or needs_user_review when the stage has no Check.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
   }));
@@ -159,7 +159,7 @@ export default async function (pi: ExtensionAPI) {
     execute:async (_id,args,signal) => canvas("input_files",args,signal),
   }));
   pi.registerTool(defineTool({
-    name:"comfy_contract_status", label:"Contract status", description:"Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the canvas and the latest gate check, with the next action, plus nodes not tied to any step.",
+    name:"comfy_contract_status", label:"Contract status", description:"Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the stages and their Checks on the latest run, with the next action, plus nodes outside every stage and the to-do list (untyped ports, missing checks, ...).",
     parameters:Type.Object({}), execute:async (_id,args,signal) => canvas("contract_status",args,signal),
   }));
   pi.registerTool(defineTool({

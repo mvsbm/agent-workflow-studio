@@ -54,6 +54,29 @@ class ProjectRepoTests(unittest.TestCase):
         self.assertEqual((diff["links_added"], diff["links_removed"]), (1, 0))
         self.assertEqual(node_diff({}, {})["added"], [])
 
+    def test_diff_sees_inside_stages(self) -> None:
+        def staged(*inner, links=()):
+            definition = {
+                "id": "s1",
+                "name": "1 · Clean",
+                "nodes": [{"id": i, "type": t} for i, t in inner],
+                "links": [
+                    {"origin_id": a, "origin_slot": 0, "target_id": b, "target_slot": 0}
+                    for a, b in links
+                ],
+            }
+            return {"nodes": [{"id": 9, "type": "s1"}], "definitions": {"subgraphs": [definition]}}
+
+        diff = node_diff(
+            staged((1, "AgentWorkflowStub")), staged((2, "Normalize"), (3, "Check"), links=[(2, 3)])
+        )
+        self.assertEqual(
+            [(n["id"], n["stage"]) for n in diff["added"]],
+            [("s1:2", "1 · Clean"), ("s1:3", "1 · Clean")],
+        )
+        self.assertEqual([n["type"] for n in diff["removed"]], ["AgentWorkflowStub"])
+        self.assertEqual(diff["links_added"], 1)
+
     def test_restore_is_a_new_commit(self) -> None:
         first = self.repo.commit(graph((1, "A", [])), "one", "agent")
         self.repo.commit(graph((1, "A", []), (2, "B", [])), "two", "agent")

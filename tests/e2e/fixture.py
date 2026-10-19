@@ -32,11 +32,13 @@ def free_port() -> int:
 
 
 class ComfyFixture:
-    def __init__(self, env: dict[str, str] | None = None) -> None:
+    def __init__(self, env: dict[str, str] | None = None, packs: tuple[Path, ...] = ()) -> None:
         self.root = Path(tempfile.mkdtemp(prefix="aws-e2e-"))
         nodes = self.root / "custom_nodes"
         nodes.mkdir()
         (nodes / "agent_workflow_studio").symlink_to(PACKAGE)
+        for pack in packs:  # test-only node packs (e.g. the capability tests')
+            (nodes / pack.name).symlink_to(pack)
         for name in ("user/default/workflows", "output", "input", "temp", "models"):
             (self.root / name).mkdir(parents=True, exist_ok=True)
         (self.root / "user/default/comfy.templates.json").write_text("[]")

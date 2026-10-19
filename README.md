@@ -10,7 +10,7 @@ The **Pi** sidebar embeds Pi's persistent RPC agent. It works through these tool
 | --- | --- |
 | `comfy_read_workflow` | Reads the live canvas: nodes, widgets, links, selection. |
 | `comfy_node_catalog` | Searches all installed node schemas (names, descriptions, aliases, enum choices). |
-| `comfy_edit_workflow` | Adds, edits, connects, moves and retitles nodes, up to 32 operations per batch. Edits are applied atomically with native Undo/Redo, and a failed batch rolls back. |
+| `comfy_edit_workflow` | Adds, edits, connects, moves and retitles nodes inside a step's stage (and connects stages), up to 32 operations per batch. Edits are applied atomically with native Undo/Redo, and a failed batch rolls back. |
 | `comfy_run_workflow` | Queues a native Run. Asks for confirmation unless you enabled auto-approve for that workflow. |
 | `comfy_execution_results` | Reads outputs and errors of the run it submitted. |
 | `comfy_workspace` + read/edit/write | A private per-workflow file workspace for notes and data files. |
@@ -23,14 +23,16 @@ Every workflow the agent builds has one **contract**, agreed with you before any
 
 - **Purpose**, and **what you asked for**: each request in your own words next to the agent's restatement ("When …, the workflow …"), with a priority (must / should / could).
 - **Examples** of input and expected output, and the **promised** inputs and outputs.
-- **Steps**, each covering your requests, with how we know it worked (its **success gate**, checked automatically where an output can prove it).
+- **Steps**, each covering your requests, with typed inputs and outputs (`takes` / `gives`: TABLE, PAIRS, STRING, IMAGE, …) and how we know it worked (its **success gate**, checked on the data by a **Check** node where it can be).
 - **Decisions** (each with why, and whether you or the agent decided), what is **not now**, and **open questions**, which must be resolved before you can approve.
 
 You approve it in the chat; the agent cannot add nodes to a workflow, or write files to its workspace (except scratch files under `tmp/`), without an approved contract, and changing it means proposing an amendment you approve again. Contracts are YAML checked against `contract.schema.json`, which editors such as VS Code use to validate hand edits. Each step's state (planned, built, fuzzy, verified, failing) is never written down: it is derived from the canvas and the latest gate check, so progress ("2 of 3 steps verified") always matches reality. Plans approved before contracts existed are converted automatically.
 
-The **Contract** sidebar tab shows the approved contract for the open workflow with live progress: each step's state as a colored chip with its next action, which nodes are not part of any step, and whether the progress is based on the latest run of exactly this graph or the graph has changed since. On the canvas each step is a native group titled with its number and purpose, around the nodes the agent built for it.
+**Each step is a stage.** When you approve the contract, the canvas gets its skeleton: one stage (a subgraph card) per step, numbered by what it depends on (independent steps, such as one cleaning lane per source system, share a number and a column), wired by its typed ports, with a **Stub** passing data through until the step is built and a **Check** node for its gate. The agent builds inside the stages; it cannot place nodes outside them. A step's state comes from its stage: planned (only Stub and Checks), built, fuzzy, verified (its Checks pass on the latest run of exactly this graph) or failing.
 
-After every change that adds, removes or rewires nodes, the canvas is also checked against the contract and the result appears in the chat and the Contract tab: **✓ aligned**, or **⚠ drift** with the reasons — nodes that are not part of any step, nodes left over from steps the contract no longer has, gates that point at a node that is not an output, a fixed step that uses a Fuzzy node, no output node at all, or graph problems. Steps not built yet are progress, not drift. The agent must fix drift, or propose a contract amendment for you to approve.
+The **Contract** sidebar tab shows the approved contract with live progress: each step's state as a colored chip with its next action, nodes outside every stage, the **to-do list** (untyped ports, stages without a Check, no workflow signature yet), and whether the progress is based on the latest run of exactly this graph.
+
+After every change that adds, removes or rewires nodes, the canvas is also checked against the contract and the result appears in the chat and the Contract tab: **✓ aligned**, or **⚠ drift** with the reasons — nodes outside every stage, a stage whose step the contract no longer has, a port whose type differs from the contract, a fixed step that uses a Fuzzy node, or graph problems. Steps not built yet are progress, not drift.
 
 ### Agent tools
 

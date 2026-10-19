@@ -1,5 +1,5 @@
 // Contract tab: the workflow's approved contract with live progress. Step states come from
-// evidence (step tags on nodes + gates on the latest run of exactly this graph), derived on
+// evidence (the stages on the canvas + their Checks on the latest run of exactly this graph), derived on
 // the server by the same transition table the agent's status tool uses.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
@@ -40,12 +40,12 @@ function createPanel() {
       return body.replaceChildren();
     }
     try {
-      const {contract, gates} = await request('/contract');
+      const {contract} = await request('/contract');
       if (!contract) {
         status.textContent = 'No contract yet. Ask the agent in the Pi chat to plan this workflow; you approve the contract before anything is built.';
         return body.replaceChildren();
       }
-      const evidence = await contractEvidence(app, api, gates);
+      const evidence = await contractEvidence(app, api);
       const result = await request('/contract/status', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)});
       status.textContent = `${result.aligned ? '✓ Aligned with the contract' : `⚠ ${result.drift.length} drift(s) from the contract`} · ${result.progress} · ${result.freshness}`;
       const steps = el('ol', null, {className: 'aw-contract-steps'});
@@ -64,6 +64,11 @@ function createPanel() {
         parts.push(drift);
       }
       parts.push(steps);
+      if (result.todo?.length) {
+        const todo = el('details');
+        todo.append(el('summary', `To do (${result.todo.length})`), ...result.todo.map(item => el('div', item, {className: 'aw-contract-todo'})));
+        parts.push(todo);
+      }
       const full = el('details', null, {open: true});
       full.append(el('summary', 'Full contract'), el('pre', result.text));
       parts.push(full);

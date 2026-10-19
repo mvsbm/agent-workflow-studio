@@ -71,10 +71,11 @@ class PiStructuredAgentTests(unittest.TestCase):
                 "AgentWorkflowAgentTool",
                 "AgentWorkflowDecisionRules",
                 "AgentWorkflowProfileData",
+                "AgentWorkflowCheck",
                 *(
                     f"AgentWorkflow{name}"
                     for name in (
-                        "SplitName ReadTable WriteTable StackRoles Concatenate FilterRows JoinTables NormalizeText "
+                        "Stub SplitName ReadTable WriteTable StackRoles Concatenate FilterRows JoinTables NormalizeText "
                         "MapValues ParseDates ExtractDigits FindCandidates CompareFields AttachGroups"
                     ).split()
                 ),

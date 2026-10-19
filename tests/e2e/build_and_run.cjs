@@ -43,12 +43,14 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     const planText = await plan.textContent();
     assert.match(planText, /PURPOSE: Show the text hello world\./);
     assert.match(planText, /R1 \(must\) you said: “build a hello world workflow”/);
-    assert.match(planText, /Done when: The greeting says hello world\. \(checked automatically on “Result”\)/);
+    assert.match(planText, /Stage: gives text: STRING/);
+    assert.match(planText, /Stage: takes text ← greet\.text/);
+    assert.match(planText, /Done when: The greeting says hello world\. \(a Check on text: contains hello world\)/);
     assert.match(planText, /The greeting is easy to read\. \(you confirm this one\)/);
     await plan.getByRole('button', {name: 'Allow'}).click();
 
     // Structural edits are checked automatically and the user sees the result.
-    await page.getByText('Graph check: 3 node(s), 1 output node(s), 0 that will not run, 0 problem(s).').waitFor({timeout: 60000});
+    await page.getByText(/Graph check: .* 0 problem\(s\)\./).first().waitFor({timeout: 60000});
 
     // The bridge asks before a native Run; approve it.
     const run = page.getByRole('group', {name: 'Run the current ComfyUI workflow?'});
@@ -56,21 +58,15 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await run.getByRole('button', {name: 'Allow'}).click();
 
     await page.getByText('FAKE PI · built source → concatenate → preview and ran it. Gates: greet=passed, show=needs_user_review. Progress: 1/2 steps verified.').waitFor({timeout: 90000});
-    const graph = await page.evaluate(comfy(app => ({
-      types: app.graph.nodes.map(node => node.type).sort(),
-      links: app.graph.links instanceof Map ? app.graph.links.size : Object.keys(app.graph.links ?? {}).length,
-    })));
-    assert.deepEqual(graph.types, ['PreviewAny', 'PrimitiveString', 'StringConcatenate']);
-    assert.equal(graph.links, 2);
-
-    // Contract steps are drawn as native groups around the nodes tagged with them.
-    const groups = await page.evaluate(comfy(app => (app.graph._groups ?? app.graph.groups).map(g => ({
-      title: g.title,
-      // Every member node lies inside its step's group.
-      contains: app.graph.nodes.filter(n => n.properties?.aws_contract_step && g.title.startsWith(n.properties.aws_contract_step === 'greet' ? '1 ·' : '2 ·'))
-        .every(n => n.pos[0] >= g.pos[0] && n.pos[1] >= g.pos[1] && n.pos[0] + n.size[0] <= g.pos[0] + g.size[0] && n.pos[1] + n.size[1] <= g.pos[1] + g.size[1]),
+    // The approved steps are the stages; the work is inside them.
+    const stages = await page.evaluate(comfy(app => app.graph.nodes.map(node => ({
+      title: node.title, step: node.properties?.aws_stage,
+      inside: node.subgraph?.nodes.map(n => n.type).sort(),
     })).sort((a, b) => a.title.localeCompare(b.title))));
-    assert.deepEqual(groups, [{title: '1 · Join hello and world into one greeting.', contains: true}, {title: '2 · Show the greeting.', contains: true}]);
+    assert.deepEqual(stages, [
+      {title: '1 · Greet', step: 'greet', inside: ['AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']},
+      {title: '2 · Show', step: 'show', inside: ['PreviewAny']},
+    ]);
 
     // The Contract tab shows live progress derived from the latest run of this exact graph.
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
@@ -88,20 +84,25 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       const bridge = createCanvasBridge(window.comfyAPI.app.app, window.comfyAPI.api.api);
       try { return await bridge.handle('read', {}); } finally { bridge.dispose(); }
     });
-    assert.equal(seen.nodes.length, 3);
-    assert.equal(seen.links.length, 2);
+    assert.deepEqual(seen.nodes.map(n => n.stage.step), ['greet', 'show']);
+    assert.deepEqual(seen.nodes[0].stage.nodes.map(n => n.class_type).sort(), ['AgentWorkflowCheck', 'PrimitiveString', 'StringConcatenate']);
+    assert.equal(seen.links.length, 1, 'greet.text → show.text');
 
     const history = await page.evaluate(async () => (await window.comfyAPI.api.api.getHistory(5)).History ?? null);
     const outputs = JSON.stringify(history ?? await page.evaluate(async () => await (await fetch('/history')).json()));
     assert.match(outputs, /hello world/, 'run output should contain the concatenated text');
 
     // Each agent edit batch is one native undo step: the move batch, then the whole build.
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
+    const undo = () => page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
+    const work = () => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).filter(n => !['AgentWorkflowStub', 'AgentWorkflowCheck'].includes(n.type)).length;
+    const inside = () => page.evaluate(work);
+    const settles = n => page.waitForFunction(([source, n]) => new Function(`return (${source})()`)() === n, [work.toString(), n], {timeout: 10000});
+    await undo();
     await page.waitForTimeout(600);
-    assert.equal(await page.evaluate(comfy(app => app.graph.nodes.length)), 3, 'first undo reverts only the move batch');
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
-    await page.waitForTimeout(600);
-    assert.equal(await page.evaluate(comfy(app => app.graph.nodes.length)), 0);
+    assert.equal(await inside(), 3, 'first undo reverts only the move batch');
+    await undo();
+    await settles(0); // the build is undone; the skeleton (two stages) stays
+    assert.equal(await page.evaluate(comfy(app => app.graph.nodes.length)), 2);
 
     // Versions: the agent's batch is a commit; saving the user's change (the undo) is another.
     page.on('dialog', dialog => dialog.accept());
@@ -113,34 +114,60 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
     const versions = page.locator('.aw-versions-item');
     const count = n => page.waitForFunction(n => document.querySelectorAll('.aw-versions-item').length === n, n, {timeout: 15000});
-    await count(4);
+    await count(5);
     const messages = await page.locator('.aw-versions-message').allTextContents();
     assert.match(messages[0], /^Save versions-e2e/);
     assert.equal(messages[1], 'Agent canvas edit');
     assert.equal(messages[2], 'Build hello world: source, concatenate, preview');
-    assert.equal(messages[3], 'Contract approved: Show the text hello world.');
-    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent', 'Agent', 'You']);
+    assert.equal(messages[3], 'Stages from the approved contract');
+    assert.equal(messages[4], 'Contract approved: Show the text hello world.');
+    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'Agent', 'Agent', 'Agent', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.
     await versions.nth(2).locator('.aw-versions-toggle').click();
-    await versions.nth(2).getByText('+3 nodes · +2 links').waitFor({timeout: 10000});
+    await versions.nth(2).getByText(/^\+3 nodes/).waitFor({timeout: 10000});
     await versions.nth(2).getByRole('button', {name: 'Restore this version'}).click();
-    await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.length === 3, null, {timeout: 10000});
-    await count(5);
+    await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).length >= 4, null, {timeout: 10000});
+    await count(6);
     assert.match(await page.locator('.aw-versions-message').first().textContent(), /^Restore [0-9a-f]{8}$/);
     await page.screenshot({path: path.join(artifacts, 'versions.png')});
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
     await page.waitForTimeout(600);
-    assert.equal(await page.evaluate(comfy(app => app.graph.nodes.length)), 0, 'one undo reverts a restore');
+    await settles(0); // one undo reverts a restore
 
-    // Work outside the contract is drift: an untagged node turns the tab to a warning.
+    // Work outside the stages is drift: a loose node at the top level turns the tab to a warning.
     await page.evaluate(comfy(app => { const node = window.LiteGraph.createNode('PrimitiveString'); node.title = 'Stray note'; node.pos = [50, 500]; app.graph.add(node); }));
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
     await page.locator('.aw-contract').getByRole('button', {name: 'Refresh'}).click();
     await page.waitForFunction(() => /Stray note/.test(document.querySelector('.aw-contract-warning')?.textContent ?? ''), null, {timeout: 15000});
-    assert.match(await page.locator('.aw-contract-status').textContent(), /^⚠ 2 drift\(s\) from the contract/);
-    assert.equal(await page.locator('.aw-contract-warning').textContent(), 'Not part of any step: Stray note.Nothing will run: the graph has no output node.');
+    assert.match(await page.locator('.aw-contract-status').textContent(), /^⚠ 1 drift\(s\) from the contract/);
+    assert.equal(await page.locator('.aw-contract-warning').textContent(), 'Outside every stage: Stray note.');
     await page.evaluate(comfy(app => app.graph.remove(app.graph.nodes.find(n => n.title === 'Stray note'))));
+    // Scaffolding manages itself: a Stub that stops feeding an output is gone, the Check follows the new
+    // feeder, and wiring what is already wired (stage to stage) is a quiet no-op.
+    const scaffold = await page.evaluate(async () => {
+      const app = window.comfyAPI.app.app;
+      app.graph.clear();
+      const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+      const bridge = createCanvasBridge(app, window.comfyAPI.api.api, {confirm: async () => false});
+      const built = await bridge.handle('skeleton', {steps: [
+        {id: 'a', gives: {t: 'STRING'}},
+        {id: 'b', takes: {t: 'a.t'}, gives: {t: 'STRING'}, gate: {says: 'has text', check: {output: 't', kind: 'non_empty'}}},
+      ]});
+      await bridge.handle('edit', {operations: [
+        {op: 'connect', from: 'a', output: 't', to: 'b', input: 't'},
+        {op: 'add', stage: 'b', key: 'cat', class_type: 'StringConcatenate'},
+        {op: 'connect', stage: 'b', from: 'input', output: 't', to: 'cat', input: 'string_a'},
+        {op: 'connect', stage: 'b', from: 'cat', output: 0, to: 'output', input: 't'},
+      ]});
+      const b = app.graph.nodes.find(n => n.properties?.aws_stage === 'b').subgraph;
+      const check = b.nodes.find(n => n.type === 'AgentWorkflowCheck'), cat = b.nodes.find(n => n.type === 'StringConcatenate');
+      const feed = b.links.get?.(check.inputs[0].link) ?? b.links[check.inputs[0].link];
+      return {before: built.stages[1].inside, after: b.nodes.map(n => n.type).sort(), checkFollows: feed?.origin_id === cat.id};
+    });
+    assert.deepEqual(scaffold.before, ['Stub (input → outputs)', 'Check on t']);
+    assert.deepEqual(scaffold.after, ['AgentWorkflowCheck', 'StringConcatenate']);
+    assert.ok(scaffold.checkFollows, 'the Check reads what now feeds its output');
     assert.deepEqual(errors, []);
     console.log('PASS build_and_run');
   } catch (error) {

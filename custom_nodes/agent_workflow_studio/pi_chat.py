@@ -26,7 +26,7 @@ from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_g
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
 from .project_repo import ProjectRepo
-from .workflow_contract import gates, render, report, step_titles, validate_for_approval
+from .workflow_contract import render, report, validate_for_approval
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
@@ -39,6 +39,7 @@ ACTIONS = {
     "tool_approve",
     "contract_evidence",
     "gates",
+    "skeleton",
     "analyze",
     "converters",
 }
@@ -559,7 +560,7 @@ class PiChatSession:
 
             path = arguments.get("path") if isinstance(arguments, dict) else None
             return input_files(Path(folder_paths.get_input_directory()), str(path or ""))
-        if action in {"contract_approve", "tool_approve", "contract_evidence", "gates"}:
+        if action in {"contract_approve", "tool_approve", "contract_evidence", "gates", "skeleton"}:
             raise ValueError(
                 "Use comfy_propose_contract, comfy_check_gates or comfy_contract_status."
             )
@@ -576,9 +577,6 @@ class PiChatSession:
                 "Adding nodes needs an approved contract. Clarify the requirements with "
                 "comfy_ask_user, then propose the contract with comfy_propose_contract."
             )
-        if action == "edit" and self.contract is not None:
-            # Steps are drawn as native groups inside the same edit (one undo step).
-            arguments = {**arguments, "contract_steps": step_titles(self.contract)}
         result = await self.canvas_action(action, arguments)
         if structural:
             result = {**result, "graph_check": await self.check_graph()}
@@ -595,14 +593,13 @@ class PiChatSession:
             lines.append("• Will not run (reaches no output): " + ", ".join(idle[:8]))
         result = {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
         if self.contract is not None:
-            evidence = await self.canvas_action(
-                "contract_evidence", {"gates": gates(self.contract)}
-            )
+            evidence = await self.canvas_action("contract_evidence", {})
             status = report(self.contract, evidence)
             result["contract"] = {
                 "aligned": status["aligned"],
                 "drift": status["drift"],
                 "progress": status["progress"],
+                "todo": status["todo"],
             }
             lines.append(
                 "Contract: ✓ aligned · " + status["progress"]
@@ -610,6 +607,8 @@ class PiChatSession:
                 else f"Contract: ⚠ {len(status['drift'])} drift(s) · {status['progress']}"
             )
             lines += [f"• {d}" for d in status["drift"][:6]]
+            if status["todo"]:
+                lines.append(f"To do ({len(status['todo'])}): " + "; ".join(status["todo"][:4]))
         await self.socket.send_json({"type": "graph_check", "text": "\n".join(lines)})
         return result
 
@@ -620,15 +619,16 @@ class PiChatSession:
             raise ValueError("This workflow has no approved contract yet.")
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
-            return await self.canvas_action("gates", {"gates": gates(self.contract)})
+            return await self.canvas_action("gates", {})
         if action == "tool_propose":
             return await self.propose_tool(arguments if isinstance(arguments, dict) else {})
         if action == "contract_status":
-            evidence = await self.canvas_action(
-                "contract_evidence", {"gates": gates(self.contract)}
-            )
+            evidence = await self.canvas_action("contract_evidence", {})
             status = report(self.contract, evidence)
-            return {k: status[k] for k in ("progress", "freshness", "steps", "nodes_outside_steps")}
+            return {
+                k: status[k]
+                for k in ("progress", "freshness", "steps", "nodes_outside_steps", "todo")
+            }
         contract = validate_for_approval(
             arguments.get("contract") if isinstance(arguments, dict) else None
         )
@@ -644,7 +644,14 @@ class PiChatSession:
             }
         sha = await asyncio.to_thread(self.repo.save_contract, contract)
         self.contract = contract
-        return {"approved": True, "version": sha[:8]}
+        # The approved steps become the canvas skeleton: a typed, wired stage per step.
+        skeleton = await self.canvas_action("skeleton", {"steps": contract["steps"]})
+        return {
+            "approved": True,
+            "version": sha[:8],
+            "skeleton": skeleton,
+            "next": 'Build each stage: edit with "stage": "<step id>", replacing its Stub.',
+        }
 
     async def propose_tool(self, arguments):
         """Show the user the exact code of a workspace tool; on approval, store it in the project."""

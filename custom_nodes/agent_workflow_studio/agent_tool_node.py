@@ -13,6 +13,7 @@ from .agent_tools import NAME, protections, run_folder, run_tool
 from .data_preview import data_files, flow_tables
 from .node_progress import node_id_for, report_node_progress
 from .project_repo import ProjectRepo, projects_root
+from .table_nodes import Customers, Decisions, Pairs
 
 
 class AgentToolNode(io.ComfyNode):
@@ -42,8 +43,9 @@ class AgentToolNode(io.ComfyNode):
                     default="",
                     tooltip="Passed to the tool as inputs['text'].",
                 ),
-                io.Dict.Input(
+                io.MultiType.Input(
                     "data",
+                    types=[io.Dict, Pairs, Decisions, Customers],
                     display_name="Data input",
                     optional=True,
                     tooltip="Connect a DICT; its keys are passed to the tool as inputs.",

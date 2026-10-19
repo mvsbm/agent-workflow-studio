@@ -23,6 +23,12 @@ from comfy_api.latest import io
 from .data_preview import decode, table
 
 Table = io.Custom("TABLE")
+# What flows between matching stages. The value is the same run-folder record as before; the
+# socket type says what it holds, so ComfyUI refuses a wrong wire. Typed inputs also take DICT
+# (an Agent Tool's result), the escape hatch for agent-written steps.
+Pairs = io.Custom("PAIRS")  # compared pairs not decided yet
+Decisions = io.Custom("DECISIONS")  # decided pairs: matched or different
+Customers = io.Custom("CUSTOMERS")  # records grouped into customers
 CATEGORY = "agent_workflow_studio/table"
 
 
@@ -1092,7 +1098,7 @@ class CompareFields(io.ComfyNode):
             ],
             outputs=[
                 Table.Output(display_name="compared", tooltip="Pairs with one level per field."),
-                io.Dict.Output(
+                Pairs.Output(
                     display_name="data",
                     tooltip="Run folders with pairs.jsonl, for Learn weights and Decision rules.",
                 ),
@@ -1175,8 +1181,11 @@ class AttachGroups(io.ComfyNode):
             description="Gives every record its group id from Cluster guard (clusters.csv); records in no group get their own new id.",
             inputs=[
                 Table.Input("records", display_name="Records", tooltip="All records."),
-                io.Dict.Input(
-                    "groups", display_name="Groups", tooltip="Connect Cluster guard's customers."
+                io.MultiType.Input(
+                    "groups",
+                    types=[Customers, io.Dict],
+                    display_name="Groups",
+                    tooltip="Connect Cluster guard's customers.",
                 ),
                 io.String.Input(
                     "id",
@@ -1229,7 +1238,44 @@ class AttachGroups(io.ComfyNode):
         )
 
 
+class Stub(io.ComfyNode):
+    """A planned stage's placeholder: passes its input on, typed as its input, so the pipeline runs
+    end to end before the stage is built."""
+
+    T = io.MatchType.Template("data", [Table, Pairs, Decisions, Customers])
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="AgentWorkflowStub",
+            display_name="Stub (not built yet)",
+            category=CATEGORY,
+            search_aliases=["placeholder", "todo", "passthrough", "skeleton"],
+            description="Stands in for a stage that is not built yet: passes its data on unchanged.",
+            inputs=[
+                io.MatchType.Input(
+                    "data",
+                    template=cls.T,
+                    display_name="Data",
+                    tooltip="What the stage will take; passed on as it is.",
+                )
+            ],
+            outputs=[io.MatchType.Output(template=cls.T, display_name="data")],
+        )
+
+    @classmethod
+    def execute(cls, data: Any) -> io.NodeOutput:
+        rows = data.get("rows") if isinstance(data, dict) else None
+        line = (
+            f"stub · passes {len(rows):,} rows on"
+            if isinstance(rows, list)
+            else "stub · passes its data on"
+        )
+        return io.NodeOutput(data, ui={"text": (line,), "aws_headline": (line,)})
+
+
 NODES = [
+    Stub,
     SplitName,
     ReadTable,
     WriteTable,

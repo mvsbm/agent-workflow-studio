@@ -44,7 +44,7 @@ const artifacts = process.env.ARTIFACTS;
     });
     assert.match(evidence.outputs, /HELLO!/);
     assert.ok(evidence.versions.includes('Tool approved: shout'), evidence.versions.join(' | '));
-    assert.ok(evidence.versions.some(v => /^Run · Agent tool shout #\d+ · succeeded$/.test(v)), evidence.versions.join(' | '));
+    assert.ok(evidence.versions.some(v => /^Run · Agent tool shout #[\d:]+ · succeeded$/.test(v)), evidence.versions.join(' | '));
     await page.screenshot({path: path.join(artifacts, 'agent-tool.png')});
     assert.deepEqual(errors, []);
     console.log('PASS agent_tool');

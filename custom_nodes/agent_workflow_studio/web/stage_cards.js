@@ -55,9 +55,9 @@ async function refresh() {
   let steps = {};
   try {
     const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/contract`);
-    const {contract, gates} = await response.json();
+    const {contract} = await response.json();
     if (contract) {
-      const evidence = await contractEvidence(app, api, gates);
+      const evidence = await contractEvidence(app, api);
       const status = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/contract/status`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)}).then(r => r.json());
       steps = Object.fromEntries((status.steps ?? []).map(step => [step.step, step]));
     }

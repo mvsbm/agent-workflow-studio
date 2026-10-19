@@ -173,7 +173,6 @@ decide: {match: 4, review: 2}
     const write = add('AgentWorkflowWriteTable', 'publish_results', 'Write nayose_result.csv', {file: 'nayose_reference/nayose_result.csv', columns: 'system, record_id, role, customer_id'});
     link(attach, 0, write, 'table');
     link(write, 0, score, 'result_file');
-    graph.extra = {...graph.extra, aws_step_groups: {}};
   }, {template, plans: PLANS, deterministic: DETERMINISTIC, starting: STARTING, variant: VARIANT, patternRules: PATTERNS, seed: Number(process.env.SEED || 0)});
   const first = await run();
   if (first !== 'success') throw Error(`first run: ${first}`);
@@ -185,8 +184,16 @@ decide: {match: 4, review: 2}
   }
   const summary = await page.evaluate(async steps => {
     const app = window.comfyAPI.app.app;
-    const {packStages, arrangeGraph} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
-    packStages(app.graph, steps);
+    const {packIntoStage, addCheck, arrangeGraph} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+    for (const {id, title} of steps) {
+      const members = app.graph.nodes.filter(n => n.properties?.aws_contract_step === id);
+      if (!members.length) continue;
+      for (const n of members) delete n.properties.aws_contract_step; // the stage now says which step
+      const stage = packIntoStage(app.graph, members, id, Number(/^\s*(\d+)/.exec(title)[1]));
+      // Each stage proves itself on the data it gives: a Check on its first output.
+      const out = stage.subgraph.outputs[0];
+      if (out) addCheck(stage.subgraph, {output: out.name, kind: out.type === 'STRING' ? 'non_empty' : 'rows_at_least', value: 1}, `${stage.title} gives data`);
+    }
     arrangeGraph(app.graph);
     const score = app.graph.nodes.find(n => n.type === 'AgentWorkflowNayoseScore');
     return score.properties.aws_tables?.[0]?.rows ?? [];

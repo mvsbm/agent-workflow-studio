@@ -106,9 +106,10 @@ CONTRACT = {
             "purpose": "Join hello and world into one greeting.",
             "approach": "fixed",
             "covers": ["R1"],
+            "gives": {"text": "STRING"},
             "gate": {
                 "says": "The greeting says hello world.",
-                "check": {"node": "Result", "kind": "contains", "value": "hello world"},
+                "check": {"output": "text", "kind": "contains", "value": "hello world"},
             },
             "nodes": ["PrimitiveString", "StringConcatenate"],
         },
@@ -117,6 +118,7 @@ CONTRACT = {
             "purpose": "Show the greeting.",
             "approach": "fixed",
             "covers": ["R1"],
+            "takes": {"text": "greet.text"},
             "gate": {"says": "The greeting is easy to read."},
             "nodes": ["PreviewAny"],
         },
@@ -153,33 +155,37 @@ def ask(question, options):
     raise SystemExit("stdin closed while waiting for an answer")
 
 
+# Built inside the stages the approval created: greet (no input, starts empty), show (a Stub).
 BUILD = [
+    {"op": "add", "stage": "greet", "key": "src", "class_type": "PrimitiveString"},
+    {"op": "widget", "stage": "greet", "node": "src", "name": "value", "value": "hello"},
+    {"op": "add", "stage": "greet", "key": "cat", "class_type": "StringConcatenate"},
+    {"op": "widget", "stage": "greet", "node": "cat", "name": "string_b", "value": " world"},
     {
-        "op": "add",
-        "key": "src",
-        "class_type": "PrimitiveString",
-        "position": [50, 100],
-        "step": "greet",
+        "op": "connect",
+        "stage": "greet",
+        "from": "src",
+        "output": 0,
+        "to": "cat",
+        "input": "string_a",
     },
-    {"op": "widget", "node": "src", "name": "value", "value": "hello"},
     {
-        "op": "add",
-        "key": "cat",
-        "class_type": "StringConcatenate",
-        "position": [350, 100],
-        "step": "greet",
+        "op": "connect",
+        "stage": "greet",
+        "from": "cat",
+        "output": 0,
+        "to": "output",
+        "input": "text",
     },
-    {"op": "widget", "node": "cat", "name": "string_b", "value": " world"},
+    {"op": "add", "stage": "show", "key": "out", "class_type": "PreviewAny", "title": "Result"},
     {
-        "op": "add",
-        "key": "out",
-        "class_type": "PreviewAny",
-        "title": "Result",
-        "position": [700, 100],
-        "step": "show",
+        "op": "connect",
+        "stage": "show",
+        "from": "input",
+        "output": "text",
+        "to": "out",
+        "input": "source",
     },
-    {"op": "connect", "from": "src", "output": 0, "to": "cat", "input": "string_a"},
-    {"op": "connect", "from": "cat", "output": 0, "to": "out", "input": "source"},
 ]
 
 
@@ -198,7 +204,10 @@ def build_and_run():
         "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
     )
     # Keys from an earlier batch stay valid for the whole chat.
-    moved = tool("edit", {"operations": [{"op": "move", "node": "out", "position": [760, 100]}]})
+    moved = tool(
+        "edit",
+        {"operations": [{"op": "move", "stage": "show", "node": "out", "position": [760, 100]}]},
+    )
     if "error" in moved:
         raise SystemExit("key from an earlier batch did not resolve: " + moved["error"])
     run = tool("run", {"reason": "build and verify"})
@@ -281,9 +290,10 @@ TOOL_CONTRACT = {
             "purpose": "Uppercase the text with an approved tool.",
             "approach": "fixed",
             "covers": ["R1"],
+            "gives": {"text": "STRING"},
             "gate": {
                 "says": "The text is shouted.",
-                "check": {"node": "Shout", "kind": "contains", "value": "HELLO!"},
+                "check": {"output": "text", "kind": "contains", "value": "HELLO!"},
             },
         }
     ],
@@ -326,22 +336,32 @@ def tool_workflow():
             "operations": [
                 {
                     "op": "add",
+                    "stage": "shout",
                     "key": "shout",
                     "class_type": "AgentWorkflowAgentTool",
-                    "position": [50, 100],
-                    "step": "shout",
                 },
-                {"op": "widget", "node": "shout", "name": "tool", "value": "shout"},
-                {"op": "widget", "node": "shout", "name": "text", "value": "hello"},
                 {
-                    "op": "add",
-                    "key": "show",
-                    "class_type": "PreviewAny",
-                    "title": "Shout",
-                    "position": [500, 100],
-                    "step": "shout",
+                    "op": "widget",
+                    "stage": "shout",
+                    "node": "shout",
+                    "name": "tool",
+                    "value": "shout",
                 },
-                {"op": "connect", "from": "shout", "output": 1, "to": "show", "input": "source"},
+                {
+                    "op": "widget",
+                    "stage": "shout",
+                    "node": "shout",
+                    "name": "text",
+                    "value": "hello",
+                },
+                {
+                    "op": "connect",
+                    "stage": "shout",
+                    "from": "shout",
+                    "output": 1,
+                    "to": "output",
+                    "input": "text",
+                },
             ],
         },
     )

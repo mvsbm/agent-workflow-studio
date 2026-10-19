@@ -30,14 +30,15 @@ const artifacts = process.env.ARTIFACTS;
       app.graph.clear();
       const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
       const bridge = createCanvasBridge(app, window.comfyAPI.api.api, {confirm: async () => true, autoApproveRun: () => true});
+      await bridge.handle('skeleton', {steps: [{id: 'loud'}]}); // the agent builds inside a contract step's stage
       await bridge.handle('edit', {operations: [
-        {op: 'add', key: 'src', class_type: 'PrimitiveString', position: [50, 100]},
-        {op: 'widget', node: 'src', name: 'value', value: 'fuzzy test'},
-        {op: 'add', key: 'fuzzy', class_type: 'AgentWorkflowFuzzyNode', position: [350, 100]},
-        {op: 'widget', node: 'fuzzy', name: 'goal', value: 'make it loud'},
-        {op: 'add', key: 'out', class_type: 'PreviewAny', position: [900, 100]},
-        {op: 'connect', from: 'src', output: 0, to: 'fuzzy', input: 'text'},
-        {op: 'connect', from: 'fuzzy', output: 0, to: 'out', input: 'source'},
+        {stage: 'loud', op: 'add', key: 'src', class_type: 'PrimitiveString', position: [50, 100]},
+        {stage: 'loud', op: 'widget', node: 'src', name: 'value', value: 'fuzzy test'},
+        {stage: 'loud', op: 'add', key: 'fuzzy', class_type: 'AgentWorkflowFuzzyNode', position: [350, 100]},
+        {stage: 'loud', op: 'widget', node: 'fuzzy', name: 'goal', value: 'make it loud'},
+        {stage: 'loud', op: 'add', key: 'out', class_type: 'PreviewAny', position: [900, 100]},
+        {stage: 'loud', op: 'connect', from: 'src', output: 0, to: 'fuzzy', input: 'text'},
+        {stage: 'loud', op: 'connect', from: 'fuzzy', output: 0, to: 'out', input: 'source'},
       ]});
       await bridge.handle('run', {reason: 'e2e'});
       let result;
@@ -55,11 +56,11 @@ const artifacts = process.env.ARTIFACTS;
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
     const first = page.locator('.aw-versions-item').first();
     await first.waitFor({timeout: 15000});
-    assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Fuzzy plan #\d+ · succeeded$/);
+    assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Fuzzy plan #[\d:]+ · succeeded$/);
 
     // After a run the step is Fuzzy and shows its plan on the node.
     const fuzzy = await page.evaluate(() => {
-      const node = window.comfyAPI.app.app.graph.nodes.find(n => n.type === 'AgentWorkflowFuzzyNode');
+      const node = window.comfyAPI.app.app.graph.nodes[0].subgraph.nodes.find(n => n.type === 'AgentWorkflowFuzzyNode');
       const options = []; node.getExtraMenuOptions(window.comfyAPI.app.app.canvas, options);
       return {view: node.widgets.find(w => w.name === 'plan_view').value, menu: options.filter(Boolean).map(o => [o.content, !!o.disabled])};
     });
@@ -72,16 +73,17 @@ const artifacts = process.env.ARTIFACTS;
     const hardened = await page.evaluate(async () => {
       const app = window.comfyAPI.app.app;
       const {hardenStep} = await import('/extensions/agent_workflow_studio/fuzzy_steps.js');
-      const types = () => app.graph.nodes.map(n => n.type);
+      const stage = () => app.graph.nodes[0].subgraph; // the work is inside the step's stage
+      const types = () => stage().nodes.map(n => n.type);
       const run = cmd => app.extensionManager.command.execute(cmd);
-      await hardenStep(app.graph.nodes.find(n => n.type === 'AgentWorkflowFuzzyNode'));
+      await hardenStep(stage().nodes.find(n => n.type === 'AgentWorkflowFuzzyNode'));
       // Hardening is exactly one undo step: undo restores the fuzzy step, redo re-applies it.
       await run('Comfy.Undo');
       await new Promise(r => setTimeout(r, 400));
       const undone = types();
       await run('Comfy.Redo');
       await new Promise(r => setTimeout(r, 400));
-      const step = app.graph.nodes.find(n => n.isSubgraphNode?.());
+      const step = stage().nodes.find(n => n.isSubgraphNode?.());
       const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
       const bridge = createCanvasBridge(app, window.comfyAPI.api.api, {autoApproveRun: () => true});
       await new Promise(r => setTimeout(r, 300));

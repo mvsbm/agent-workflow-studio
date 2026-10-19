@@ -22,12 +22,13 @@ const artifacts = process.env.ARTIFACTS;
       app.graph.clear();
       const {createCanvasBridge} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
       const bridge = createCanvasBridge(app, window.comfyAPI.api.api, {confirm: async () => true, autoApproveRun: () => true});
+      await bridge.handle('skeleton', {steps: [{id: 'answer'}]}); // the agent builds inside a contract step's stage
       await bridge.handle('edit', {operations: [
-        {op: 'add', key: 'llm', class_type: 'AgentWorkflowPiStructuredAgent', position: [50, 100]},
-        {op: 'widget', node: 'llm', name: 'prompt', value: 'Say something'},
-        {op: 'widget', node: 'llm', name: 'max_tokens', value: 512}, // an ordinary setting, not a secret
-        {op: 'add', key: 'out', class_type: 'PreviewAny', position: [600, 100]},
-        {op: 'connect', from: 'llm', output: 0, to: 'out', input: 'source'},
+        {stage: 'answer', op: 'add', key: 'llm', class_type: 'AgentWorkflowPiStructuredAgent', position: [50, 100]},
+        {stage: 'answer', op: 'widget', node: 'llm', name: 'prompt', value: 'Say something'},
+        {stage: 'answer', op: 'widget', node: 'llm', name: 'max_tokens', value: 512}, // an ordinary setting, not a secret
+        {stage: 'answer', op: 'add', key: 'out', class_type: 'PreviewAny', position: [600, 100]},
+        {stage: 'answer', op: 'connect', from: 'llm', output: 0, to: 'out', input: 'source'},
       ]});
       const submitted = await bridge.handle('run', {reason: 'e2e'});
       let result;
@@ -45,7 +46,7 @@ const artifacts = process.env.ARTIFACTS;
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
     const first = page.locator('.aw-versions-item').first();
     await first.waitFor({timeout: 15000});
-    assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Pi CLI Structured LLM #\d+ · succeeded$/);
+    assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Pi CLI Structured LLM #[\d:]+ · succeeded$/);
     await first.locator('.aw-versions-toggle').click();
     await first.getByText('Run record · succeeded').waitFor({timeout: 10000});
     assert.match(await first.locator('.aw-versions-record pre').first().textContent(), /fake answer/);

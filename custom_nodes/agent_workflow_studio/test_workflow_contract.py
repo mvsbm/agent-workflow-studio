@@ -12,7 +12,6 @@ from .workflow_contract import (
     derive_states,
     from_plan_v1,
     from_yaml,
-    gates,
     render,
     to_yaml,
     validate_contract,
@@ -54,9 +53,11 @@ CONTRACT = {
             "purpose": "Decide whether the review is positive or negative.",
             "approach": "ai_judgment",
             "covers": ["R1"],
+            "takes": {"review": "STRING"},
+            "gives": {"label": "STRING"},
             "gate": {
                 "says": "The label is positive or negative.",
-                "check": {"node": "Label", "kind": "regex", "value": "positive|negative"},
+                "check": {"output": "label", "kind": "regex", "value": "positive|negative"},
             },
             "nodes": ["AgentWorkflowPiStructuredAgent", "PreviewAny"],
         },
@@ -65,6 +66,8 @@ CONTRACT = {
             "purpose": "Keep the label plain.",
             "approach": "fixed",
             "covers": ["R1"],
+            "takes": {"label": "classify.label"},
+            "gives": {"label": "STRING"},
             "gate": {"says": "No emoji in the label."},
         },
     ],
@@ -103,6 +106,13 @@ class ContractTests(unittest.TestCase):
             "approach": changed(lambda c: c["steps"][0].update(approach="magic")),
             "Additional properties": changed(lambda c: c.update(status="done")),
             "you_said": changed(lambda c: c["requests"][0].pop("you_said")),
+            "does not give": changed(
+                lambda c: c["steps"][0]["gate"]["check"].update(output="score")
+            ),
+            "no earlier step gives": changed(
+                lambda c: c["steps"][1]["takes"].update(label="tidy.label")
+            ),
+            "does not match": changed(lambda c: c["steps"][0]["gives"].update(label="string")),
         }
         for message, contract in cases.items():
             with self.subTest(message), self.assertRaisesRegex(ValueError, message):
@@ -169,6 +179,8 @@ class ContractTests(unittest.TestCase):
 
         self.assertEqual(states([]), {"classify": "planned", "tidy": "planned"})
         self.assertEqual(states([{"step": "classify"}]), {"classify": "built", "tidy": "planned"})
+        # The skeleton's Stub and Checks do not make a stage built.
+        self.assertEqual(states([{"step": "classify", "scaffold": True}])["classify"], "planned")
         self.assertEqual(states([{"step": "classify", "fuzzy": True}])["classify"], "fuzzy")
         self.assertEqual(
             states(
@@ -185,21 +197,14 @@ class ContractTests(unittest.TestCase):
             all(target in TRANSITIONS for row in TRANSITIONS.values() for target in row.values())
         )
 
-    def test_gates_and_plain_preview(self) -> None:
-        self.assertEqual(
-            gates(CONTRACT)[0],
-            {
-                "step": "classify",
-                "description": "The label is positive or negative.",
-                "check": {"node_title": "Label", "kind": "regex", "value": "positive|negative"},
-            },
-        )
-        self.assertIsNone(gates(CONTRACT)[1]["check"])
+    def test_plain_preview(self) -> None:
         text = render(CONTRACT, [{"step": "classify", "state": "verified"}])
         self.assertTrue(text.startswith("PURPOSE: Label customer reviews"))
         self.assertIn("R1 (must) you said: “tell me if reviews are good or bad”", text)
         self.assertIn("covers R1 — verified", text)
         self.assertIn("No emoji in the label. (you confirm this one)", text)
+        self.assertIn("Stage: takes label ← classify.label · gives label: STRING", text)
+        self.assertIn("(a Check on label: regex positive|negative)", text)
         self.assertIn(
             "D1 Mixed reviews count as negative. — why: Support wants every complaint. (instead of A neutral label) · by you",
             text,
@@ -207,7 +212,7 @@ class ContractTests(unittest.TestCase):
         self.assertLess(text.index("NOT NOW"), text.index("Technical details"))
 
     def test_report_from_evidence(self) -> None:
-        from .workflow_contract import report, step_titles
+        from .workflow_contract import report
 
         nodes = [{"title": "Label", "step": "classify"}, {"title": "Stray", "step": None}]
         fresh = report(
@@ -223,31 +228,30 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(
             report(CONTRACT, {"nodes": []})["freshness"], "No run of this workflow yet."
         )
-        self.assertEqual(
-            step_titles(CONTRACT)[0],
-            {"id": "classify", "title": "1 · Decide whether the review is positive or negative."},
-        )
-        long = {
-            **CONTRACT,
-            "steps": [
-                {
-                    **CONTRACT["steps"][0],
-                    "purpose": "Concatenate the two words with the hyphen separator and show the result",
-                }
-            ],
+        # What the architecture still asks for comes from the saved workflow.
+        workflow = {
+            "nodes": [{"id": 1, "type": "s", "properties": {"aws_stage": "classify"}}],
+            "definitions": {
+                "subgraphs": [
+                    {
+                        "id": "s",
+                        "name": "1 · Classify",
+                        "nodes": [],
+                        "inputs": [],
+                        "outputs": [{"name": "label", "type": "*"}],
+                    }
+                ]
+            },
         }
-        self.assertEqual(
-            step_titles(long)[0]["title"],
-            "1 · Concatenate the two words with the hyphen separator and…",
-        )
+        todo = report(CONTRACT, {"nodes": [], "workflow": workflow})["todo"]
+        self.assertTrue(any("label is untyped" in t for t in todo), todo)
+        self.assertTrue(any("has no check" in t for t in todo), todo)
+        self.assertTrue(any(t.endswith("(release)") for t in todo), todo)
 
     def test_alignment_reports_drift_not_progress(self) -> None:
         from .workflow_contract import alignment
 
-        good = {
-            "nodes": [{"title": "Label", "step": "classify"}],
-            "analysis": {"outputs": ["Label"], "problems": []},
-        }
+        good = {"nodes": [{"title": "Label", "step": "classify"}], "analysis": {"problems": []}}
         self.assertEqual(alignment(CONTRACT, good), [], "an unbuilt step is progress, not drift")
         self.assertEqual(alignment(CONTRACT, {"nodes": []}), [])
         drift = alignment(
@@ -258,22 +262,27 @@ class ContractTests(unittest.TestCase):
                     {"title": "Cleaner", "step": "tidy", "fuzzy": True},
                     {"title": "Stray", "step": None},
                     {"title": "Synthetic data", "step": None, "given": True},
-                    {"title": "Old", "step": "removed_step"},
+                    {"title": "How to use", "step": None, "note": True},
                 ],
-                "analysis": {
-                    "outputs": [],
-                    "problems": ['Required input "vae" (VAE) is not connected.'],
-                },
+                "stages": [
+                    {
+                        "step": "classify",
+                        "title": "1 · Classify",
+                        "takes": [["review", "STRING"]],
+                        "gives": [["label", "PAIRS"]],
+                    },
+                    {"step": "removed_step", "title": "3 · Removed step", "takes": [], "gives": []},
+                ],
+                "analysis": {"problems": ['Required input "vae" (VAE) is not connected.']},
             },
         )
         self.assertEqual(
             drift,
             [
-                "Not part of any step: Stray.",
-                "Nodes belong to steps the contract no longer has: removed_step.",
-                "Step classify's gate checks “Label”, which is not an output node on the canvas.",
+                "Outside every stage: Stray.",
+                "1 · Classify gives label as PAIRS; the contract says STRING.",
+                "3 · Removed step is no longer a contract step.",
                 "Step tidy is fixed in the contract but uses a Fuzzy node.",
-                "Nothing will run: the graph has no output node.",
                 'Graph problem: Required input "vae" (VAE) is not connected.',
             ],
         )

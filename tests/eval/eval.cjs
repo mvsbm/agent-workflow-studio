@@ -119,9 +119,10 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
       const failures = [...document.querySelectorAll('.aw-pi-host details')].filter(d => /^Failed · /.test(d.querySelector('summary')?.textContent.trim() ?? '')).map(d => d.textContent.trim().slice(0, 400));
       return {
         contract, tools, failures,
-        node_types: app.rootGraph.nodes.map(n => n.type), node_ids: app.rootGraph.nodes.map(n => n.id),
-        step_groups: (app.rootGraph._groups ?? app.rootGraph.groups ?? []).map(g => g.title),
-        untagged: app.rootGraph.nodes.filter(n => !n.properties?.aws_contract_step && !n.properties?.aws_given).map(n => n.title),
+        // The work lives inside stages: node types include what is inside them.
+        node_types: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.type) : [n.type])), node_ids: app.rootGraph.nodes.map(n => n.id),
+        stages: app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(n => n.title),
+        loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !/Note$/.test(n.type)).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,
         run_statuses: statuses, versions: (log.commits ?? []).map(c => `${c.author}: ${c.message}`),
         chat: document.querySelector('.aw-pi-host')?.innerText.slice(-3000) ?? '',

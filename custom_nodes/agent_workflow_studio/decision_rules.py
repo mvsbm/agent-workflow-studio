@@ -31,6 +31,8 @@ from typing import Any
 import yaml
 from comfy_api.latest import io
 
+from .table_nodes import Decisions, Pairs
+
 DECISIONS = ("match", "review", "different")
 # Outcomes in decisions.csv: a stage with rules only leaves the rest undecided for the next stage.
 OUTCOMES = (*DECISIONS, "undecided")
@@ -234,8 +236,9 @@ class DecisionRules(io.ComfyNode):
                 "uncertain pairs to the Review tab; your Review decisions override the rules."
             ),
             inputs=[
-                io.Dict.Input(
+                io.MultiType.Input(
                     "data",
+                    types=[Pairs, io.Dict],
                     display_name="Pairs",
                     optional=True,
                     tooltip="Connect the Agent Tool that wrote the compared pairs (or give a path under output/).",
@@ -263,21 +266,21 @@ class DecisionRules(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.Dict.Output(
+                Decisions.Output(
                     display_name="decisions",
                     tooltip="Counts, plus run folders so the next tool can read decisions.csv.",
                 ),
                 io.String.Output(display_name="summary", tooltip="The decision flow as text."),
                 # The branches, so the graph shows where pairs go: decided ones leave the cascade.
-                io.Dict.Output(
+                Decisions.Output(
                     display_name="matched",
                     tooltip="Pairs decided to be the same: connect to Cluster guard.",
                 ),
-                io.Dict.Output(
+                Decisions.Output(
                     display_name="different",
                     tooltip="Pairs decided to be different: connect to Cluster guard.",
                 ),
-                io.Dict.Output(
+                Pairs.Output(
                     display_name="unsettled",
                     tooltip="Pairs not decided here (undecided or to review): connect to the next stage.",
                 ),
@@ -347,7 +350,8 @@ class DecisionRules(io.ComfyNode):
         ) or "Decision rules"
         runs = Path(folder_paths.get_output_directory()) / "agent_tools" / repo.id
         # The node id keeps two stages finishing in the same second apart.
-        folder = runs / f"decision_rules-{time.strftime('%Y%m%d-%H%M%S')}-{uid.replace(':', '_')}"
+        stamp = f"{time.strftime('%Y%m%d-%H%M%S')}{int(time.time() * 1000) % 1000:03d}"
+        folder = runs / f"decision_rules-{stamp}-{uid.replace(':', '_')}"
         folder.mkdir(parents=True, exist_ok=True)
         # Monitoring: pairs per branch now and on this stage's previous run.
         per_branch = Counter()

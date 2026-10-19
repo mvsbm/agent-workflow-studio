@@ -2,6 +2,7 @@
 // Its state is visible by color and on the node: Planned (not run) -> Fuzzy (the model
 // plans it each run; latest plan shown) -> Hardened (the plan frozen into a native
 // subgraph of real nodes, titled with the goal; no model call on later runs).
+import {deepNodes} from './pi_canvas.js';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {commitWorkflow} from './project_versions.js';
@@ -41,7 +42,8 @@ function addPlanView(node) {
   });
 }
 
-const linkById = id => (app.graph.links instanceof Map ? app.graph.links.get(id) : app.graph.links?.[id]);
+// Links live in the graph the node is in (a stage's subgraph, or the top level).
+const linkIn = (graph, id) => (graph.links instanceof Map ? graph.links.get(id) : graph.links?.[id]);
 
 /** Replace a Fuzzy node by its latest plan as real nodes, grouped in a subgraph titled with the goal. */
 export async function hardenStep(node) {
@@ -55,7 +57,7 @@ export async function hardenStep(node) {
   try {
     // Where the step's input text comes from: the linked node, or the typed widget value.
     const textSlot = node.inputs.findIndex(input => input.name === 'text');
-    const inputLink = linkById(node.inputs[textSlot]?.link);
+    const inputLink = linkIn(graph, node.inputs[textSlot]?.link);
     let source;
     if (inputLink) {
       source = {node: graph.getNodeById(inputLink.origin_id), slot: inputLink.origin_slot};
@@ -67,7 +69,7 @@ export async function hardenStep(node) {
       literal.widgets.find(w => w.name === 'value').value = node.widgets.find(w => w.name === 'text')?.value ?? '';
       source = {node: literal, slot: 0};
     }
-    const consumers = (node.outputs[0]?.links ?? []).map(id => linkById(id)).filter(Boolean)
+    const consumers = (node.outputs[0]?.links ?? []).map(id => linkIn(graph, id)).filter(Boolean)
       .map(link => ({node: graph.getNodeById(link.target_id), slot: link.target_slot}));
 
     const built = {}, created = [];
@@ -105,7 +107,6 @@ export async function hardenStep(node) {
     step.title = goal.slice(0, 80);
     if (step.subgraph) step.subgraph.name = goal.slice(0, 80);
     step.properties = {...step.properties, aws_step: {state: 'hardened', goal, plan}};
-    if (node.properties?.aws_contract_step) step.properties.aws_contract_step = node.properties.aws_contract_step;
     setState(step, 'hardened');
     return step;
   } catch (error) {
@@ -161,7 +162,8 @@ app.registerExtension({
     api.addEventListener('executed', ({detail}) => {
       const plan = detail?.output?.aws_plan?.[0];
       if (!plan) return;
-      const node = app.graph.getNodeById(detail.node) ?? app.graph.getNodeById(Number(detail.node));
+      // Inside a stage the run names the node by its path ("stage:node").
+      const node = deepNodes(app.rootGraph ?? app.graph).find(({runId}) => runId === String(detail.node))?.node;
       if (node?.type !== FUZZY) return;
       node.properties = {...node.properties, aws_plan: plan, aws_plan_text: detail.output.text?.[0] ?? ''};
       showPlan(node);

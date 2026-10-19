@@ -33,6 +33,7 @@ from comfy_api.latest import io
 
 from .data_preview import table
 from .decision_rules import load_spec, pair_id, read_pairs
+from .table_nodes import Customers, Decisions, Pairs
 
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -54,7 +55,7 @@ def own_folder(repo, name: str) -> Path:
         Path(folder_paths.get_output_directory())
         / "agent_tools"
         / repo.id
-        / f"{name}-{time.strftime('%Y%m%d-%H%M%S')}"
+        / f"{name}-{time.strftime('%Y%m%d-%H%M%S')}{int(time.time() * 1000) % 1000:03d}"
     )
     folder.mkdir(parents=True, exist_ok=True)
     return folder
@@ -217,8 +218,9 @@ class LearnWeights(io.ComfyNode):
                 "review thresholds set from target probabilities. Shows the learned weights next to the old ones."
             ),
             inputs=[
-                io.Dict.Input(
+                io.MultiType.Input(
                     "data",
+                    types=[Pairs, io.Dict],
                     display_name="Pairs",
                     optional=True,
                     tooltip="Connect the tool that wrote the compared pairs.",
@@ -260,7 +262,7 @@ class LearnWeights(io.ComfyNode):
                     display_name="rules",
                     tooltip="The YAML with learned points; connect to Decision rules' Rules.",
                 ),
-                io.Dict.Output(
+                Pairs.Output(
                     display_name="data",
                     tooltip="Passes the pairs on (run folders) to Decision rules.",
                 ),
@@ -432,8 +434,11 @@ class LLMSuggestions(io.ComfyNode):
                 "Review tab. It never decides: you do. Shows how often it agrees with your decisions so far."
             ),
             inputs=[
-                io.Dict.Input(
-                    "data", display_name="Decisions", tooltip="Connect Decision rules' decisions."
+                io.MultiType.Input(
+                    "data",
+                    types=[Pairs, Decisions, io.Dict],
+                    display_name="Decisions",
+                    tooltip="Connect Decision rules' decisions.",
                 ),
                 io.String.Input(
                     "pairs_file",
@@ -470,7 +475,7 @@ class LLMSuggestions(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.Dict.Output(
+                Pairs.Output(
                     display_name="suggestions",
                     tooltip="Counts and run folders (suggestions.csv) for Cluster guard.",
                 )
@@ -777,15 +782,17 @@ class ClusterGuard(io.ComfyNode):
                 "blocked merge with its reason. Writes clusters.csv (mention, customer)."
             ),
             inputs=[
-                io.Dict.Input(
+                io.MultiType.Input(
                     "data",
+                    types=[Decisions, io.Dict],
                     display_name="All decisions",
                     optional=True,
                     tooltip="Decision rules' decisions (all pairs), or connect the branches below instead.",
                 ),
                 *(
-                    io.Dict.Input(
+                    io.MultiType.Input(
                         f"{kind}_{i}",
+                        types=[Decisions, io.Dict],
                         display_name=f"{kind.capitalize()} {i}",
                         optional=True,
                         tooltip=f"A stage's {kind} branch (Decision rules, Your review decisions).",
@@ -803,7 +810,7 @@ class ClusterGuard(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.Dict.Output(
+                Customers.Output(
                     display_name="customers",
                     tooltip="Counts and run folders (clusters.csv) for the tool that writes the result.",
                 )
@@ -915,20 +922,21 @@ class ReviewDecisions(io.ComfyNode):
                 "in the Review tab into matched and different (for Cluster guard) and still open."
             ),
             inputs=[
-                io.Dict.Input(
+                io.MultiType.Input(
                     "data",
+                    types=[Pairs, io.Dict],
                     display_name="Unsettled",
                     tooltip="A stage's unsettled branch (Decision rules or LLM suggestions).",
                 )
             ],
             outputs=[
-                io.Dict.Output(
+                Decisions.Output(
                     display_name="matched", tooltip="Pairs you decided are the same person."
                 ),
-                io.Dict.Output(
+                Decisions.Output(
                     display_name="different", tooltip="Pairs you decided are different people."
                 ),
-                io.Dict.Output(display_name="open", tooltip="Pairs you have not decided yet."),
+                Pairs.Output(display_name="open", tooltip="Pairs you have not decided yet."),
             ],
             hidden=[io.Hidden.extra_pnginfo, io.Hidden.prompt, io.Hidden.unique_id],
             is_output_node=True,

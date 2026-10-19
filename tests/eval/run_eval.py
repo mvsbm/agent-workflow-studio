@@ -159,7 +159,7 @@ def process(r: dict) -> dict[str, bool]:
     checks = {
         "contract": bool(approved) or not built,
         "plan_first": not agent_work or (bool(approved) and max(agent_work) < max(approved)),
-        "tagged": not r.get("untagged"),
+        "in_stages": not r.get("loose"),
         "aligned": (r.get("contract") or {}).get("aligned", not built),
         "ran": "success" in r.get("run_statuses", []),
         "gates": "comfy_check_gates" in tools,

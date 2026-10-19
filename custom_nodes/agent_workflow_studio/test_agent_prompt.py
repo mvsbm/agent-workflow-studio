@@ -33,8 +33,6 @@ class AgentPromptTests(unittest.TestCase):
                 "remove",
                 "disconnect",
                 "arrange",
-                "organize",
-                "unpack",
             },
         )
         for operation in operations:
