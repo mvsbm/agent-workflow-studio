@@ -45,7 +45,7 @@ CONTRACT = {
     ],
     "promises": {
         "inputs": [{"name": "review", "kind": "text", "example": "Great value"}],
-        "outputs": [{"name": "label", "kind": "text"}],
+        "outputs": [{"name": "label", "kind": "text", "from": "tidy.label"}],
     },
     "steps": [
         {
@@ -53,7 +53,8 @@ CONTRACT = {
             "purpose": "Decide whether the review is positive or negative.",
             "approach": "ai_judgment",
             "covers": ["R1"],
-            "takes": {"review": "STRING"},
+            "takes": {"review": "input.review"},
+            "pattern": "LLM behind a typed boundary",
             "gives": {"label": "STRING"},
             "gate": {
                 "says": "The label is positive or negative.",
@@ -67,6 +68,7 @@ CONTRACT = {
             "approach": "fixed",
             "covers": ["R1"],
             "takes": {"label": "classify.label"},
+            "pattern": "message translator",
             "gives": {"label": "STRING"},
             "gate": {"says": "No emoji in the label."},
         },
@@ -94,6 +96,7 @@ def changed(change):
 class ContractTests(unittest.TestCase):
     def test_valid_contract_and_approval(self) -> None:
         self.assertIs(validate_for_approval(CONTRACT), CONTRACT)
+        self.assertEqual(validate_for_approval({**CONTRACT, "contract": "2"}), CONTRACT)
 
     def test_rejects_inconsistent_contracts(self) -> None:
         cases = {
@@ -368,6 +371,21 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(
             alignment(design, {"nodes": [], "stages": [stage]}),
             ["1 · Classify gives label without score (declared in the design)."],
+        )
+
+    def test_the_design_standard_blocks_inconsistent_proposals(self) -> None:
+        from .workflow_contract import blocking
+
+        self.assertEqual(blocking(CONTRACT), [])
+        unmapped = changed(lambda c: c["promises"]["outputs"][0].pop("from"))
+        self.assertEqual(len(blocking(unmapped)), 1)
+        self.assertTrue(blocking(unmapped)[0].startswith("The API is defined"))
+        wordy = changed(lambda c: c["steps"][0].update(why="x" * 200))
+        self.assertTrue(
+            any(
+                item.startswith("Every step reads as one short sentence")
+                for item in blocking(wordy)
+            )
         )
 
     def test_schema_file_is_valid_and_shared(self) -> None:

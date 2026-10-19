@@ -154,6 +154,17 @@ def next_version(previous: dict | None, signature: dict, design: str) -> str:
     return f"{major}.{minor}.{patch + 1}"
 
 
+def collect_checks(outputs: dict) -> list[dict]:
+    """Every Check that ran, wherever it sits: its node path, pass/fail and evidence."""
+    return [
+        {"node": key, "passed": bool(item.get("passed")), "evidence": item.get("evidence")}
+        for key, value in outputs.items()
+        if isinstance(value, dict)
+        for item in value.get("aws_check") or []
+        if isinstance(item, dict)
+    ]
+
+
 def collect_files(outputs: dict) -> list[dict]:
     """Files the run wrote (under output/), as ComfyUI download links."""
     from urllib.parse import urlencode
@@ -373,12 +384,8 @@ def install_api_routes() -> None:
         return await guarded(request, handler)
 
     def last_acceptance(repo) -> dict | None:
-        folder = repo.tree / "records"
-        for path in sorted(folder.glob("*.json"), reverse=True) if folder.is_dir() else []:
-            record = json.loads(path.read_text(encoding="utf-8"))
-            if record.get("kind") == "acceptance":
-                return record
-        return None
+        found = repo.records("acceptance")
+        return found[-1] if found else None
 
     @routes.post("/agent-workflow-studio/projects/{workflow_id}/acceptance")
     async def acceptance(request):
@@ -437,7 +444,15 @@ def install_api_routes() -> None:
                 items.append(
                     {
                         k: spec.get(k)
-                        for k in ("name", "workflow_id", "version", "published_at", "description")
+                        for k in (
+                            "name",
+                            "workflow_id",
+                            "version",
+                            "semver",
+                            "published_at",
+                            "description",
+                            "watch",
+                        )
                     }
                     | {
                         "inputs": [i["name"] for i in spec["signature"].get("inputs", [])],
@@ -492,6 +507,7 @@ def install_api_routes() -> None:
             "prompt_id": prompt_id,
             "data": collect_data(outputs),
             "files": collect_files(outputs),
+            "checks": collect_checks(outputs),
             "outputs": collect_outputs(spec, outputs),
             **(
                 {
@@ -516,6 +532,87 @@ def install_api_routes() -> None:
             return await execute(spec, inputs, timeout)
 
         return await guarded(request, handler)
+
+    # The outer loop: a published workflow watched on a schedule; each run's Checks become a version.
+    def published_specs() -> list[tuple[Path, dict]]:
+        folder = published_dir(root)
+        return (
+            [(p, json.loads(p.read_text(encoding="utf-8"))) for p in sorted(folder.glob("*.json"))]
+            if folder.is_dir()
+            else []
+        )
+
+    @routes.post("/agent-workflow-studio/api/{name}/watch")
+    async def set_watch(request):
+        async def handler():
+            name = request.match_info["name"]
+            spec = load(name)
+            body = (await request.json()) or {}
+            every = float(body.get("every_minutes", 0))
+            inputs = body.get("inputs") or {}
+            bind_inputs(spec, inputs)  # refuse bad inputs now
+            if every and every < 0.05:
+                raise ValueError("Watch at most every 3 seconds (every_minutes ≥ 0.05).")
+            spec["watch"] = {"every_minutes": every, "inputs": inputs} if every else None
+            (published_dir(root) / f"{name}.json").write_text(
+                json.dumps(spec, ensure_ascii=False), encoding="utf-8"
+            )
+            return {"name": name, "watch": spec["watch"]}
+
+        return await guarded(request, handler)
+
+    async def watch_once(path: Path, spec: dict) -> None:
+        result = await execute(spec, spec["watch"]["inputs"], 3600)
+        checks = result.get("checks") or []
+        ok = result["status"] == "success" and all(c["passed"] for c in checks)
+        failing = [c for c in checks if not c["passed"]]
+        record = {
+            "kind": "watch",
+            "name": spec["name"],
+            "semver": spec.get("semver"),
+            "status": result["status"],
+            "passing": ok,
+            "checks": f"{len(checks) - len(failing)}/{len(checks)}",
+            "failing": failing[:10],
+            "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        repo = ProjectRepo(root, spec["workflow_id"])
+        message = (
+            f"Watch {spec['name']} · {'passing' if ok else 'FAILING'} · checks {record['checks']}"
+        )
+        await asyncio.to_thread(repo.add_record, record, message, spec["workflow"])
+        latest = json.loads(
+            path.read_text(encoding="utf-8")
+        )  # the spec may have been republished meanwhile
+        if latest.get("watch"):
+            latest["watch"]["last"] = {k: record[k] for k in ("at", "passing", "checks", "status")}
+            path.write_text(json.dumps(latest, ensure_ascii=False), encoding="utf-8")
+
+    async def watcher() -> None:
+        import logging
+
+        while True:
+            await asyncio.sleep(5)
+            for path, spec in published_specs():
+                watch = spec.get("watch")
+                if not watch:
+                    continue
+                last = (watch.get("last") or {}).get("at")
+                due = (
+                    not last
+                    or time.time() - time.mktime(time.strptime(last, "%Y-%m-%dT%H:%M:%S"))
+                    >= watch["every_minutes"] * 60
+                )
+                if due:
+                    try:
+                        await watch_once(path, spec)
+                    except Exception:  # noqa: BLE001 — a failed watch is logged; the watcher keeps running
+                        logging.exception("Watch %s failed", spec.get("name"))
+
+    async def start_watcher(app) -> None:
+        app["aws_watcher"] = asyncio.get_running_loop().create_task(watcher())
+
+    PromptServer.instance.app.on_startup.append(start_watcher)
 
     # Long runs as jobs: start, then poll. Kept in memory: a restart forgets unfinished jobs.
     jobs: dict[str, dict] = {}
@@ -567,6 +664,7 @@ __all__ = [
     "bind_inputs",
     "check_spec",
     "collect_data",
+    "collect_checks",
     "collect_files",
     "collect_outputs",
     "compare_example",

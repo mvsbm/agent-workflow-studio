@@ -243,6 +243,20 @@ class ProjectRepo:
             raise ValueError(f"Tool {name!r} changed since it was approved; propose it again.")
         return code, manifest
 
+    def records(self, kind: str) -> list[dict]:
+        """Committed records of one kind (loop iterations, acceptance runs, …), oldest first."""
+        folder = self.tree / "records"
+        found = []
+        for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+            record = json.loads(path.read_text(encoding="utf-8"))
+            if record.get("kind") == kind:
+                found.append(record)
+        return found
+
+    def head(self) -> str | None:
+        log = self.log(1)
+        return log[0]["sha"] if log else None
+
     def record(self, sha: str) -> dict | None:
         """The run record a commit added, if any."""
         return self._json_at(
@@ -399,8 +413,17 @@ def install_project_routes() -> None:
     @routes.get(prefix + "/contract")
     async def contract(request):
         def run(repo):
+            from .workflow_contract import hld, review
+
             current = repo.load_contract()
-            return {"contract": current}
+            if not current:
+                return {"contract": None}
+            # The design as sentences and its review, computed once here for every reader.
+            return {
+                "contract": current,
+                "design": hld(current),
+                "review": [{"ok": ok, "item": item} for ok, item in review(current)],
+            }
 
         return await call(request, run)
 
@@ -437,6 +460,29 @@ def install_project_routes() -> None:
             }
 
         return await call(request, run)
+
+    @routes.get(prefix + "/loop")
+    async def loop_journal(request):
+        def run(repo):
+            from .loop import budget_of
+
+            return {"journal": repo.records("loop"), "budget": budget_of(repo.load_contract())}
+
+        return await call(request, run)
+
+    @routes.get("/agent-workflow-studio/follow")
+    async def follow_record(request):
+        if not _is_local_request(request):  # customer records: this machine only
+            return web.json_response({"error": "local access only"}, status=403)
+        from functools import partial
+
+        from .table_nodes import follow
+
+        query = request.query.get("q", "").strip()
+        if not query:
+            return web.json_response({"error": "q is required"}, status=400)
+        found = await asyncio.to_thread(follow, query)
+        return web.json_response({"steps": found}, dumps=partial(json.dumps, default=str))
 
     @routes.get(prefix + "/customers")
     async def customers(request):

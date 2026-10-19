@@ -5,6 +5,7 @@ import unittest
 from .workflow_api import (
     bind_inputs,
     check_spec,
+    collect_checks,
     collect_data,
     collect_files,
     collect_outputs,
@@ -120,6 +121,17 @@ class WorkflowApiTests(unittest.TestCase):
         self.assertEqual(next_version(first, sig, "d2"), "1.1.0", "the design: minor")
         renamed = {**sig, "inputs": [{**sig["inputs"][0], "name": "greeting"}]}
         self.assertEqual(next_version(first, renamed, "d1"), "2.0.0", "what callers send: major")
+
+    def test_every_check_that_ran_is_collected(self) -> None:
+        outputs = {
+            "3:7": {"aws_check": [{"passed": True, "evidence": "5 row(s)"}]},
+            "4:2": {"aws_check": [{"passed": False, "evidence": "0 row(s)"}]},
+            "9": {"text": ["x"]},
+        }
+        self.assertEqual(
+            [(c["node"], c["passed"]) for c in collect_checks(outputs)],
+            [("3:7", True), ("4:2", False)],
+        )
 
     def test_written_files_become_download_links(self) -> None:
         files = collect_files({"7": {"aws_files": ["reports/out.csv"]}})

@@ -2,7 +2,7 @@
 
 import unittest
 
-from .decision_rules import EXAMPLE, decide, load_spec, run_rules
+from .decision_rules import EXAMPLE, at_least, decide, load_spec, run_rules, spot_check_sample
 
 SPEC = load_spec("""
 rules:
@@ -74,6 +74,24 @@ class DecisionRulesTests(unittest.TestCase):
         self.assertEqual(seen["agreement"]["Score ≥ 9"]["agree"], 0)
         self.assertEqual(seen["levels"]["reading"]["exact"], 2)
 
+    def test_spot_check_samples_each_branch_the_same_way_every_run(self) -> None:
+        decided = [
+            {"id": f"p{i}", "decision": d, "branch": b}
+            for i, (d, b) in enumerate(
+                [("match", "A")] * 5 + [("different", "B")] * 2 + [("review", "S")] * 4
+            )
+        ] + [{"id": "u", "decision": "match", "branch": "Your review"}]
+        sample = spot_check_sample(decided)
+        self.assertEqual(sorted(d["branch"] for d in sample), ["A", "A", "A", "B", "B"])
+        self.assertEqual(
+            {d["id"] for d in spot_check_sample(decided[::-1])}, {d["id"] for d in sample}
+        )
+
+    def test_precision_lower_bound(self) -> None:
+        self.assertEqual(at_least(0, 0), 0.0)
+        self.assertAlmostEqual(at_least(3, 3), 0.44, places=2)  # 3 of 3 right: at least 44%
+        self.assertGreater(at_least(95, 100), 0.88)
+
     def test_deterministic_then_probabilistic(self) -> None:
         deterministic = load_spec(
             "rules:\n  - {name: Same bank account, when: {account: same}, then: match}\n"
@@ -88,6 +106,15 @@ class DecisionRulesTests(unittest.TestCase):
             [("match", "Same bank account"), ("match", "Score ≥ 9")],
         )
         self.assertEqual(seen["flow"][0], (("Decided by an earlier stage", "match"), 1))
+        # Your decision on p2 is applied where p2 is decided, so that branch shows it agreed.
+        labels = {"p2": "same"}
+        first, passed = run_rules(rows, deterministic, labels)
+        self.assertEqual(first[1]["decision"], "undecided")
+        self.assertEqual(passed["agreement"]["No rule applied: passed on"]["undecided"], 1)
+        earlier = {d["id"]: {**d, "score": ""} for d in first}
+        second, seen = run_rules(rows, SPEC, labels, earlier)
+        self.assertEqual(second[1]["branch"], "Your review")
+        self.assertEqual(seen["agreement"]["Score ≥ 9"]["agree"], 1)
 
     def test_bad_specs_say_what_to_fix(self) -> None:
         load_spec(EXAMPLE)

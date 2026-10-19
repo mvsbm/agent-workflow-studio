@@ -2,7 +2,7 @@
 // (ui.aws_tables), kept in node properties so they survive reloads and appear in Versions.
 import {app} from '../../scripts/app.js';
 
-const TYPES = new Set(['AgentWorkflowSplitName', 'AgentWorkflowReviewDecisions', 'AgentWorkflowReadTable', 'AgentWorkflowWriteTable', 'AgentWorkflowStackRoles', 'AgentWorkflowConcatenate', 'AgentWorkflowFilterRows', 'AgentWorkflowJoinTables', 'AgentWorkflowNormalizeText', 'AgentWorkflowMapValues', 'AgentWorkflowParseDates', 'AgentWorkflowExtractDigits', 'AgentWorkflowFindCandidates', 'AgentWorkflowCompareFields', 'AgentWorkflowAttachGroups', 'AgentWorkflowParseNumbers', 'AgentWorkflowRemoveDuplicates', 'AgentWorkflowComputeColumn', 'AgentWorkflowSummarize', 'AgentWorkflowDataChecks', 'AgentWorkflowCheck', 'AgentWorkflowStub', 'AgentWorkflowAgentTool', 'AgentWorkflowDecisionRules', 'AgentWorkflowProfileData', 'AgentWorkflowLearnWeights', 'AgentWorkflowLLMSuggestions', 'AgentWorkflowClusterGuard', 'AgentWorkflowNayosePeople', 'AgentWorkflowNayoseActivity', 'AgentWorkflowNayoseExport', 'AgentWorkflowNayoseScore', 'AgentWorkflowPreviewTable']);
+const TYPES = new Set(['AgentWorkflowSplitName', 'AgentWorkflowReviewDecisions', 'AgentWorkflowReadTable', 'AgentWorkflowWriteTable', 'AgentWorkflowStackRoles', 'AgentWorkflowConcatenate', 'AgentWorkflowFilterRows', 'AgentWorkflowJoinTables', 'AgentWorkflowNormalizeText', 'AgentWorkflowMapValues', 'AgentWorkflowParseDates', 'AgentWorkflowExtractDigits', 'AgentWorkflowFindCandidates', 'AgentWorkflowCompareFields', 'AgentWorkflowAttachGroups', 'AgentWorkflowParseNumbers', 'AgentWorkflowRemoveDuplicates', 'AgentWorkflowComputeColumn', 'AgentWorkflowSummarize', 'AgentWorkflowDataChecks', 'AgentWorkflowGenerateRecords', 'AgentWorkflowDamageValues', 'AgentWorkflowCompareToTruth', 'AgentWorkflowCheck', 'AgentWorkflowStub', 'AgentWorkflowAgentTool', 'AgentWorkflowDecisionRules', 'AgentWorkflowProfileData', 'AgentWorkflowLearnWeights', 'AgentWorkflowLLMSuggestions', 'AgentWorkflowClusterGuard', 'AgentWorkflowNayosePeople', 'AgentWorkflowNayoseActivity', 'AgentWorkflowNayoseExport', 'AgentWorkflowNayoseScore', 'AgentWorkflowPreviewTable']);
 
 // Decisions are the logic the user came to read: their views get more room.
 const viewHeight = node => (['AgentWorkflowDecisionRules', 'AgentWorkflowClusterGuard', 'AgentWorkflowLearnWeights'].includes(node.type) ? 480 : 300);
@@ -153,7 +153,7 @@ app.registerExtension({
       if (rules && box && box.value !== rules) box.value = rules;
       // For glance.js: wire labels and the zoomed-out line (else the first line of the node's text).
       const line = [].concat(output?.aws_headline ?? output?.text?.[0]?.split('\n')[0] ?? [])[0];
-      if (output?.aws_wires || line) this.properties = {...this.properties, aws_wires: output?.aws_wires, aws_headline: line?.slice(0, 200)};
+      if (output?.aws_wires || line) this.properties = {...this.properties, aws_wires: output?.aws_wires, aws_headline: line?.slice(0, 600)};
       if (!output?.aws_tables && !output?.aws_flow && !output?.aws_tree) return;
       this.properties = {...this.properties, aws_tables: output.aws_tables, aws_flow: output.aws_flow, aws_tree: output.aws_tree};
       render(ensureView(this), output.aws_tables, output.aws_flow, output.aws_tree);

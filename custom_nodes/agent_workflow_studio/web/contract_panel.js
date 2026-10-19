@@ -5,6 +5,7 @@ import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {contractEvidence} from './pi_canvas.js';
 import {publishWorkflow, runExamples} from './publish.js';
+import {designPage} from './design_page.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const STATE = {
@@ -36,7 +37,22 @@ function apiSection() {
   const publish = el('button', 'Publish as API', {type: 'button', className: 'p-button p-component p-button-sm'});
   const examples = el('button', 'Run examples', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: "Run the contract's examples as acceptance tests; publishing needs them to pass"});
   const result = el('p', null, {role: 'status'});
-  section.append(el('h3', 'API'), info, name, publish, examples, result);
+  // The outer loop: run the published workflow on a schedule; each run's Checks become a version.
+  const every = el('input', null, {type: 'number', min: '0', step: '5', placeholder: 'minutes', className: 'p-inputtext p-component', style: 'width: 7em'});
+  every.setAttribute('aria-label', 'Watch every N minutes (0 stops)');
+  const watch = el('button', 'Watch', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: 'Run the published API on a schedule and record whether its Checks pass'});
+  section.append(el('h3', 'API'), info, name, publish, examples, every, watch, result);
+  watch.addEventListener('click', async () => {
+    try {
+      const response = await api.fetchApi(`/agent-workflow-studio/api/${encodeURIComponent(name.value.trim())}/watch`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: Number(every.value || 0)})});
+      const body = await response.json();
+      if (!response.ok) throw Error(body.error ?? 'Could not set the watch.');
+      result.textContent = body.watch ? `Watching every ${body.watch.every_minutes} min.` : 'Watch stopped.';
+      await section.load();
+    } catch (error) {
+      result.textContent = error.message;
+    }
+  });
   examples.addEventListener('click', async () => {
     result.textContent = 'Running the examples…';
     try {
@@ -50,6 +66,7 @@ function apiSection() {
     const call = `curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": …`).join(', ')}}}'`;
     info.replaceChildren(el('div', `Published as ${item.name} · version ${item.version.slice(0, 8)} · ${item.published_at}`),
       el('div', `Inputs: ${item.inputs.join(', ') || 'none'} · outputs: ${item.outputs.join(', ')}`),
+      el('div', item.watch ? `Watched every ${item.watch.every_minutes} min · last: ${item.watch.last ? `${item.watch.last.passing ? '✓ passing' : '✗ FAILING'} (checks ${item.watch.last.checks}) at ${item.watch.last.at}` : 'not run yet'}` : 'Not watched.'),
       el('code', call, {className: 'aw-contract-call'}),
       Object.assign(el('a', 'OpenAPI description'), {href: `/agent-workflow-studio/api/${item.name}/openapi.json`, target: '_blank'}));
     name.value ||= item.name;
@@ -78,8 +95,16 @@ function createPanel() {
   const status = el('p', null, {className: 'aw-contract-status', role: 'status'});
   const body = el('div');
   const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
+  // One shareable page generated from the workflow: design, data, stages, decisions, status, loop, API.
+  const exportDesign = el('button', 'Export design', {type: 'button', className: 'p-button p-component p-button-sm p-button-text'});
+  exportDesign.addEventListener('click', async () => {
+    const text = await designPage(app, api);
+    const link = Object.assign(document.createElement('a'), {href: URL.createObjectURL(new Blob([text], {type: 'text/markdown'})), download: 'design.md'});
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
   const header = el('header');
-  header.append(el('h2', 'Contract'), refresh);
+  header.append(el('h2', 'Contract'), exportDesign, refresh);
   root.append(header, status, body, apiSection());
 
   async function load() {
@@ -116,6 +141,18 @@ function createPanel() {
         const todo = el('details');
         todo.append(el('summary', `To do (${result.todo.length})`), ...result.todo.map(item => el('div', item, {className: 'aw-contract-todo'})));
         parts.push(todo);
+      }
+      // The improve loop: each iteration's hypothesis, change and measured verdict (a version each).
+      const {journal = [], budget} = await request('/loop').catch(() => ({}));
+      if (journal.length) {
+        const loop = el('details', null, {open: true});
+        loop.append(el('summary', `Improve loop · ${journal.length}/${budget?.iterations ?? '?'} iterations`));
+        for (const j of journal) {
+          const mark = {improved: '▲', worse: '▼', same: '■'}[j.verdict] ?? '·';
+          const after = j.after ? ` · verified ${j.after.verified.length}/${j.after.steps}` + (j.after.examples ? ` · examples ${j.after.examples[0]}/${j.after.examples[1]}` : '') : '';
+          loop.append(el('div', `${mark} #${j.n} ${j.verdict}: ${j.hypothesis} — ${j.change}${after}`, {className: 'aw-contract-todo'}));
+        }
+        parts.push(loop);
       }
       const full = el('details', null, {open: true});
       full.append(el('summary', 'Full contract'), el('pre', result.text));

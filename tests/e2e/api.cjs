@@ -60,9 +60,17 @@ const artifacts = process.env.ARTIFACTS;
         if (job.status !== 'running') break;
         await new Promise(r => setTimeout(r, 500));
       }
+      // The outer loop: watch the API on a schedule; the run's Checks are recorded as a version.
+      await api.fetchApi('/agent-workflow-studio/api/greet-e2e/watch', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: 0.05, inputs: {value: 'watched'}})});
+      let watched;
+      for (let i = 0; i < 60 && !watched?.watch?.last; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        watched = (await (await api.fetchApi('/agent-workflow-studio/api')).json()).apis.find(a => a.name === 'greet-e2e');
+      }
+      await api.fetchApi('/agent-workflow-studio/api/greet-e2e/watch', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: 0})});
       const openapi = await (await api.fetchApi('/agent-workflow-studio/api/greet-e2e/openapi.json')).json();
       const listing = await (await api.fetchApi('/agent-workflow-studio/api')).json();
-      return {refused, published, ran, wrong, openapi, listing, patched, pinned, job};
+      return {refused, published, ran, wrong, openapi, listing, patched, pinned, job, watched};
     });
     assert.match(result.refused, /outputs/, 'publishing without a signature is refused');
     assert.match(result.published.version, /^[0-9a-f]{8}$/);
@@ -76,6 +84,8 @@ const artifacts = process.env.ARTIFACTS;
     assert.equal(result.pinned.semver, '1.0.0');
     assert.match(JSON.stringify(result.pinned.outputs.show), /hi world/, 'the pinned version still behaves as published');
     assert.equal(result.job.status, 'success', JSON.stringify(result.job));
+    // The watch catches the regression: the patched version says "there", so the greet Check (contains "world") fails.
+    assert.deepEqual({passing: result.watched?.watch?.last?.passing, checks: result.watched?.watch?.last?.checks}, {passing: false, checks: '0/1'}, JSON.stringify(result.watched));
     assert.match(JSON.stringify(result.job.outputs.show), /yo there/, 'the job ran the latest version');
     assert.equal(result.openapi.paths['/agent-workflow-studio/api/greet-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.value.type, 'string');
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));

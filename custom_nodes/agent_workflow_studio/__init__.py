@@ -15,6 +15,7 @@ from .fuzzy_node import FuzzyNode
 from .matching_nodes import NODES as MATCHING_NODES
 from .nayose_nodes import NODES as NAYOSE_NODES
 from .pi_model_config import AgentWorkflowPiModelConfig
+from .synth_nodes import NODES as SYNTH_NODES
 from .table_calc import NODES as CALC_NODES
 from .table_nodes import NODES as TABLE_NODES
 
@@ -34,6 +35,7 @@ class AgentWorkflowStudioExtension(ComfyExtension):
             *EDA_NODES,
             *TABLE_NODES,
             *CALC_NODES,
+            *SYNTH_NODES,
             *MATCHING_NODES,
             *NAYOSE_NODES,
         ]

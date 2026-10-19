@@ -80,7 +80,7 @@ function drawGlance(ctx, node, scale) {
     ctx.font = `bold ${size}px sans-serif`;
     titles = wrap(ctx, title, w - 2 * pad);
     ctx.font = `${size}px sans-serif`;
-    lines = text ? wrap(ctx, text, w - 2 * pad) : [];
+    lines = text ? text.split('\n').flatMap(part => wrap(ctx, part, w - 2 * pad)) : [];
     if ((titles.length + lines.length) * size * 1.25 + size * 0.5 <= h - 2 * pad || size <= 9 / scale) break;
     size *= 0.9;
   }
@@ -103,7 +103,7 @@ app.registerExtension({
     style.textContent = `
       .aw-glance { display: none; }
       .aw-zoomed-out :is(.aw-table-view, .aw-card) > :not(.aw-glance) { display: none; }
-      .aw-zoomed-out .aw-glance { display: flex; flex-direction: column; gap: 0.3em; font-size: calc(13px * var(--aw-glance, 1)); line-height: 1.2; white-space: normal; overflow: hidden; }`;
+      .aw-zoomed-out .aw-glance { display: flex; flex-direction: column; gap: 0.3em; white-space: pre-line; font-size: calc(13px * var(--aw-glance, 1)); line-height: 1.2; overflow: hidden; }`;
     document.head.append(style);
     const canvas = app.canvas, previous = canvas.onDrawForeground;
     canvas.onDrawForeground = function (ctx, area) {

@@ -1,5 +1,5 @@
 {
- "id": "927eaa8e-89a9-4c98-97b4-7cd3575ed3fe",
+ "id": "a7d7ceb6-504d-4f22-947f-2c3cc5a1fd96",
  "revision": 0,
  "last_node_id": 9,
  "last_link_id": 19,
@@ -136,24 +136,24 @@
     "aws_given": true
    },
    "widgets_values": [
-    "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+    "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* You approve its design (one sentence per stage); then watch the stages fill in and run. Check **Contract** (status, to-dos, API), **Data** (the entities), **Versions**, **Review** and **Customers**.\n3. **Score**: set its *Result file* to the file the workflow writes (e.g. nayose_result.csv under output/) and run. It compares against the hidden answer key and shows only totals; the agent never sees it."
    ],
    "widgets_values_named": {
-    "text": "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+    "text": "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* You approve its design (one sentence per stage); then watch the stages fill in and run. Check **Contract** (status, to-dos, API), **Data** (the entities), **Versions**, **Review** and **Customers**.\n3. **Score**: set its *Result file* to the file the workflow writes (e.g. nayose_result.csv under output/) and run. It compares against the hidden answer key and shows only totals; the agent never sees it."
    },
    "color": "#432",
    "bgcolor": "#653"
   },
   {
    "id": 9,
-   "type": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
+   "type": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
    "pos": [
     0,
     160
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 1,
@@ -224,7 +224,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
+    "id": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -255,7 +255,7 @@
     },
     "inputs": [
      {
-      "id": "55324fcf-49c5-4024-9e90-62de1cc2f5c0",
+      "id": "5eaa68c5-f521-49aa-a647-21af819cc7d8",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -273,7 +273,7 @@
     ],
     "outputs": [
      {
-      "id": "b7005eaa-a7f3-4f99-ac4e-f2a5e9c4434d",
+      "id": "2eb8f787-c786-4c67-81f6-ca8c7e78cdf3",
       "name": "folder",
       "type": "STRING",
       "linkIds": [

@@ -283,3 +283,21 @@ One artifact gains resolution. **L0 intent** (requests, examples, promises, deci
 - *Patterns:* a design-patterns skill (architecture patterns: pipes and filters, medallion, matching cascade, report, extraction, triage, data-quality gate, synthetic test data; step patterns from enterprise integration; principles) the agent designs from and cites in decisions.
 - *API-native:* examples run as acceptance tests through the API path (`comfy_run_examples`, Contract tab) and gate publishing on exactly that graph; semantic versions (API → major, design → minor, else patch), pinned calls (`name@1`), jobs for long runs, written files as download links, OpenAPI with jobs.
 - *Nodes say what they changed* ("3,852 values changed, e.g. name: 髙橋 → 高橋"); wires are labelled only where the amount changes.
+
+### Loop engineering, test data, following a record (2026-10-20)
+
+Agentic workflows are improved in loops; an improvised loop drifts, repeats failed ideas and grades its own work. The studio engineers it (`loop.py`):
+
+- *Verifiable goal:* every step verified by its Checks on the latest run of exactly this graph, and every contract example passing as an acceptance test. Unrun examples count as not passing.
+- *Journal:* `comfy_loop_step` opens an iteration with a hypothesis and the planned change; the next status closes it with the measured state and a verdict the studio computes (improved / worse / same / not measured). Each iteration is a record in the project repo, so the Contract tab shows the timeline and tried ideas are not retried.
+- *Controller:* deterministic — stop when the goal is met, revert when the last change made things worse (until restored), ask the user after `stall` iterations without progress or when the `iterations` budget is spent (defaults 6 and 2; the contract's `loop` overrides).
+- *Outer loop:* a published API can be watched: its examples run on a schedule and a failure is recorded.
+
+Test data: `Generate records` (recipe, seed) → `Damage values` (recipe; outputs the damaged rows, the truth and a change log) → the process → `Compare to truth` (accuracy per column) → a Check `at_least`.
+
+Following a record: every table node remembers its last output table by node id; the Data tab searches them and lists, in run order, each step that had the record with only the values that changed, and where it disappeared. Decision rules send a fixed (hash-ordered) sample of each branch's automatic decisions to review; the agreement table turns reviews into a 95% lower bound of how often each branch is right.
+
+Customer ids are stable: the cluster guard gives each customer the id most of its records had on the last run (larger customers first) and new ids only to new customers, and its headline says how many kept their id, are new or gone, and how many records moved.
+
+The design can be exported as one Markdown page (Contract tab → Export design) to share: request, HLD, data, each stage, decisions, review, status, loop and API.
+

@@ -14,6 +14,7 @@ from .matching_nodes import (
     explain_customers,
     guard_clusters,
     learn_weights,
+    stable_ids,
     thresholds,
 )
 
@@ -34,6 +35,15 @@ def pairs_with_known_truth(n=4000, seed=1):
 
 
 class LearnWeightsTests(unittest.TestCase):
+    def test_customers_keep_their_ids_across_runs(self) -> None:
+        previous = {"a": "C000001", "b": "C000001", "c": "C000002", "d": "C000003"}
+        # a+b stay together (root "z"), c joins them, d leaves, e is new.
+        ids, diff = stable_ids({"a": "z", "b": "z", "c": "z", "e": "y"}, previous)
+        self.assertEqual(ids, {"z": "C000001", "y": "C000004"})
+        self.assertEqual(diff, {"kept": 1, "new": 1, "gone": 2, "records moved": 1})
+        first, _ = stable_ids({"a": "q", "b": "r"}, {})
+        self.assertEqual(sorted(first.values()), ["C000001", "C000002"])
+
     def test_recovers_the_hidden_structure_from_a_rough_start(self) -> None:
         start = {f: {"same": 1, "different": -1, "missing": 0} for f in TRUTH}
         result = learn_weights(pairs_with_known_truth(), list(TRUTH), {}, start)

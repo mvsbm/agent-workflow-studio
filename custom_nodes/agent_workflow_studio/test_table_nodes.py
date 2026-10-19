@@ -57,6 +57,20 @@ class TableNodeTests(unittest.TestCase):
         tables = report("Normalize text", before, after, {}, ["kana"])
         self.assertEqual(tables["aws_tables"][1]["rows"], [["kana", "ｽｽﾞｷ", "スズキ"]])
 
+    def test_follow_a_record_through_the_run(self) -> None:
+        from comfy_execution.utils import CurrentNodeContext
+
+        from . import table_nodes
+
+        before = make("t", [{"id": "P-1", "kana": "ｽｽﾞｷ"}, {"id": "P-2", "kana": "サトウ"}])
+        after = make("t", [{"id": "P-1", "kana": "スズキ"}])
+        for node, table in (("4:1", before), ("4:2", after)):
+            with CurrentNodeContext("p", node, None):
+                report("step", None, table)
+        steps = {s["node"]: s for s in table_nodes.follow("p-2")}
+        self.assertEqual((steps["4:1"]["count"], steps["4:2"]["count"]), (1, 0))  # dropped at 4:2
+        self.assertEqual(table_nodes.follow("P-1")[-1]["rows"], [{"id": "P-1", "kana": "スズキ"}])
+
 
 if __name__ == "__main__":
     unittest.main()

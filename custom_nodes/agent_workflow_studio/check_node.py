@@ -11,7 +11,15 @@ from typing import Any
 
 from comfy_api.latest import io
 
-KINDS = ["non_empty", "rows_at_least", "contains", "equals", "regex", "image_count_at_least"]
+KINDS = [
+    "non_empty",
+    "rows_at_least",
+    "at_least",
+    "contains",
+    "equals",
+    "regex",
+    "image_count_at_least",
+]
 
 
 def rows_of(value: Any) -> int | None:
@@ -53,6 +61,13 @@ def judge(value: Any, kind: str, expect: str) -> tuple[bool, str]:
     if kind == "image_count_at_least":
         n = rows_of(value) if getattr(value, "shape", None) is not None else 0
         return n >= int(expect or 1), f"{n} image(s)"
+    if (
+        kind == "at_least"
+    ):  # a number (e.g. an accuracy from Compare to truth) at least the expected
+        number = value if isinstance(value, int | float) and not isinstance(value, bool) else None
+        if number is None:
+            return False, f"not a number: {text_of(value)[:60]}"
+        return number >= float(expect or 0), f"{number:g} (need ≥ {expect})"
     if kind in ("non_empty", "rows_at_least"):
         n = rows_of(value)
         need = 1 if kind == "non_empty" else int(expect or 1)

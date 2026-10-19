@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 from aiohttp import WSMsgType, web
 
+from . import loop as improve_loop
 from .agent_tools import NAME, approval_text, code_hash
 from .pi_auth import (
     all_provider_api_key_env_names,
@@ -26,7 +27,15 @@ from .pi_chat_workspace import FILE_ACTIONS, PiChatWorkspace, workspace_id_for_g
 from .pi_cli import PiCLIError, _build_command, _pi_environment, _PiRPCProcess
 from .pi_model_config import validate_pi_model_config
 from .project_repo import ProjectRepo
-from .workflow_contract import hld, render, report, review, validate_for_approval, wiring
+from .workflow_contract import (
+    blocking,
+    hld,
+    render,
+    report,
+    review,
+    validate_for_approval,
+    wiring,
+)
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
@@ -53,6 +62,7 @@ CONTRACT_ACTIONS = {
     "contract_gates",
     "contract_status",
     "tool_propose",
+    "loop_step",
 }
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
@@ -164,6 +174,7 @@ class PiChatSession:
         # The approved plan lives in the workflow's project history, beside the workspaces.
         self.repo = ProjectRepo(Path(workspace_root).parent / "agent-projects", workflow_id)
         self.contract = self.repo.load_contract()
+        self.loop_pending: dict | None = None  # the improve-loop iteration in progress
         self.socket = socket
         self.id = secrets.token_urlsafe(24)
         self.token = secrets.token_urlsafe(32)
@@ -625,19 +636,41 @@ class PiChatSession:
             raise ValueError("This workflow has no approved contract yet.")
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
-            return await self.canvas_action("gates", {})
+            gates = await self.canvas_action("gates", {})
+            return {**gates, "loop": await self.loop_state()}
+        if action == "loop_step":
+            return await self.start_iteration(arguments if isinstance(arguments, dict) else {})
         if action == "tool_propose":
             return await self.propose_tool(arguments if isinstance(arguments, dict) else {})
         if action == "contract_status":
             evidence = await self.canvas_action("contract_evidence", {})
             status = report(self.contract, evidence)
+            loop = await self.loop_state(evidence)
+            examples = (self.contract or {}).get("examples") or []
+            accepted = await asyncio.to_thread(self.repo.records, "acceptance")
+            if examples and not (accepted and accepted[-1]["passed"] == accepted[-1]["total"]):
+                status["todo"] = [
+                    "Run the contract's examples as acceptance tests (comfy_run_examples)",
+                    *status["todo"],
+                ]
             return {
-                k: status[k]
-                for k in ("progress", "freshness", "steps", "nodes_outside_steps", "todo")
+                **{
+                    k: status[k]
+                    for k in ("progress", "freshness", "steps", "nodes_outside_steps", "todo")
+                },
+                "loop": loop,
             }
         contract = validate_for_approval(
             arguments.get("contract") if isinstance(arguments, dict) else None
         )
+        if failing := blocking(contract):
+            # The design standard is checked before the user is asked: fix these, then propose again.
+            raise ValueError(
+                "Design review: fix before proposing — "
+                + "; ".join(failing)
+                + ". Name each port that hands data to another step after its entity in `data`; give every "
+                "promised output a `from` and use every promised input; keep purpose, uses and why short."
+            )
         # Approval is the user's click in the browser, never the agent's own tool call.
         answer = await self.canvas_action(
             "contract_approve",
@@ -662,6 +695,77 @@ class PiChatSession:
             "design_review": [f"{'✓' if ok else '✗'} {item}" for ok, item in review(contract)],
             "skeleton": skeleton,
             "next": 'Build each stage: edit with "stage": "<step id>", replacing its Stub.',
+        }
+
+    async def measure(self, evidence: dict | None = None) -> tuple[dict, dict]:
+        """The loop's measured state now (and the evidence it came from)."""
+        evidence = evidence or await self.canvas_action("contract_evidence", {})
+        acceptance = await asyncio.to_thread(self.repo.records, "acceptance")
+        # Examples that never ran count as not passing: the goal includes them.
+        examples = len((self.contract or {}).get("examples") or [])
+        last = (
+            acceptance[-1]
+            if acceptance
+            else ({"passed": 0, "total": examples} if examples else None)
+        )
+        state = improve_loop.snapshot(report(self.contract, evidence), last)
+        return state, evidence
+
+    async def start_iteration(self, arguments: dict) -> dict:
+        """Begin one improve-loop iteration: what the agent will change and why; the studio measures."""
+        hypothesis = str(arguments.get("hypothesis", "")).strip()[:300]
+        change = str(arguments.get("change", "")).strip()[:300]
+        if not hypothesis or not change:
+            raise ValueError(
+                "Say the hypothesis (why this should help) and the change (which stage/node)."
+            )
+        if self.loop_pending:
+            raise ValueError(
+                f"Iteration {self.loop_pending['n']} is still open: run the workflow and check the gates to close it first."
+            )
+        journal = await asyncio.to_thread(self.repo.records, "loop")
+        state, _ = await self.measure()
+        plan = improve_loop.next_action(journal, state, improve_loop.budget_of(self.contract))
+        if plan["next"] in ("stop", "escalate"):
+            return {"started": False, **plan, "journal": improve_loop.summary(journal)}
+        self.loop_pending = {
+            "n": len(journal) + 1,
+            "hypothesis": hypothesis,
+            "change": change,
+            "before": state,
+            "version_before": await asyncio.to_thread(self.repo.head),
+        }
+        return {
+            "started": True,
+            "iteration": self.loop_pending["n"],
+            "before": state,
+            "journal": improve_loop.summary(journal),
+            "how": "Make this one change, run, then check the gates: the studio measures the result.",
+        }
+
+    async def loop_state(self, evidence: dict | None = None) -> dict:
+        """Close an open iteration once a run of the changed graph has been measured; say what's next."""
+        journal = await asyncio.to_thread(self.repo.records, "loop")
+        state, evidence = await self.measure(evidence)
+        closed = None
+        if self.loop_pending and state["current"]:
+            entry = {
+                "kind": "loop",
+                **self.loop_pending,
+                "after": state,
+                "verdict": improve_loop.verdict(self.loop_pending["before"], state),
+            }
+            message = f"Loop {entry['n']} · {entry['verdict']}: {entry['hypothesis']}"
+            await asyncio.to_thread(self.repo.add_record, entry, message, evidence["workflow"])
+            journal.append(entry)
+            closed, self.loop_pending = entry, None
+        return {
+            **(
+                {"closed": {k: closed[k] for k in ("n", "verdict", "hypothesis")}} if closed else {}
+            ),
+            **({"open": self.loop_pending["n"]} if self.loop_pending else {}),
+            **improve_loop.next_action(journal, state, improve_loop.budget_of(self.contract)),
+            "journal": improve_loop.summary(journal)[-6:],
         }
 
     async def propose_tool(self, arguments):

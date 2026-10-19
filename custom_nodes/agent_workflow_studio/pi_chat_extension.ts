@@ -31,6 +31,7 @@ const operation = Type.Union([
 // get it with the $ref inlined and editor-only keys removed, which some providers reject.
 const contractSchema = (() => {
   const {$schema: _s, $id: _i, title: _t, $defs, ...schema} = JSON.parse(readFileSync(fileURLToPath(new URL("./contract.schema.json",import.meta.url)),"utf8"));
+  schema.properties.contract = {enum:[2,"2"]};  // some models send the marker as text; the server stamps 2
   return JSON.parse(JSON.stringify(schema).replaceAll('{"$ref":"#/$defs/port"}',JSON.stringify($defs.port)));
 })();
 const OTHER = "Other (I'll type my answer)";
@@ -83,7 +84,7 @@ export default async function (pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
     if (["bash","powershell","grep","find","ls"].includes(event.toolName)||Object.hasOwn(event.input??{},"then_run")) return {block:true,reason:"Host shell/search and then_run are disabled. Use the workspace file tools and existing managed execution."};
     if (["read","edit","write"].includes(event.toolName)) {workspace();return;}
-    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files","comfy_harden_step","comfy_run_examples"].includes(event.toolName)) return;
+    if (["comfy_workspace","comfy_read_workflow","comfy_node_catalog","comfy_edit_workflow","comfy_run_workflow","comfy_execution_results","comfy_ask_user","comfy_propose_contract","comfy_contract_status","comfy_check_gates","comfy_propose_tool","comfy_analyze_graph","comfy_find_converter","comfy_input_files","comfy_harden_step","comfy_run_examples","comfy_loop_step"].includes(event.toolName)) return;
     const approved = await ctx.ui.confirm(`Allow Pi tool: ${event.toolName}?`, JSON.stringify(event.input).slice(0,4000));
     if (!approved) return {block:true, reason:"The user did not authorize this external tool."};
   });
@@ -145,6 +146,11 @@ export default async function (pi: ExtensionAPI) {
     name:"comfy_check_gates", label:"Check success gates", description:"After a run (waits up to 60 s for it to finish), every step's gate from the Check nodes inside its stage on the latest run: passed, failed (with the evidence), or needs_user_review when the stage has no Check.",
     parameters:Type.Object({}),
     execute:async (_id,_args,signal) => canvas("contract_gates",{},signal),
+  }));
+  pi.registerTool(defineTool({
+    name:"comfy_loop_step", label:"Start an improve iteration", description:"Start one iteration of the improve loop before changing a built workflow: say the hypothesis (why this should help) and the change (which stage/node). Then make that one change, run, and check gates: the studio measures before and after, journals the iteration as a version with its verdict (improved/same/worse), and says what's next: continue, stop (goal met), revert (with the version to restore) or escalate (ask the user). The journal lists ideas already tried.",
+    parameters:Type.Object({hypothesis:Type.String({minLength:1,maxLength:300}), change:Type.String({minLength:1,maxLength:300})}),
+    execute:async (_id,args,signal) => canvas("loop_step",args,signal),
   }));
   pi.registerTool(defineTool({
     name:"comfy_run_examples", label:"Run examples", description:"Run the contract's examples as acceptance tests through the workflow's API path (given → the promised inputs, expect → the promised outputs). Results are recorded as a version; publishing needs them all to pass on exactly this graph.",

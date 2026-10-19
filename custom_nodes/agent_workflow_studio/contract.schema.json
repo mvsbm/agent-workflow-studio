@@ -186,6 +186,7 @@
                     "enum": [
                       "non_empty",
                       "rows_at_least",
+                      "at_least",
                       "contains",
                       "equals",
                       "regex",
@@ -430,6 +431,23 @@
         ],
         "additionalProperties": false
       }
+    },
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The improve loop's budget: how many iterations, and after how many without progress to ask the user.",
+      "properties": {
+        "iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "stall": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
     }
   },
   "required": [
@@ -470,6 +488,18 @@
           "type": "string",
           "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$",
           "description": "Outputs: the step output that delivers it (\"step.port\"); makes it part of the API."
+        },
+        "node": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Inputs: an existing top-level node (e.g. the user's given data folder) that is this input, instead of a new input node."
+        },
+        "widget": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Inputs: the widget on that node the API sets (for a subgraph card, its promoted widget)."
         }
       },
       "required": [

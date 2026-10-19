@@ -1,5 +1,5 @@
 {
- "id": "c2396f68-5562-40fd-980e-adedc56ba3e3",
+ "id": "9f2e1353-5178-4044-9dab-a429876e9e90",
  "revision": 0,
  "last_node_id": 60,
  "last_link_id": 107,
@@ -9,7 +9,7 @@
    "type": "PreviewAny",
    "pos": [
     0,
-    472
+    510
    ],
    "size": [
     210,
@@ -46,7 +46,7 @@
    "id": 7,
    "type": "AgentWorkflowNayoseScore",
    "pos": [
-    4141.821875,
+    4680,
     160
    ],
    "size": [
@@ -379,24 +379,24 @@
     "aws_given": true
    },
    "widgets_values": [
-    "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+    "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* You approve its design (one sentence per stage); then watch the stages fill in and run. Check **Contract** (status, to-dos, API), **Data** (the entities), **Versions**, **Review** and **Customers**.\n3. **Score**: set its *Result file* to the file the workflow writes (e.g. nayose_result.csv under output/) and run. It compares against the hidden answer key and shows only totals; the agent never sees it."
    ],
    "widgets_values_named": {
-    "text": "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* Watch the contract, tool approvals, step groups and runs appear; check **Contract**, **Versions** and **Review**.\n3. **Score**: connect the agent's last tool (the one writing nayose_result.csv) to Score's *result* and run. It compares against the hidden answer key and shows only totals."
+    "text": "# Nayose benchmark: everything on this canvas\n\n1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.\n2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* You approve its design (one sentence per stage); then watch the stages fill in and run. Check **Contract** (status, to-dos, API), **Data** (the entities), **Versions**, **Review** and **Customers**.\n3. **Score**: set its *Result file* to the file the workflow writes (e.g. nayose_result.csv under output/) and run. It compares against the hidden answer key and shows only totals; the agent never sees it."
    },
    "color": "#432",
    "bgcolor": "#653"
   },
   {
    "id": 9,
-   "type": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
+   "type": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
    "pos": [
     0,
     160
    ],
    "size": [
-    261.821875,
-    202
+    320,
+    240
    ],
    "flags": {},
    "order": 1,
@@ -450,14 +450,14 @@
   },
   {
    "id": 41,
-   "type": "3467850f-f591-4a0d-9670-141570c15307",
+   "type": "427600dd-8b9f-4237-a21a-031fdb424315",
    "pos": [
-    461.821875,
+    520,
     160
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 3,
@@ -510,14 +510,14 @@
   },
   {
    "id": 43,
-   "type": "664487c3-8d37-4236-9454-e2a9c476feae",
+   "type": "d9630e98-9ab9-4454-83bb-0b1dd88d8147",
    "pos": [
-    921.821875,
+    1040,
     160
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 4,
@@ -568,14 +568,14 @@
   },
   {
    "id": 45,
-   "type": "4bd6af95-da3f-4ca2-b2e8-d4b755bc2717",
+   "type": "269db0c8-7e99-4cd4-917b-feb57808bc30",
    "pos": [
-    921.821875,
-    470
+    1040,
+    510
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 5,
@@ -626,14 +626,14 @@
   },
   {
    "id": 47,
-   "type": "af8a1d5c-abb5-44e9-b9b7-1e5200d7427b",
+   "type": "0fd09353-f9cc-4942-b04c-a3046575cb06",
    "pos": [
-    921.821875,
-    780
+    1040,
+    860
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 6,
@@ -684,14 +684,14 @@
   },
   {
    "id": 49,
-   "type": "95d582c0-fe26-47d3-b520-666c34c4c36e",
+   "type": "d220b3f2-0b90-4f3a-9b69-817bb36ea422",
    "pos": [
-    1381.821875,
+    1560,
     160
    ],
    "size": [
-    260,
-    206
+    320,
+    240
    ],
    "flags": {},
    "order": 7,
@@ -757,14 +757,14 @@
   },
   {
    "id": 51,
-   "type": "5358613d-4b3d-40d5-9c5b-7b1b62f83818",
+   "type": "bc2b771e-bcaa-4a8f-93d1-4616456b9527",
    "pos": [
-    1841.821875,
+    2080,
     160
    ],
    "size": [
-    260,
-    206
+    320,
+    240
    ],
    "flags": {},
    "order": 8,
@@ -825,14 +825,14 @@
   },
   {
    "id": 53,
-   "type": "f58490b7-58d6-4f8c-9117-c3a8c9f08a1f",
+   "type": "4f6f9a32-9704-4312-b75c-f30ff266f63b",
    "pos": [
-    2301.821875,
+    2600,
     160
    ],
    "size": [
-    260,
-    206
+    320,
+    240
    ],
    "flags": {},
    "order": 9,
@@ -894,14 +894,14 @@
   },
   {
    "id": 55,
-   "type": "a5f8cc1c-ab5f-4c66-8b9f-cf2a4a970a30",
+   "type": "c29c6427-1bcf-4a58-be29-e6236bbadfa2",
    "pos": [
-    2761.821875,
+    3120,
     160
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 10,
@@ -953,13 +953,13 @@
   },
   {
    "id": 57,
-   "type": "aee889df-590e-404e-8afa-493964583c1f",
+   "type": "7e875f3c-b9a3-4258-8c8b-f81cb1e14dc3",
    "pos": [
-    3221.821875,
+    3640,
     160
    ],
    "size": [
-    260,
+    320,
     266
    ],
    "flags": {},
@@ -1041,14 +1041,14 @@
   },
   {
    "id": 59,
-   "type": "ffe060dd-8c50-4cfd-bece-5f4932404b36",
+   "type": "544d37c7-5670-47df-ad36-c71116a2cdc2",
    "pos": [
-    3681.821875,
+    4160,
     160
    ],
    "size": [
-    260,
-    200
+    320,
+    240
    ],
    "flags": {},
    "order": 12,
@@ -1271,7 +1271,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "5b4c32cb-2a73-4270-a3b1-a223b1f91e42",
+    "id": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1302,7 +1302,7 @@
     },
     "inputs": [
      {
-      "id": "55324fcf-49c5-4024-9e90-62de1cc2f5c0",
+      "id": "5eaa68c5-f521-49aa-a647-21af819cc7d8",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -1320,7 +1320,7 @@
     ],
     "outputs": [
      {
-      "id": "b7005eaa-a7f3-4f99-ac4e-f2a5e9c4434d",
+      "id": "2eb8f787-c786-4c67-81f6-ca8c7e78cdf3",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4121,7 +4121,7 @@
     "extra": {}
    },
    {
-    "id": "3467850f-f591-4a0d-9670-141570c15307",
+    "id": "427600dd-8b9f-4237-a21a-031fdb424315",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -4152,7 +4152,7 @@
     },
     "inputs": [
      {
-      "id": "29e4eb82-1685-4f63-b4e9-b314ca0409e3",
+      "id": "c38103b3-1ee9-4f74-964d-1ccc70dcf8a8",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4167,7 +4167,7 @@
     ],
     "outputs": [
      {
-      "id": "1dc4753e-eb5e-402f-9f7e-3877ff0a2f71",
+      "id": "41aa13e8-d713-4d25-b733-6a610cef870c",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4759,7 +4759,7 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "folder",
-       "aws_headline": "✓ passed · 1 · Profile data gives data · 12 row(s)"
+       "aws_headline": "✓ passed · 1 · Profile data gives data · a value"
       },
       "widgets_values": [
        "non_empty",
@@ -4805,7 +4805,7 @@
     "extra": {}
    },
    {
-    "id": "664487c3-8d37-4236-9454-e2a9c476feae",
+    "id": "d9630e98-9ab9-4454-83bb-0b1dd88d8147",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -4836,7 +4836,7 @@
     },
     "inputs": [
      {
-      "id": "94d39afe-1f47-43ad-b78a-fc50679cbb96",
+      "id": "d4f57b11-d2c1-4ba1-8cf4-6037c1bbab27",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4851,7 +4851,7 @@
     ],
     "outputs": [
      {
-      "id": "3d814baf-36bb-477c-a246-8b35d728c480",
+      "id": "c8f87207-dfd7-4737-9eb5-481463339b87",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -5351,9 +5351,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · split at the space 3,385",
+       "aws_headline": "9,760 values changed, e.g. kana_surname: None → カタキ",
        "aws_tables": [
         {
          "title": "Split name",
@@ -5640,9 +5640,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · name changed 3,852",
+       "aws_headline": "8,092 values changed, e.g. kana: ｶﾀｷ ﾕｴ → カタキユエ",
        "aws_tables": [
         {
          "title": "Normalize text",
@@ -5902,9 +5902,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · replacements used 髙→高 ×16, 嶋→島 ×10, 澤→沢 ×7, 齋→斎 ×3, 邉→辺 ×3, 﨑→崎 ×2, 櫻→桜 ×1",
+       "aws_headline": "42 values changed, e.g. name: 松嶋悠治 → 松島悠治",
        "aws_tables": [
         {
          "title": "Map values",
@@ -6154,9 +6154,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · replacements used 1→M ×1661, 2→F ×1627",
+       "aws_headline": "3,288 values changed, e.g. sex: 2 → F",
        "aws_tables": [
         {
          "title": "Map values",
@@ -6397,9 +6397,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowParseDates",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · format: era letter (S45.03.12) 1,346",
+       "aws_headline": "4,354 values changed, e.g. birth: 3330503 → 1958-05-03",
        "aws_tables": [
         {
          "title": "Parse dates",
@@ -6679,9 +6679,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowExtractDigits",
        "aws_wires": [
-        "5,480 rows"
+        ""
        ],
-       "aws_headline": "5,480 → 5,480 rows · too short, emptied 223",
+       "aws_headline": "4,405 values changed, e.g. zip: 772-6402 → 7726402",
        "aws_tables": [
         {
          "title": "Extract digits",
@@ -7022,7 +7022,7 @@
     "extra": {}
    },
    {
-    "id": "4bd6af95-da3f-4ca2-b2e8-d4b755bc2717",
+    "id": "269db0c8-7e99-4cd4-917b-feb57808bc30",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -7053,7 +7053,7 @@
     },
     "inputs": [
      {
-      "id": "ebf02bbc-18f7-4afd-951a-e0f8f90e2423",
+      "id": "7412a255-f7d0-40e0-b632-40e38093fd57",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -7068,7 +7068,7 @@
     ],
     "outputs": [
      {
-      "id": "65aa01de-dfbb-4a38-9b9b-941b44c87460",
+      "id": "e879b2c3-b60c-442a-af85-16beb0462e33",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -7522,9 +7522,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · split at a known surname 596",
+       "aws_headline": "4,616 values changed, e.g. kana_surname: None → カタキ",
        "aws_tables": [
         {
          "title": "Split name",
@@ -7811,9 +7811,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · name changed 1,944",
+       "aws_headline": "3,850 values changed, e.g. name: 平部 喜希 → 平部喜希",
        "aws_tables": [
         {
          "title": "Normalize text",
@@ -8073,9 +8073,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · replacements used 髙→高 ×6, 嶋→島 ×5, 﨑→崎 ×4, 𠮷→吉 ×3, 齋→斎 ×2, 齊→斉 ×1",
+       "aws_headline": "21 values changed, e.g. name: 齋藤勝治 → 斎藤勝治",
        "aws_tables": [
         {
          "title": "Map values",
@@ -8325,9 +8325,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · replacements used 男→M ×416, 女→F ×382",
+       "aws_headline": "798 values changed, e.g. sex: 女 → F",
        "aws_tables": [
         {
          "title": "Map values",
@@ -8568,9 +8568,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowParseDates",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · format: empty 1,864",
+       "aws_headline": "809 values changed, e.g. birth: 2001年8月1日 → 2001-08-01",
        "aws_tables": [
         {
          "title": "Parse dates",
@@ -8830,9 +8830,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowExtractDigits",
        "aws_wires": [
-        "2,699 rows"
+        ""
        ],
-       "aws_headline": "2,699 → 2,699 rows · too short, emptied 45",
+       "aws_headline": "2,227 values changed, e.g. zip: 772-6402 → 7726402",
        "aws_tables": [
         {
          "title": "Extract digits",
@@ -9173,7 +9173,7 @@
     "extra": {}
    },
    {
-    "id": "af8a1d5c-abb5-44e9-b9b7-1e5200d7427b",
+    "id": "0fd09353-f9cc-4942-b04c-a3046575cb06",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -9204,7 +9204,7 @@
     },
     "inputs": [
      {
-      "id": "1ad03d7b-9a27-4f52-bcc6-cf1d030d6f69",
+      "id": "c56f80bd-3478-4f96-b279-9ab18f785ccd",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -9219,7 +9219,7 @@
     ],
     "outputs": [
      {
-      "id": "e7e662f0-135e-4b01-82ba-abb7186264ba",
+      "id": "8ae143e6-cd42-4380-9c0a-d8c660002b99",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -9444,7 +9444,7 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowStackRoles",
        "aws_wires": [
-        "5,396 rows"
+        ""
        ],
        "aws_headline": "5,396 → 5,396 rows · account_holder rows 5,396",
        "aws_tables": [
@@ -9591,9 +9591,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
-        "5,396 rows"
+        ""
        ],
-       "aws_headline": "5,396 → 5,396 rows · could not split 146",
+       "aws_headline": "10,500 values changed, e.g. kana_surname: None → カタキ",
        "aws_tables": [
         {
          "title": "Split name",
@@ -9851,9 +9851,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
-        "5,396 rows"
+        ""
        ],
-       "aws_headline": "5,396 → 5,396 rows · kana changed 5,396",
+       "aws_headline": "5,396 values changed, e.g. kana: ｶ)ｻﾝﾜｼﾖｸﾋﾝ → カ)サンワシヨクヒン",
        "aws_tables": [
         {
          "title": "Normalize text",
@@ -10140,7 +10140,7 @@
     "extra": {}
    },
    {
-    "id": "95d582c0-fe26-47d3-b520-666c34c4c36e",
+    "id": "d220b3f2-0b90-4f3a-9b69-817bb36ea422",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -10171,7 +10171,7 @@
     },
     "inputs": [
      {
-      "id": "98a98d48-8c65-4fea-9380-b45cf802aeeb",
+      "id": "f7458577-2143-4ebe-b133-4b4f7abc674a",
       "name": "a",
       "type": "TABLE",
       "linkIds": [
@@ -10184,7 +10184,7 @@
       ]
      },
      {
-      "id": "58fce19f-1d27-43f9-bf7b-2a0910774452",
+      "id": "3e86e5e8-25ee-4b92-a9d0-0976535b7b8f",
       "name": "b",
       "type": "TABLE",
       "linkIds": [
@@ -10198,7 +10198,7 @@
       ]
      },
      {
-      "id": "356b4073-81dc-45ce-a6d2-4eaf3b5b3432",
+      "id": "fb8155dd-e72e-4894-957a-9b7204614123",
       "name": "c",
       "type": "TABLE",
       "linkIds": [
@@ -10214,7 +10214,7 @@
     ],
     "outputs": [
      {
-      "id": "e37fb61c-34b3-4749-ba15-78e78f074483",
+      "id": "85a033f8-e79d-48b5-9150-bf2d2dc6e68b",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -10227,7 +10227,7 @@
       ]
      },
      {
-      "id": "26f6ff0c-c5b3-45a8-91e6-f3d55f0c6bcb",
+      "id": "e1e42975-cb14-42d2-9eb0-0b9f6e8b90b5",
       "name": "data",
       "type": "PAIRS",
       "linkIds": [
@@ -10683,8 +10683,8 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowCompareFields",
        "aws_wires": [
-        "56,205 pairs",
-        "56,205 pairs"
+        "",
+        ""
        ],
        "aws_headline": "56,205 → 56,205 pairs · kana_freq rare 38,407, n/a 13,720, common 4,078",
        "aws_tables": [
@@ -11007,7 +11007,7 @@
     "extra": {}
    },
    {
-    "id": "5358613d-4b3d-40d5-9c5b-7b1b62f83818",
+    "id": "bc2b771e-bcaa-4a8f-93d1-4616456b9527",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11038,7 +11038,7 @@
     },
     "inputs": [
      {
-      "id": "115f0532-c36c-4235-b19d-779f87c077b8",
+      "id": "de4fd64f-8c33-459e-8566-153c9324dfa4",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -11054,7 +11054,7 @@
     ],
     "outputs": [
      {
-      "id": "ec9212c5-11fe-46fc-819d-e2a701e5ff7f",
+      "id": "ed1a1276-1794-46c4-a0c1-d536aab7cfa4",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -11067,7 +11067,7 @@
       ]
      },
      {
-      "id": "643b6b92-1ca2-4d0e-bd6f-a97292f85c6c",
+      "id": "258edd42-f512-4ad9-b70d-4afe79756696",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -11080,7 +11080,7 @@
       ]
      },
      {
-      "id": "d3b5b18b-2161-443c-bb58-1c17797286d8",
+      "id": "f789a51f-5fc1-4931-ac42-1ab0a04c9573",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -11194,7 +11194,7 @@
         "2,775 different",
         "44,012 unsettled"
        ],
-       "aws_headline": "9,418 matched · 2,775 different · 44,012 passed on",
+       "aws_headline": "9,418 matched · 2,775 different · 44,012 passed on\nDifferent sex → different 654\nFamily member sharing a phone (different given name) → different 834\nFamily member at the same address (different given name) → different 579\nSame name, conflicting birth date (a namesake) → different 708\nMaiden name (same given name and birth, surname changed) → match 767\nSame policy and same reading → match 7,145\nSame phone and same reading → match 1,506\nNo rule applied: passed on → undecided 44,012",
        "aws_tables": [
         {
          "title": "Rules in effect (first that applies decides)",
@@ -11700,7 +11700,7 @@
     "extra": {}
    },
    {
-    "id": "f58490b7-58d6-4f8c-9117-c3a8c9f08a1f",
+    "id": "4f6f9a32-9704-4312-b75c-f30ff266f63b",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11731,7 +11731,7 @@
     },
     "inputs": [
      {
-      "id": "f7d6a80b-5b81-4944-8143-50795b42a33a",
+      "id": "3df499ad-f0a1-4f42-a039-dffc91446c38",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -11747,7 +11747,7 @@
     ],
     "outputs": [
      {
-      "id": "573c055e-0358-47fb-ad30-133d689781aa",
+      "id": "445fd0c1-f648-41c2-9c29-df6abeb3278f",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -11760,7 +11760,7 @@
       ]
      },
      {
-      "id": "a2f1280d-5c12-474f-b076-f1de60774d4a",
+      "id": "1580d327-fb5a-41bc-bd7f-610a635c8d61",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -11773,7 +11773,7 @@
       ]
      },
      {
-      "id": "6d9ef42e-596b-4497-9aad-a28caaf1bb0e",
+      "id": "91dfc2de-043d-4e1d-8bab-bcda78e4dcac",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -12306,7 +12306,7 @@
         "4,283 different",
         "2,701 unsettled"
        ],
-       "aws_headline": "37,028 matched · 4,283 different · 2,701 to review",
+       "aws_headline": "37,028 matched · 4,283 different · 2,701 to review\nScore ≥ 1.5 → match 37,028\nScore -4 to 1.5 → review 2,701\nScore < -4 → different 4,283",
        "aws_tables": [
         {
          "title": "Rules in effect (first that applies decides)",
@@ -12825,7 +12825,7 @@
     "extra": {}
    },
    {
-    "id": "a5f8cc1c-ab5f-4c66-8b9f-cf2a4a970a30",
+    "id": "c29c6427-1bcf-4a58-be29-e6236bbadfa2",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -12856,7 +12856,7 @@
     },
     "inputs": [
      {
-      "id": "bf0ae7d4-2e6e-4919-bb58-78e5e4a4e023",
+      "id": "f4cd6da7-ccfc-407a-a20b-9b8ff4727521",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -12871,7 +12871,7 @@
     ],
     "outputs": [
      {
-      "id": "d848de98-0b3b-44f0-a2fd-09166ea73199",
+      "id": "56459066-1207-473f-9493-3092a6bb791d",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -12884,7 +12884,7 @@
       ]
      },
      {
-      "id": "f0259cf5-eed5-40fe-9e38-ae74a3f94ebe",
+      "id": "9007ec2e-6e03-47e9-82bc-6f1a1fd5863d",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -13202,7 +13202,7 @@
     "extra": {}
    },
    {
-    "id": "aee889df-590e-404e-8afa-493964583c1f",
+    "id": "7e875f3c-b9a3-4258-8c8b-f81cb1e14dc3",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -13233,7 +13233,7 @@
     },
     "inputs": [
      {
-      "id": "1e4595a1-0bcd-489c-b386-5246cbe9de76",
+      "id": "176d07c5-ae4a-4547-8324-ef06513fe1a3",
       "name": "matched_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13247,7 +13247,7 @@
       ]
      },
      {
-      "id": "1f1d317e-d26d-4fff-80f3-eb7536d2cac4",
+      "id": "4d610e0b-2044-417f-be11-0fa35e7aec63",
       "name": "matched_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13261,7 +13261,7 @@
       ]
      },
      {
-      "id": "82549e74-aec4-448e-ae5c-dca245e8b846",
+      "id": "4bdedb71-3fae-4156-b4e2-a17531932e74",
       "name": "matched_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13275,7 +13275,7 @@
       ]
      },
      {
-      "id": "a64344f3-c5ac-487d-a9ab-436762db5fee",
+      "id": "13701e1c-d76a-4849-ae51-e814a0a8ff9c",
       "name": "different_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13289,7 +13289,7 @@
       ]
      },
      {
-      "id": "6de4983e-c36e-48c9-8857-c9212c4977cb",
+      "id": "7ee09c80-5403-4bf3-a4fb-8c2361c56f22",
       "name": "different_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13303,7 +13303,7 @@
       ]
      },
      {
-      "id": "230585b5-30fd-400e-8ed7-bc356393eb4d",
+      "id": "f197a3fc-e570-4096-8ff8-c24d16073746",
       "name": "different_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -13319,7 +13319,7 @@
     ],
     "outputs": [
      {
-      "id": "862c6d61-6097-42a9-8603-c5b0b06ffc87",
+      "id": "4eb597bd-12e1-4717-9edb-0c9aef119e14",
       "name": "customers",
       "type": "CUSTOMERS",
       "linkIds": [
@@ -13582,7 +13582,7 @@
            "",
            "phone=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002784/holder and policies/0002484/holder, decided differe…"
+           "would join policies/0002784/holder and policies/0002551/holder, decided differe…"
           ],
           [
            "p16501",
@@ -13637,7 +13637,7 @@
            "",
            "phone=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002943/holder and policies/0002741/holder, decided differe…"
+           "would join policies/0002943/holder and claims/0001364/insured, decided different"
           ],
           [
            "p24905",
@@ -13965,7 +13965,7 @@
     "extra": {}
    },
    {
-    "id": "ffe060dd-8c50-4cfd-bece-5f4932404b36",
+    "id": "544d37c7-5670-47df-ad36-c71116a2cdc2",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -13996,7 +13996,7 @@
     },
     "inputs": [
      {
-      "id": "38a7e75f-4083-42e8-b819-23a3082bb11a",
+      "id": "16f24fb3-cfeb-400e-a34e-323f5742700a",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -14009,7 +14009,7 @@
       ]
      },
      {
-      "id": "98757692-00bd-4c68-a532-4dc6219b42be",
+      "id": "5cdc7a19-0030-48d8-b674-ddac284cf4b3",
       "name": "groups",
       "type": "CUSTOMERS,DICT",
       "linkIds": [
@@ -14024,7 +14024,7 @@
     ],
     "outputs": [
      {
-      "id": "b17dc10b-b814-4df7-bb62-952398271f25",
+      "id": "8e85c66d-dfd4-40fc-a521-54f2a24cc1df",
       "name": "path",
       "type": "STRING",
       "linkIds": [
@@ -14099,9 +14099,9 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowAttachGroups",
        "aws_wires": [
-        "13,575 rows"
+        ""
        ],
-       "aws_headline": "13,575 → 13,575 rows · in a group 13,385",
+       "aws_headline": "13,575 values changed, e.g. customer_id: None → C000533",
        "aws_tables": [
         {
          "title": "Attach group ids",
@@ -14351,7 +14351,7 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowWriteTable",
        "aws_wires": [
-        "13,575 rows"
+        ""
        ],
        "aws_headline": "13,575 → 13,575 rows · file output/nayose_reference/nayose_result.csv",
        "aws_tables": [
@@ -14488,7 +14488,7 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "path",
-       "aws_headline": "✓ passed · 8 · Publish results gives data · 34 row(s)"
+       "aws_headline": "✓ passed · 8 · Publish results gives data · a value"
       },
       "widgets_values": [
        "non_empty",
@@ -14554,10 +14554,10 @@
  "config": {},
  "extra": {
   "ds": {
-   "scale": 0.3136879706544904,
+   "scale": 0.2819548872180451,
    "offset": [
-    446.30337499999996,
-    595.0305
+    496.5333333333333,
+    623.7333333333333
    ]
   },
   "linearData": {

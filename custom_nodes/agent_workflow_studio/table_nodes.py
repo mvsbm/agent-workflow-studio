@@ -64,6 +64,32 @@ def config(text: str, what: str) -> Any:
         raise ValueError(f"{what} is not valid YAML: {error}") from None
 
 
+# Follow a record: the last table each node gave, by executing node id ("stage:inner").
+# shortcut: in memory for the server's life, keyed by node id only (ids repeat across workflows;
+# the client keeps the ids of its own graph), upgrade to per-prompt storage if that confuses users.
+LAST: dict[str, dict] = {}
+
+
+def follow(query: str, limit: int = 3) -> list[dict]:
+    """Where a record went: per node (in run order), the rows that contain the query."""
+    q = query.strip().lower()
+    found = []
+    for node, t in LAST.items():
+        rows = [r for r in t["rows"] if any(q in str(v).lower() for v in r.values())]
+        found.append(
+            {
+                "node": node,
+                "table": t["name"],
+                "columns": t["columns"],
+                "count": len(rows),
+                "rows": rows[:limit],
+                # which columns held it, so a step whose rows lack them is not called a drop
+                "matched": [k for k, v in rows[0].items() if q in str(v).lower()] if rows else [],
+            }
+        )
+    return found
+
+
 def report(
     title: str,
     before: dict | None,
@@ -72,6 +98,11 @@ def report(
     changed: list[str] | None = None,
 ) -> dict:
     """What this node did: counts, before → after for changed values, and a sample of the result."""
+    from comfy_execution.utils import get_executing_context
+
+    if context := get_executing_context():
+        LAST.pop(context.node_id, None)  # re-inserted, so the order stays the run order
+        LAST[context.node_id] = after  # a reference: ComfyUI's cache holds the same table
     facts = {
         "rows in": f"{len(before['rows']):,}" if before else "—",
         "rows out": f"{len(after['rows']):,}",

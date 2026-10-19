@@ -105,6 +105,7 @@ CONTRACT = {
     "steps": [
         {
             "id": "greet",
+            "pattern": "pipes and filters",
             "purpose": "Join hello and world into one greeting.",
             "approach": "fixed",
             "covers": ["R1"],
@@ -117,6 +118,7 @@ CONTRACT = {
         },
         {
             "id": "show",
+            "pattern": "pipes and filters",
             "purpose": "Show the greeting.",
             "approach": "fixed",
             "covers": ["R1"],
@@ -283,12 +285,13 @@ TOOL_CONTRACT = {
         {"id": "E1", "covers": ["R1"], "given": {"text": "hello"}, "expect": {"text": "HELLO!"}}
     ],
     "promises": {
-        "inputs": [{"name": "text", "kind": "text"}],
-        "outputs": [{"name": "text", "kind": "text"}],
+        "inputs": [],
+        "outputs": [{"name": "text", "kind": "text", "from": "shout.text"}],
     },
     "steps": [
         {
             "id": "shout",
+            "pattern": "pipes and filters",
             "purpose": "Uppercase the text with an approved tool.",
             "approach": "fixed",
             "covers": ["R1"],

@@ -85,6 +85,20 @@ calls run as jobs; written files come back as downloads. ✅
 design; design changes are amendments the user approves, and the stages they touch are marked stale until
 their Checks pass again; declared data fields the run does not carry are flagged. ✅
 
+**R32 · The improve loop is engineered, not improvised.** The goal is verifiable (every step verified
+on the latest run, every example passing); each iteration is a version with the agent's hypothesis and
+change, the state measured before and after, and a verdict the studio computes; a deterministic
+controller says continue, stop, revert or ask the user, within a budget (iterations, stalls). In
+production a watch re-runs the examples on a schedule. ✅
+
+**R33 · Test data with known answers.** Synthetic records from a recipe, damaged on purpose with the
+truth and a change log kept, and accuracy measured against the truth. ✅
+
+**R34 · Follow one record and check the automation.** Any record can be followed through the last
+run, step by step, with only the values that changed; each automatic decision branch sends a fixed
+sample to review, and your reviews give a lower bound for how often that branch is right. Customer
+ids stay the same across runs, and each run says what changed since the last. ✅
+
 ## 4. Use
 
 **R16 · A workflow is an API.** A finished workflow is published at a fixed version and called with

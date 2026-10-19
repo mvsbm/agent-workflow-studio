@@ -333,6 +333,32 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls[1][1]["operations"], [{"op": "title", "node": 1, "title": "Label"}])
         self.assertEqual(calls[1][1]["design"]["links"], [["classify", "label", "tidy", "label"]])
 
+    async def test_an_improve_iteration_is_measured_and_journaled(self):
+        self.session.contract = CONTRACT
+        evidence = {
+            "nodes": [{"step": "classify"}, {"step": "tidy"}],
+            "gate_results": {"classify": "failed", "tidy": "needs_user_review"},
+            "run": {"current": True},
+            "analysis": {"problems": []},
+            "workflow": {"nodes": []},
+        }
+        with patch.object(
+            self.session, "canvas_action", AsyncMock(side_effect=lambda a, _x: evidence)
+        ):
+            started = await self.session.agent_action(
+                "loop_step", {"hypothesis": "rules miss mixed reviews", "change": "classify prompt"}
+            )
+            self.assertEqual((started["started"], started["iteration"]), (True, 1))
+            with self.assertRaisesRegex(ValueError, "still open"):
+                await self.session.agent_action("loop_step", {"hypothesis": "x", "change": "y"})
+            evidence["gate_results"] = {"classify": "passed", "tidy": "needs_user_review"}
+            state = await self.session.agent_action("contract_status", {})
+        self.assertEqual(state["loop"]["closed"]["verdict"], "improved")
+        self.assertEqual(state["loop"]["next"], "continue")
+        self.assertEqual(
+            self.session.repo.log()[0]["message"], "Loop 1 · improved: rules miss mixed reviews"
+        )
+
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
         answers = {
             "contract_approve": {"approved": True},
@@ -371,11 +397,20 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             await self.session.agent_action("contract_get", {}), {"contract": CONTRACT}
         )
+        evidence = {"nodes": [], "analysis": {"problems": []}, "workflow": {}}
         with patch.object(
-            self.session, "canvas_action", AsyncMock(return_value={"gates": []})
+            self.session,
+            "canvas_action",
+            AsyncMock(
+                side_effect=lambda action, _a: (
+                    evidence if action == "contract_evidence" else {"gates": []}
+                )
+            ),
         ) as canvas:
-            await self.session.agent_action("contract_gates", {})
-        self.assertEqual(canvas.await_args.args, ("gates", {}))
+            checked = await self.session.agent_action("contract_gates", {})
+        self.assertEqual(canvas.await_args_list[0].args, ("gates", {}))
+        # Every gate check also says where the improve loop stands.
+        self.assertEqual(checked["loop"]["next"], "continue")
         # A later chat on the same workflow inherits the approved plan.
         later = pi_chat.PiChatSession(
             Socket(),

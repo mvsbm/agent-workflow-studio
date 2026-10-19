@@ -104,6 +104,9 @@ def validate_contract(contract: object) -> dict:
 
 
 def validate_for_approval(contract: object) -> dict:
+    if isinstance(contract, dict) and str(contract.get("contract")) == "2":
+        # The format marker is the studio's business; some models send it as the text "2".
+        contract["contract"] = 2
     contract = validate_contract(contract)
     # A question tied to one step may stay open (that step waits); any other blocks approval.
     if blocking := [q for q in contract["open_questions"] if isinstance(q, str)]:
@@ -325,7 +328,7 @@ def report(contract: dict, evidence: dict) -> dict:
     }
 
 
-SHORT = 220  # an HLD sentence a person reads at a glance
+SHORT = 160  # purpose + uses + why: the words the designer writes (wiring adds the rest)
 TYPED = {"TABLE", "PAIRS", "DECISIONS", "CUSTOMERS"}  # data hand-offs that deserve a named entity
 
 
@@ -400,6 +403,21 @@ def hld(contract: dict) -> list[dict]:
     return out
 
 
+# Review items a design must pass before the user sees it: they keep the graph, the data model
+# and the API consistent (the rest are advice the user weighs).
+BLOCKING = (
+    "Every step names its design pattern",
+    "Every hand-off between steps is a named data entity",
+    "The API is defined: every input is used, every output comes from a step",
+    "Every step reads as one short sentence",
+)
+
+
+def blocking(contract: dict) -> list[str]:
+    """The review items that stop a proposal, with what to change."""
+    return [item for ok, item in review(contract) if not ok and item.startswith(BLOCKING)]
+
+
 def review(contract: dict) -> list[tuple[bool, str]]:
     """The design review checklist, from the contract alone: what a good design has before building."""
     steps, promises, data = contract["steps"], contract["promises"], contract.get("data") or {}
@@ -417,6 +435,18 @@ def review(contract: dict) -> list[tuple[bool, str]]:
     used_inputs = {
         v[6:] for s in steps for v in s.get("takes", {}).values() if v.startswith("input.")
     }
+    # Failing items name what to fix, so a retry changes the right step.
+    wordy = [
+        f"{s['id']} {n}"
+        for s in steps
+        if (n := sum(len(s.get(k, "")) for k in ("purpose", "uses", "why"))) > SHORT
+    ]
+    unnamed = [h for h in handoffs if h.split(".")[1] not in data]
+    unpatterned = [s["id"] for s in steps if not s.get("pattern")]
+
+    def naming(items: list[str], what: str) -> str:
+        return f" — {what}: {', '.join(items)}" if items else ""
+
     return [
         (
             all(s.get("gives") and "*" not in s["gives"].values() for s in steps),
@@ -427,14 +457,19 @@ def review(contract: dict) -> list[tuple[bool, str]]:
             "Every step's result is checked on its data",
         ),
         (all(s.get("uses") and s.get("why") for s in steps), "Every step says how and why"),
-        (all(s.get("pattern") for s in steps), "Every step names its design pattern"),
         (
-            all(len(d["sentence"]) <= SHORT for d in hld(contract)),
-            f"Every step reads as one short sentence (≤ {SHORT} characters: say less, the stage shows the rest)",
+            not unpatterned,
+            "Every step names its design pattern" + naming(unpatterned, "missing in"),
         ),
         (
-            all(h.split(".")[1] in data for h in handoffs),
-            "Every hand-off between steps is a named data entity",
+            not wordy,
+            f"Every step reads as one short sentence (purpose, uses and why ≤ {SHORT} characters together)"
+            + naming(wordy, "too long, characters now"),
+        ),
+        (
+            not unnamed,
+            "Every hand-off between steps is a named data entity"
+            + naming(unnamed, "add to data the entity for"),
         ),
         (
             all(o.get("from") for o in promises["outputs"])
@@ -558,6 +593,7 @@ __all__ = [
     "from_yaml",
     "render",
     "alignment",
+    "blocking",
     "hld",
     "wiring",
     "review",

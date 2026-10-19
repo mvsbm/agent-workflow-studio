@@ -225,6 +225,8 @@ def process(r: dict) -> dict[str, bool]:
         "accepted": any(
             v.startswith("agent: Acceptance") and "examples passed" in v for v in versions
         ),
+        # Loop engineering: improvements as measured, journaled iterations.
+        "looped": any(v.startswith("agent: Loop ") for v in versions),
     }
     return checks
 

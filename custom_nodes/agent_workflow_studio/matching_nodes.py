@@ -660,6 +660,34 @@ def guard_clusters(decisions: list[dict], max_size: int) -> dict:
     return {"clusters": clusters, "merged": merged, "blocked": blocked, "joins": joins}
 
 
+def stable_ids(clusters: dict, previous: dict) -> tuple[dict, dict]:
+    """Customer ids that survive a re-run: each customer keeps the previous id most of its records
+    had (larger customers choose first); only new customers get new ids. Returns (root -> id, diff)."""
+    members = defaultdict(list)
+    for mention, root in clusters.items():
+        members[root].append(mention)
+    taken, ids = set(), {}
+    for root in sorted(members, key=lambda r: (-len(members[r]), r)):
+        votes = Counter(previous[m] for m in members[root] if m in previous)
+        ids[root] = next((cid for cid, _ in votes.most_common() if cid not in taken), None)
+        taken.add(ids[root])
+    numbers = [int(c[1:]) for c in previous.values() if c[1:].isdigit()]
+    fresh = max(numbers, default=0)
+    for root in sorted(members):
+        if ids[root] is None:
+            fresh += 1
+            ids[root] = f"C{fresh:06d}"
+    moved = sum(previous.get(m) not in (None, ids[r]) for m, r in clusters.items())
+    kept = len(taken - {None})
+    diff = {
+        "kept": kept,
+        "new": len(members) - kept,
+        "gone": len(set(previous.values()) - set(ids.values())),
+        "records moved": moved,
+    }
+    return ids, diff
+
+
 def explain_customers(guarded: dict, ids: dict, values: dict) -> dict:
     """Per customer: its records, the merges that joined them (strongest first) and the merges
     refused into it, so anyone can see why these records are one customer."""
@@ -848,7 +876,12 @@ class ClusterGuard(io.ComfyNode):
         guarded = guard_clusters(decisions, max_size)
         folder = own_folder(repo, "cluster_guard")
         clusters = guarded["clusters"]
-        ids = {root: f"C{i:06d}" for i, root in enumerate(sorted(set(clusters.values())), 1)}
+        # The last run's ids, so a customer keeps its id when the data or the rules change.
+        earlier = sorted(
+            f for f in folder.parent.glob("cluster_guard-*/clusters.csv") if f.parent != folder
+        )
+        previous = {r["mention"]: r["customer"] for r in read_csv(earlier[-1])} if earlier else {}
+        ids, since = stable_ids(clusters, previous)
         # The records' values for the Customers tab, from the compared pairs (when upstream).
         values = {}
         try:
@@ -886,7 +919,13 @@ class ClusterGuard(io.ComfyNode):
             "aws_wires": [f"{len(sizes):,} customers"],
             "aws_headline": (
                 f"{len(sizes):,} customers · {len(guarded['merged']):,} merges · "
-                f"{len(guarded['blocked']):,} blocked",
+                f"{len(guarded['blocked']):,} blocked"
+                + (
+                    f"\nSince the last run: {since['kept']:,} kept their id · {since['new']:,} new · "
+                    f"{since['gone']:,} gone · {since['records moved']:,} records moved"
+                    if previous
+                    else ""
+                ),
             ),
             "aws_tree": [tree],
             "aws_tables": [

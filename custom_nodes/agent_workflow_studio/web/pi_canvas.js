@@ -180,6 +180,16 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
   // The API's inputs (the contract's promised inputs) as top-level nodes the stages take from.
   const inputs = {};
   for (const input of promises?.inputs ?? []) {
+    // An input may be an existing top-level node (the user's given data), adopted rather than duplicated.
+    const adopted = input.node != null && graph.getNodeById(input.node);
+    const widget = input.widget ?? 'value', spec = adopted?.constructor?.nodeData?.input ?? {};
+    // Only a widget the node takes as an input can be set by an API call (not one that only shows a value).
+    if (adopted && !(widget in {...spec.required, ...spec.optional})) {
+      notes.push(`Input ${input.name}: ${adopted.title} (node ${adopted.id}) has no input widget "${widget}" an API call could set; amend the contract to adopt the node that holds the value (its widget, e.g. a folder or seed), or drop node/widget to get a new input node.`);
+      inputs[input.name] = adopted;  // the data still flows from it; it is just not part of the API
+      continue;
+    }
+    if (adopted && !adopted.properties?.aws_stage) adopted.properties = {...adopted.properties, aws_input: input.name, aws_input_widget: widget};
     let node = nodes(graph).find(n => n.properties?.aws_input === input.name);
     if (!node) {
       node = globalThis.LiteGraph.createNode(inputKind(input.kind)[1]);
@@ -195,7 +205,9 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
     for (const [name, source] of Object.entries(step.takes ?? {})) {
       if (source.startsWith('input.')) {
         const node = inputs[source.slice(6)], b = stageNode(graph, step.id), into = b?.inputs?.findIndex(i => i.name === name);
-        if (node && into >= 0 && b.inputs[into].link == null) node.connect(0, b, into);
+        // The output that fits the stage's port (an adopted node may have several).
+        const out = Math.max(0, node?.outputs?.findIndex(o => o.type === b?.inputs?.[into]?.type) ?? 0);
+        if (node && into >= 0 && b.inputs[into].link == null) node.connect(out, b, into);
         continue;
       }
       if (!source.includes('.')) continue;
@@ -212,7 +224,8 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
   }
   // The signature (App mode): the promised inputs in, the stages delivering promised outputs out.
   const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => stageNode(graph, o.from.split('.')[0])?.id).filter(id => id != null))];
-  if (outputs.length) setSignature(graph, Object.values(inputs).map(node => ({node: node.id, widget: 'value'})), outputs);
+  const settable = node => node.properties?.aws_input_widget ?? 'value';
+  if (outputs.length) setSignature(graph, Object.values(inputs).filter(node => node.widgets?.some(w => w.name === settable(node))).map(node => ({node: node.id, widget: settable(node)})), outputs);
   arrangeGraph(graph);
   // What is already in place, so the agent builds only what is missing.
   const stages = steps.map(step => {
@@ -297,7 +310,7 @@ export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX lea
   };
   let x = x0;
   for (const column of columns.filter(Boolean)) {
-    column.sort((a, b) => !!b.properties?.aws_given - !!a.properties?.aws_given || inputY(a) - inputY(b));
+    column.sort((a, b) => !!b.properties?.aws_input - !!a.properties?.aws_input || !!b.properties?.aws_given - !!a.properties?.aws_given || inputY(a) - inputY(b));
     let top = y0, width = 0;
     for (const node of column) {
       for (const member of [node, ...(under.get(node.id) ?? [])]) {

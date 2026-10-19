@@ -22,6 +22,7 @@ decisions.csv (with each pair's reason) and review.json (the pairs to review, un
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import time
 from collections import Counter, defaultdict
@@ -101,19 +102,27 @@ def _holds(value: Any, wanted: Any) -> bool:
 
 def decide(row: dict, spec: dict, label: str | None = None) -> dict:
     """{decision, branch, score, why} for one pair."""
-    if label in ("same", "different"):
+    rule = next(
+        (
+            r
+            for r in spec["rules"]
+            if not r.get("skip")
+            and all(_holds(row.get(field), wanted) for field, wanted in r["when"].items())
+        ),
+        None,
+    )
+    # The user's decision overrides, except in a rules-only stage no rule of which settles the
+    # pair: it goes on, so the stage that does decide it shows how its branch agreed with you.
+    if label in ("same", "different") and (rule or spec["score"]):
         return {
             "decision": "match" if label == "same" else "different",
             "branch": "Your review",
             "score": None,
             "why": f"you decided: {label}",
         }
-    for rule in spec["rules"]:
-        if rule.get("skip"):
-            continue
-        if all(_holds(row.get(field), wanted) for field, wanted in rule["when"].items()):
-            why = ", ".join(f"{f}={row.get(f)}" for f in rule["when"])
-            return {"decision": rule["then"], "branch": rule["name"], "score": None, "why": why}
+    if rule:
+        why = ", ".join(f"{f}={row.get(f)}" for f in rule["when"])
+        return {"decision": rule["then"], "branch": rule["name"], "score": None, "why": why}
     if not spec["score"]:
         # Rules only (e.g. deterministic matching): what no rule settles goes on to the next stage.
         return {
@@ -191,7 +200,7 @@ def run_rules(
                 "agree"
                 if ruled["decision"] == wanted
                 else "undecided"
-                if ruled["decision"] == "review"
+                if ruled["decision"] in ("review", "undecided")
                 else "disagree"
             )
             agreement[ruled["branch"]][outcome] += 1
@@ -220,6 +229,35 @@ def run_rules(
         ),
     )
     return decided, {"flow": flow, "levels": levels, "examples": examples, "agreement": agreement}
+
+
+SPOT_CHECK = 3  # automatic decisions per branch sent to review, so each branch's precision shows
+
+
+def spot_check_sample(decided: list[dict], per_branch: int = SPOT_CHECK) -> list[dict]:
+    """A fixed sample of each branch's automatic decisions (the same pairs every run)."""
+    by_branch = defaultdict(list)
+    for d in decided:
+        if d["decision"] in ("match", "different") and d["branch"] != "Your review":
+            by_branch[d["branch"]].append(d)
+    # Spread over the branch by a hash of the id: reproducible, and not just the first rows.
+    return [
+        d
+        for items in by_branch.values()
+        for d in sorted(items, key=lambda d: hashlib.sha256(d["id"].encode()).hexdigest())[
+            :per_branch
+        ]
+    ]
+
+
+def at_least(agree: int, reviewed: int) -> float:
+    """Wilson 95% lower bound of agree / reviewed: what the reviews show, at least."""
+    if not reviewed:
+        return 0.0
+    p, z = agree / reviewed, 1.96
+    centre = p + z * z / (2 * reviewed)
+    spread = z * ((p * (1 - p) + z * z / (4 * reviewed)) / reviewed) ** 0.5
+    return (centre - spread) / (1 + z * z / reviewed)
 
 
 class DecisionRules(io.ComfyNode):
@@ -412,17 +450,25 @@ class DecisionRules(io.ComfyNode):
                 - (spec["decide"].get("match", 0) + spec["decide"].get("review", 0)) / 2
             ),
         )
+        # Only this stage's own decisions: an earlier stage spot-checks its own.
+        sample = spot_check_sample([d for d in decided if d["id"] not in earlier])
         review = {
-            "title": f"Decision rules · {len(uncertain):,} pairs to review",
+            "title": f"Decision rules · {len(uncertain):,} pairs to review"
+            + f" · {len(sample)} automatic decisions to spot-check",
             "pairs": [
                 {
                     "id": d["id"],
                     "a": by_id[d["id"]].get("a") or {"mention": d["left"]},
                     "b": by_id[d["id"]].get("b") or {"mention": d["right"]},
-                    "score": d["score"],
-                    "reason": d["why"],
+                    "score": round(float(d["score"]), 2) if d["score"] not in (None, "") else None,
+                    "reason": d["why"]
+                    if d["decision"] == "review"
+                    else f"Spot check · {d['branch']} decided {d['decision']}: {d['why']}",
                 }
-                for d in uncertain[:review_limit]
+                for d in [
+                    *sample,
+                    *uncertain[:review_limit],
+                ]  # the few spot checks first, or nobody reaches them
             ],
         }
         (folder / "review.json").write_text(
@@ -474,6 +520,9 @@ class DecisionRules(io.ComfyNode):
                 "agree": c["agree"],
                 "disagree": c["disagree"],
                 "rules undecided": c["undecided"],
+                "right at least": f"{at_least(c['agree'], c['agree'] + c['disagree']):.0%}"
+                if c["agree"] + c["disagree"]
+                else "—",
             }
             for branch, c in seen["agreement"].items()
         ]
@@ -504,7 +553,7 @@ class DecisionRules(io.ComfyNode):
             + (
                 ["YOUR REVIEWS VS THE RULES (per branch):"]
                 + [
-                    f"{a['branch']}: {a['agree']} agree, {a['disagree']} disagree, {a['rules undecided']} undecided"
+                    f"{a['branch']}: {a['agree']} agree, {a['disagree']} disagree, {a['rules undecided']} undecided, right at least {a['right at least']} (95%)"
                     for a in agreement
                 ]
                 if agreement
@@ -525,16 +574,32 @@ class DecisionRules(io.ComfyNode):
                 f"{counts['different']:,} different",
                 f"{counts['undecided'] + counts['review']:,} unsettled",
             ],
+            # Zoomed out the node reads as its decision table: totals, then each rule with its count.
             "aws_headline": (
-                " · ".join(
-                    f"{n:,} {label}"
-                    for label, n in (
-                        ("matched", counts["match"]),
-                        ("different", counts["different"]),
-                        ("to review", counts["review"]),
-                        ("passed on", counts["undecided"]),
-                    )
-                    if n
+                "\n".join(
+                    [
+                        " · ".join(
+                            f"{n:,} {label}"
+                            for label, n in (
+                                ("matched", counts["match"]),
+                                ("different", counts["different"]),
+                                ("to review", counts["review"]),
+                                ("passed on", counts["undecided"]),
+                            )
+                            if n
+                        )
+                    ]
+                    + [
+                        f"{f['label']} → {f['decision']} {f['count']:,}"
+                        for f in flow
+                        if f["label"] not in (EARLIER,)
+                    ][:8]
+                    # What your spot checks show about each automatic branch.
+                    + [
+                        f"{a['branch']}: right at least {a['right at least']} ({a['agree']} of {a['agree'] + a['disagree']} you checked)"
+                        for a in agreement
+                        if a["agree"] + a["disagree"]
+                    ]
                 ),
             ),
             "aws_tables": [
