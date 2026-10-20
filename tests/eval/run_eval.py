@@ -1,8 +1,10 @@
-"""Evaluate the real Pi agent on a few requests. Makes real provider calls (costs money).
+"""Evaluate the real chat agent (Pi, or Claude Code with --agent claude_code) on a few requests.
+Makes real provider calls (costs money).
 
 Usage (from the repo root):
   ~/.local/share/agent-workflow-studio/ComfyUI/.venv/bin/python tests/eval/run_eval.py \
       --provider opencode-go --model deepseek-v4-flash [--only id ...]
+      [--agent claude_code --agent-model haiku]   # Claude Code chats; LLM nodes keep the Pi model
 
 Each task runs in a fresh isolated ComfyUI. The chat uses Studio Keychain credentials;
 the provider's saved key is also passed to that test instance so the Structured LLM
@@ -14,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -66,7 +69,12 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
     kind = task.get("expect_kind")
     if kind and not any(f"Run · {kind}" in v for v in r.get("versions", [])):
         failures.append(f"no {kind} run record")
-    if "success" not in r.get("run_statuses", []):
+    for label, pattern in task.get("expect_chat", []):  # what the agent says it knows
+        if not re.search(pattern, r.get("chat", ""), re.IGNORECASE):
+            failures.append(f"does not explain: {label}")
+    if task.get("expect_no_nodes") and r.get("node_ids"):
+        failures.append("changed the canvas when asked not to")
+    if not task.get("no_run") and "success" not in r.get("run_statuses", []):
         failures.append("no successful native run")
     if task.get("dataset"):
         f1 = ((r.get("nayose") or {}).get("pairwise") or {}).get("f1")
@@ -236,6 +244,10 @@ def main() -> int:
     parser.add_argument("--provider", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--only", nargs="*")
+    parser.add_argument("--agent", choices=["pi", "claude_code"], default="pi")
+    parser.add_argument(
+        "--agent-model", default="haiku", help="Claude Code's model (with --agent claude_code)"
+    )
     parser.add_argument(
         "--tasks", default=str(HERE / "tasks.json"), help="task file (default: tasks.json)"
     )
@@ -263,6 +275,8 @@ def main() -> int:
         "thinking_level": "low",
         "credential_source": "studio_keychain",
     }
+    if args.agent == "claude_code":  # the chat agent only; Structured LLM nodes keep the Pi model
+        config = {"version": 1, "agent": "claude_code", "model": args.agent_model}
     out = Path(tempfile.mkdtemp(prefix="aws-eval-"))
     env = {
         "PI_PROVIDER": args.provider,

@@ -7,6 +7,7 @@ the canvas. The answer key goes under the output folder, where agent tools canno
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -302,6 +303,7 @@ class NayoseScore(io.ComfyNode):
             ],
             # No outputs: the score is for the user and never flows into an agent's tools.
             outputs=[],
+            hidden=[io.Hidden.extra_pnginfo],
             is_output_node=True,
         )
 
@@ -339,7 +341,42 @@ class NayoseScore(io.ComfyNode):
             counts_table("Recall by systems", report["recall_by_systems"]),
             counts_table("Wrong merges", report["false_merges"] or {"none": 0}),
         ]
-        return io.NodeOutput(ui={"aws_tables": tables})
+        line = f"F1 {report['pairwise']['f1']} · precision {report['pairwise']['precision']} · recall {report['pairwise']['recall']}"
+        if lost := cls.lost(key_dir, path):
+            tables.insert(1, counts_table("Where the true matches are lost", lost))
+            line += "\n" + " · ".join(f"{k} {v}" for k, v in list(lost.items())[1:4])
+        return io.NodeOutput(ui={"aws_tables": tables, "aws_headline": (line,)})
+
+    @classmethod
+    def lost(cls, key_dir: Path, path: Path) -> dict:
+        """The funnel, from this workflow's latest compared pairs (none: no matching steps yet)."""
+        import folder_paths
+
+        from .matching_nodes import workflow_repo
+        from .nayose_bench.score import funnel
+
+        try:
+            runs = Path(folder_paths.get_output_directory()) / "agent_tools" / workflow_repo(cls).id
+        except ValueError:
+            return {}
+        found = sorted(runs.glob("compare_fields-*/pairs.jsonl"))
+        if not found:
+            return {}
+        with open(found[-1], encoding="utf-8") as f:
+            pairs = [(row["left"], row["right"]) for row in map(json.loads, f)]
+        out = funnel(key_dir, path, pairs)
+        c, total = out["counts"], out["counts"].get("true pairs", 0) or 1
+        share = lambda n: f"{n:,} ({n / total:.0%})"  # noqa: E731
+        return {
+            "true same-person pairs": f"{total:,}",
+            "same customer": share(c.get("same customer", 0)),
+            "lost: never a candidate": share(c.get("never a candidate", 0)),
+            "lost: candidate, not merged": share(c.get("candidate, not merged", 0)),
+            **{
+                f"never a candidate · {t}": n
+                for t, n in out["never a candidate, by damage"].items()
+            },
+        }
 
 
 def find_file(name: str, result: Any) -> Path:

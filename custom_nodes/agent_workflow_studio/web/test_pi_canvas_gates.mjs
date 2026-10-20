@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {agentOutputs, gateResults, stageNumbers} from './pi_canvas.js';
+import {agentOutputs, gateResults, stageNumbers, stageSummaries} from './pi_canvas.js';
 
 // A stage with its Check nodes, as the graph holds it: outputs are keyed "stage:node".
 const node = (id, type, extra = {}) => ({id, type, title: `${type} ${id}`, properties: {}, ...extra});
@@ -20,6 +20,13 @@ test("a step's gate comes from the Check nodes inside its stage", () => {
   const gates = gateResults(record, graph);
   assert.deepEqual(gates.map(g => [g.step, g.status]), [['clean', 'passed'], ['match', 'failed'], ['review', 'needs_user_review'], ['publish', 'no_output']]);
   assert.equal(gates[1].checks[0].evidence, '0 row(s)');
+});
+
+test('a review step is verified once the queue reached you, and says how many are open', () => {
+  const graph = {nodes: [stage(1, 'review', [node(2, 'AgentWorkflowReviewDecisions')]), stage(3, 'later', [node(4, 'AgentWorkflowReviewDecisions')])]};
+  const gates = gateResults({outputs: {'1:2': {aws_human: [{open: 1606, decided: 4}]}}}, graph);
+  assert.deepEqual(gates.map(g => g.status), ['passed', 'no_output']);
+  assert.match(gates[0].checks[0].evidence, /4 decided · 1,606 open \(your turn/);
 });
 
 test('independent steps share a number (lanes); steps without inputs run in order', () => {
@@ -59,4 +66,10 @@ test('scores against a hidden answer key never reach the agent', () => {
     prompt: [0, 'id', {'3': {class_type: 'PreviewAny'}, '9': {class_type: 'AgentWorkflowNayoseScore'}}],
   };
   assert.deepEqual(Object.keys(agentOutputs(record)), ['3']);
+});
+
+test("a run's numbers per stage, by node title, without the hidden score", () => {
+  const graph = {nodes: [stage(1, 'group', [node(2, 'AgentWorkflowClusterGuard', {title: 'Build customers'}), node(3, 'AgentWorkflowNayoseScore'), node(4, 'Note')])]};
+  const record = {outputs: {'1:2': {aws_headline: ['2,434 customers · 47,304 merges · 2,830 blocked']}, '1:3': {text: ['F1 0.94']}}};
+  assert.deepEqual(stageSummaries(record, graph), [{stage: 'uuid 1', nodes: [{node: 'Build customers', said: '2,434 customers · 47,304 merges · 2,830 blocked'}]}]);
 });

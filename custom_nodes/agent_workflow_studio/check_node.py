@@ -5,8 +5,12 @@ Step status is derived from the Check nodes inside the step's stage on the lates
 
 from __future__ import annotations
 
+import csv
+import hashlib
+import io as text_io
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 from comfy_api.latest import io
@@ -162,6 +166,42 @@ def plain(value: Any) -> Any:
     return {"shape": list(shape)} if shape is not None else str(value)[:2000]
 
 
+# The file types ComfyUI's App mode previews as text (its getMediaTypeFromFilename); images etc. need no help.
+PREVIEWABLE = {"txt", "md", "markdown", "json", "csv", "yaml", "yml", "xml", "log"}
+
+
+def app_file(name: str, value: Any, output_dir: Path) -> dict:
+    """The promised output as a file App mode can show: a file the workflow already wrote under the
+    output folder as it is, else the value written as CSV (a table), JSON (data) or text."""
+    root = output_dir.resolve()
+    if isinstance(value, str) and value.strip():
+        found = (root / value.strip()).resolve()
+        if found.is_file() and root in found.parents and found.suffix[1:].lower() in PREVIEWABLE:
+            return {
+                "filename": found.name,
+                "subfolder": str(found.parent.relative_to(root)),
+                "type": "output",
+            }
+    if isinstance(value, dict) and isinstance(value.get("rows"), list):
+        buffer = text_io.StringIO()
+        columns = value.get("columns") or sorted({k for r in value["rows"] for k in r})
+        writer = csv.DictWriter(buffer, columns, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(value["rows"])
+        text, ext = buffer.getvalue(), "csv"
+    elif isinstance(value, dict | list):
+        text, ext = json.dumps(plain(value), ensure_ascii=False, indent=1, default=str), "json"
+    else:
+        text, ext = str(value), "txt"
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_") or "output"
+    folder = root / "app_outputs"
+    folder.mkdir(parents=True, exist_ok=True)
+    # Named by content: each distinct result is its own file, so runs never overwrite each other.
+    filename = f"{stem}-{hashlib.sha1(text.encode()).hexdigest()[:10]}.{ext}"
+    (folder / filename).write_text(text, encoding="utf-8")
+    return {"filename": filename, "subfolder": "app_outputs", "type": "output"}
+
+
 class ApiOutput(io.ComfyNode):
     """A promised output's value, returned by the workflow's API (placed by the skeleton)."""
 
@@ -172,7 +212,10 @@ class ApiOutput(io.ComfyNode):
             display_name="API output",
             category="agent_workflow_studio",
             search_aliases=["output", "return", "result", "api"],
-            description="Returns the value at a stage's output to callers of the workflow's API, under the promised output's name.",
+            description=(
+                "Returns the value at a stage's output to callers of the workflow's API, under the promised "
+                "output's name, and shows it in App mode as a file (CSV for a table, JSON for data, text)."
+            ),
             inputs=[
                 io.AnyType.Input(
                     "value", display_name="Value", tooltip="The stage output the API returns."
@@ -187,7 +230,10 @@ class ApiOutput(io.ComfyNode):
 
     @classmethod
     def execute(cls, value: Any, name: str) -> io.NodeOutput:
+        import folder_paths
+
         data = plain(value)
+        shown = app_file(name, value, Path(folder_paths.get_output_directory()))
         size = (
             f"{data['total_rows']:,} rows"
             if isinstance(data, dict) and "total_rows" in data
@@ -197,6 +243,7 @@ class ApiOutput(io.ComfyNode):
         return io.NodeOutput(
             ui={
                 "aws_output": [{"name": name, "value": data}],
+                "files": [shown],  # what App mode shows as this output's result
                 "text": (line,),
                 "aws_headline": (line,),
             }

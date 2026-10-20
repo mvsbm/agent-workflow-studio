@@ -63,7 +63,7 @@ const wiring = {links: [['greet', 'greeting', 'shout', 'greeting']], inputs: [['
       return {
         titles: app.graph.nodes.filter(n => n.properties?.aws_stage).map(n => n.title).sort(),
         input: inputNow && {title: inputNow.title, value: inputNow.widgets.find(w => w.name === 'value').value, linked: inputNow.outputs[0].links?.length},
-        signature, outputStage: stage('shout').id, build, undeclared, unwire, dropInput,
+        signature, outputNode: app.graph.getNodeById(signature.outputs[0])?.properties?.aws_output, build, undeclared, unwire, dropInput,
         stale: {greet: stage('greet').properties.aws_stale, shout: stage('shout').properties.aws_stale}, notes: amended.notes,
         published: published.version, ran: ran.status, output: JSON.stringify(ran.outputs ?? ran), data: ran.data,
       };
@@ -71,7 +71,8 @@ const wiring = {links: [['greet', 'greeting', 'shout', 'greeting']], inputs: [['
     assert.deepEqual(result.titles, ['1 · Greet', '1 · Other', '2 · Shout']);
     assert.deepEqual(result.input, {title: 'Input · name', value: 'hello', linked: 1});
     assert.equal(result.signature.inputs[0][1], 'value', 'the promised input node is the API input');
-    assert.equal(result.signature.outputs[0], result.outputStage, 'the stage delivering the promised output is the API output');
+    // The promised output is shown through its API output node inside the delivering stage (App mode shows it).
+    assert.equal(result.outputNode, 'loud', "App mode shows the promise's top-level output node")
     assert.equal(result.build, 'ok');
     assert.match(result.undeclared, /Not in the approved design: other\.text → 2 · Shout \(greeting\)\. The design wires greet\.greeting there/);
     assert.match(result.unwire, /approved design wires 2 · Shout/);
@@ -82,6 +83,21 @@ const wiring = {links: [['greet', 'greeting', 'shout', 'greeting']], inputs: [['
     assert.equal(result.ran, 'success', result.output);
     assert.deepEqual(result.data, {loud: 'hi world!'}, 'API-native: the promised output comes back by name, without a hand-made signature');
     await page.screenshot({path: path.join(artifacts, 'design.png')});
+
+    // The contract's promises are the App: in ComfyUI's App mode the promised input is asked for and,
+    // after Run, the promised output shows (a file the API output node writes). Fails first if a
+    // frontend update changes App mode.
+    await page.evaluate(() => window.comfyAPI.app.app.extensionManager.command.execute('Comfy.ToggleLinear'));
+    await page.getByRole('button', {name: 'Skip'}).click({timeout: 5000}).catch(() => {});  // first-time tour
+    // As a user would: change the promised input in the App, run, see the promised output.
+    const field = page.getByRole('textbox', {name: 'value'});  // App mode labels it by the widget
+    assert.equal(await field.inputValue(), 'hello', 'App mode asks for the promised input, with its value');
+    await field.fill('hey');
+    await field.press('Tab');
+    await page.getByRole('button', {name: /Run/}).last().click();
+    await page.getByText('hey world!').first().waitFor({timeout: 120000});
+    await page.screenshot({path: path.join(artifacts, 'app-mode.png')});
+    await page.evaluate(() => window.comfyAPI.app.app.extensionManager.command.execute('Comfy.ToggleLinear'));
     assert.deepEqual(errors, []);
     console.log('PASS design');
   } catch (error) {

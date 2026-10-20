@@ -54,11 +54,12 @@ def _inner_types(definition: dict, defs: dict, depth: int = 0) -> list[str]:
 
 
 def _loose(node: dict) -> bool:
-    # Given data and the API's input nodes are the workflow's interface, not work outside a stage.
+    # Given data and the API's input and output nodes are the workflow's interface, not stray work.
     props = node.get("properties") or {}
     return (
         not props.get("aws_given")
         and not props.get("aws_input")
+        and not props.get("aws_output")
         and not node["type"].endswith("Note")
     )
 

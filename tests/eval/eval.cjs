@@ -1,4 +1,4 @@
-// One evaluation task: a real Pi agent (real model) gets a request in the chat UI.
+// One evaluation task: a real chat agent (Pi or Claude Code, real model) gets a request in the chat UI.
 // Scoring uses evidence only: run outputs, canvas, versions, never the agent's claims.
 const {chromium} = require('playwright-core');
 const fs = require('node:fs');
@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 
 const base = process.env.BASE, out = process.env.OUT;
 const task = JSON.parse(process.env.TASK), config = JSON.parse(process.env.PI_CONFIG);
-const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native workflow submitted; completion has not been verified.',
+const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native workflow was submitted by Claude this turn.', 'Native workflow submitted; completion has not been verified.',
   'Native workflow failed; inspect execution errors.', 'Native node execution succeeded; inspect outputs for usefulness.'];
 
 (async () => {
@@ -67,9 +67,9 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
     }, process.env.SAVE_AS);
     await save();
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
-    const message = page.getByRole('textbox', {name: 'Message Pi'});
+    const message = page.getByRole('textbox', {name: 'Message the agent'});
     await message.waitFor({timeout: 30000});
-    await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message Pi"]')?.disabled, null, {timeout: 120000});
+    await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message the agent"]')?.disabled, null, {timeout: 120000});
     const autoApprove = page.getByRole('checkbox', {name: 'Auto-approve workflow runs'});
     if (!await autoApprove.isChecked()) await autoApprove.check();
     await message.fill(task.prompt);
@@ -81,7 +81,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
     while (!await page.evaluate(texts => texts.some(t => document.body.innerText.includes(t)), SETTLED)) {
       // Stop waiting (but still collect evidence) on a timeout or a dropped session.
       if (Date.now() > deadline) { result.error = `Agent did not settle within ${task.timeout_minutes ?? 7} minutes.`; break; }
-      const dropped = await page.evaluate(() => document.body.innerText.match(/Pi disconnected[^.]*\./)?.[0]);
+      const dropped = await page.evaluate(() => document.body.innerText.match(/(Pi|Claude) disconnected[^.]*\./)?.[0]);
       if (dropped) { result.error = dropped; break; }
       const card = page.locator('.aw-pi-permission').first();
       if (await card.count()) {
@@ -130,7 +130,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'Native wo
         loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !n.properties?.aws_input && !/Note$/.test(n.type)).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,
         run_statuses: statuses, versions: (log.commits ?? []).map(c => `${c.author}: ${c.message}`),
-        chat: document.querySelector('.aw-pi-host')?.innerText.slice(-3000) ?? '',
+        chat: document.querySelector('.aw-pi-host')?.innerText.slice(-8000) ?? '',
         workflow: app.rootGraph.serialize(),
       };
     });

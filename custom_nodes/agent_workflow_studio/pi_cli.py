@@ -42,11 +42,13 @@ class PiCLIError(RuntimeError):
 
 
 class _PiRPCProcess:
-    def __init__(self, command: list[str], environment: dict[str, str] | None = None) -> None:
+    def __init__(
+        self, command: list[str], environment: dict[str, str] | None = None, cwd: str | None = None
+    ) -> None:
         try:
             self.process = subprocess.Popen(
                 command,
-                cwd=str(Path.home()),
+                cwd=cwd or str(Path.home()),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,

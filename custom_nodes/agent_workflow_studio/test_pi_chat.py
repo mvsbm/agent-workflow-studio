@@ -358,14 +358,38 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             self.session.repo.log()[0]["message"], "Loop 1 · improved: rules miss mixed reviews"
         )
+        # Once improving, a change made outside an iteration is allowed but labelled, never hidden.
+        canvas = AsyncMock(side_effect=lambda a, _x: {"ok": True})
+        with patch.object(self.session, "canvas_action", canvas):
+            change = {
+                "operations": [{"op": "widget", "node": 1, "name": "x", "value": 2}],
+                "summary": "tweak",
+            }
+            done = await self.session.agent_action("edit", change)
+            self.assertIn("comfy_loop_step", done["outside_loop"])
+            self.assertEqual(
+                canvas.await_args.args[1]["summary"], "Outside the improve loop: tweak"
+            )
+            moved = await self.session.agent_action(
+                "edit", {"operations": [{"op": "move", "node": 1, "position": [0, 0]}]}
+            )
+            self.assertNotIn("outside_loop", moved)  # layout is not a change to what runs
 
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
+        from .native_layers import embed
+        from .test_native_layers import workflow
+
         answers = {
             "contract_approve": {"approved": True},
             "skeleton": {"created": ["classify", "tidy"], "notes": []},
             "edit": {"ok": True},
             "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
-            "contract_evidence": {"nodes": [], "analysis": {"outputs": [], "problems": []}},
+            # The skeleton stored the contract natively: the canvas's workflow now holds it.
+            "contract_evidence": {
+                "nodes": [],
+                "analysis": {"outputs": [], "problems": []},
+                "workflow": embed(CONTRACT, workflow()),
+            },
         }
         with patch.object(
             self.session,
@@ -381,6 +405,9 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             skeleton = canvas.await_args_list[1].args
             self.assertEqual(skeleton[0], "skeleton")
             self.assertEqual(skeleton[1]["steps"], CONTRACT["steps"])
+            # What the skeleton stores in the workflow: the intent, and the design's shared parts.
+            self.assertEqual(skeleton[1]["intent"]["purpose"], CONTRACT["purpose"])
+            self.assertEqual(skeleton[1]["meta"]["order"], ["classify", "tidy"])
             self.assertEqual(
                 [d["title"] for d in skeleton[1]["design"]], ["1 · Classify", "2 · Tidy"]
             )
@@ -411,6 +438,10 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(canvas.await_args_list[0].args, ("gates", {}))
         # Every gate check also says where the improve loop stands.
         self.assertEqual(checked["loop"]["next"], "continue")
+        # Passing gates are not the requests met: an unproven must-have is named before reporting.
+        self.assertIn("R1", checked["before_reporting"])
+        self.assertIn("comfy_run_examples", checked["before_reporting"])
+        self.assertIn("examples passing 0/1", checked["plan_vs_built"])
         # A later chat on the same workflow inherits the approved plan.
         later = pi_chat.PiChatSession(
             Socket(),

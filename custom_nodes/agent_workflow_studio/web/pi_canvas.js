@@ -1,7 +1,7 @@
 // Native graph APIs, following Comfy-Org/ComfyUI_frontend's app.ts/API queue path.
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
-import {setSignature} from './publish.js';
+import {outputNode, setSignature} from './publish.js';
 // Widgets that may hold secrets: hidden from the agent and never set by it. Names like
 // max_tokens or credential_source are ordinary settings, not secrets.
 const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)token$)/i;
@@ -92,6 +92,46 @@ function rewatch(subgraph, port) {
 
 const linkIn = (graph, id) => (id == null ? null : graph.links?.get?.(id) ?? graph.links?.[id]);
 
+// Plain copies: a link's fields are getters, which a spread ({...link}) would not copy.
+const allLinks = graph => [...(graph.links?.values?.() ?? Object.values(graph.links ?? {}))].filter(Boolean)
+  .map(l => ({origin_id: String(l.origin_id), origin_slot: l.origin_slot, target_id: String(l.target_id), target_slot: l.target_slot}));
+
+/** Move the user's top-level nodes into a built stage, keeping their ids and wiring: links among them
+ *  stay, a link into or out of the stage becomes a link inside it. Refused (null, nothing changed)
+ *  when they are wired to anything else at the top level; returns the wires it could not remake. */
+export function adoptIntoStage(graph, stage, adopted) {
+  // Ids compare as text: nodes and links do not always agree on number vs string.
+  const sg = stage.subgraph, ids = new Set(adopted.map(n => String(n.id))), key = String;
+  const touching = allLinks(graph).filter(l => ids.has(l.origin_id) || ids.has(l.target_id));
+  if (!touching.every(l => [l.origin_id, l.target_id].every(id => ids.has(id) || id === key(stage.id)))) return null;
+  // Where the stage's input ports lead inside, read before anything moves.
+  const inside = allLinks(sg).filter(l => l.origin_id === key(sg.inputNode?.id));
+  const clones = new Map();
+  for (const node of adopted) {
+    const data = node.serialize();
+    graph.remove(node);
+    const clone = globalThis.LiteGraph.createNode(node.type);
+    clone.id = node.id;  // a contract adopts nodes by id
+    sg.add(clone);
+    Object.assign(clone, {title: data.title, pos: [...data.pos]});
+    clone.properties = {...clone.properties, ...data.properties};
+    (data.widgets_values ?? []).forEach((value, i) => { if (clone.widgets?.[i]) clone.widgets[i].value = value; });
+    clones.set(key(node.id), clone);
+  }
+  const unwired = [];
+  const wire = (from, slot, to, input) => { if (!from || !to || !from.connect(slot, to, input)) unwired.push(`${from?.title ?? '?'} → ${to?.title ?? '?'}`); };
+  for (const l of touching) {
+    const from = clones.get(l.origin_id), to = clones.get(l.target_id);
+    if (from && to) wire(from, l.origin_slot, to, l.target_slot);
+    else if (from) for (const t of inside.filter(i => i.origin_slot === l.target_slot)) wire(from, l.origin_slot, sg.getNodeById(t.target_id), t.target_slot);
+    else {
+      const feeder = feederOf(sg, sg.outputs[l.origin_slot]?.name);
+      wire(feeder?.node, feeder?.slot, to, l.target_slot);
+    }
+  }
+  return unwired;
+}
+
 /** Scaffolding (a Stub's wires, a Check's input) is replaced freely; the user's own wires are not. */
 function scaffoldLink(graph, target, slot) {
   const link = linkIn(graph, target.inputs?.[slot]?.link);
@@ -123,7 +163,7 @@ export function addCheck(subgraph, check, says) {
 /** Build (or extend) the canvas skeleton for the approved steps: a stage per step with typed ports,
  *  wired from the steps it takes from, a Stub passing data through until it is built, and a Check
  *  for each gate. Existing stages are kept; a stage whose step is gone is marked, never deleted. */
-export function buildSkeleton(graph, steps, {promises, design} = {}) {
+export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {}) {
   const created = [], notes = [];
   // Titles come from the approved design (the HLD) when given; numbering mirrors it otherwise.
   const numbers = design ? Object.fromEntries(design.map(d => [d.id, Number(/^(\d+)/.exec(d.title)?.[1] ?? 1)])) : stageNumbers(steps);
@@ -135,6 +175,12 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
     if (!stage && adopted.length) {
       stage = packIntoStage(graph, adopted, step.id, numbers[step.id]);
       if ((step.adopts ?? []).length > adopted.length) notes.push(`${stage.title}: some adopted nodes were not found at the top level.`);
+    } else if (stage && adopted.length) {
+      const titles = adopted.map(n => n.title).join(', ');
+      const unwired = adoptIntoStage(graph, stage, adopted);
+      if (unwired?.length) notes.push(`${stage.title}: took over ${titles}; could not rewire ${unwired.join(', ')} (types differ): connect them inside the stage.`);
+      else if (unwired) notes.push(`${stage.title}: took over ${titles}, wiring kept.`);
+      else notes.push(`${stage.title}: could not take over ${titles}: they are wired to nodes outside this stage. Rewire or adopt those too.`);
     } else if (!stage) {
       const stub = globalThis.LiteGraph.createNode('AgentWorkflowStub');
       graph.add(stub);
@@ -146,7 +192,9 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
     const before = stage.properties?.aws_design, now = sentence[step.id];
     const stale = Boolean(stage.properties?.aws_stale) || (!created.includes(step.id) && before && now && before !== now);
     if (stale && !stage.properties?.aws_stale) notes.push(`${stage.title}: its design changed; recheck what is inside it.`);
-    stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false, ...(now ? {aws_design: now} : {}), aws_stale: stale};
+    // The HLD lives on the stage itself: its step, and its sentence as the subgraph's native description.
+    stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false, ...(now ? {aws_design: now} : {}), aws_stale: stale, aws_step: step};
+    if (now) stage.subgraph.description = now;
     const sg = stage.subgraph;
     const ensure = (ports, name, type, add) => {
       const port = ports.find(p => p.name === name);
@@ -164,18 +212,23 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
     }
     const check = step.gate?.check;
     if (check?.output && !nodes(sg).some(n => n.type === 'AgentWorkflowCheck' && n.properties?.aws_watches === check.output)) addCheck(sg, check, step.gate.says);
-    // API-native: each promised output this step delivers is returned by an API output node on its port.
-    for (const promised of (promises?.outputs ?? []).filter(o => o.from?.startsWith(`${step.id}.`))) {
-      const port = promised.from.split('.')[1];
-      if (nodes(sg).some(n => n.type === 'AgentWorkflowApiOutput' && n.properties?.aws_watches === port)) continue;
-      const node = globalThis.LiteGraph.createNode('AgentWorkflowApiOutput');
-      sg.add(node);
-      node.title = `API output · ${promised.name}`;
-      node.properties = {...node.properties, aws_watches: port};
+  }
+  // The API's outputs (the contract's promised outputs): a top-level output node per promise, wired from
+  // the stage that delivers it. App mode shows them; the API returns them by the promised name.
+  for (const promised of (promises?.outputs ?? []).filter(o => o.from)) {
+    const [step, port] = promised.from.split('.'), stage = stageNode(graph, step);
+    const slot = stage?.outputs?.findIndex(o => o.name === port);
+    if (slot == null || slot < 0) continue;
+    let node = nodes(graph).find(n => n.properties?.aws_output === promised.name);
+    if (!node) {
+      node = globalThis.LiteGraph.createNode('AgentWorkflowApiOutput');
+      graph.add(node);
+      node.title = `Output · ${promised.name}`;
       const name = node.widgets?.find(w => w.name === 'name');
       if (name) name.value = promised.name;
-      rewatch(sg, port);
     }
+    node.properties = {...node.properties, aws_output: promised.name, aws_output_from: promised.from};
+    if (node.inputs?.[0]?.link == null) stage.connect(slot, node, 0);
   }
   // The API's inputs (the contract's promised inputs) as top-level nodes the stages take from.
   const inputs = {};
@@ -223,9 +276,13 @@ export function buildSkeleton(graph, steps, {promises, design} = {}) {
     }
   }
   // The signature (App mode): the promised inputs in, the stages delivering promised outputs out.
-  const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => stageNode(graph, o.from.split('.')[0])?.id).filter(id => id != null))];
+  // Each promise's output node, so App mode shows the result natively.
+  const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => outputNode(graph, o.from)?.id).filter(id => id != null))];
   const settable = node => node.properties?.aws_input_widget ?? 'value';
   if (outputs.length) setSignature(graph, Object.values(inputs).filter(node => node.widgets?.some(w => w.name === settable(node))).map(node => ({node: node.id, widget: settable(node)})), outputs);
+  // The contract's intent and the design's shared parts (data entities, decisions, step order)
+  // are stored in the workflow itself: the workflow is the single source of truth.
+  if (intent) graph.extra = {...graph.extra, aws_contract: intent, ...(meta ? {aws_design: meta} : {})};
   arrangeGraph(graph);
   // What is already in place, so the agent builds only what is missing.
   const stages = steps.map(step => {
@@ -340,10 +397,28 @@ export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX lea
  *  passed when all pass; needs_user_review when the stage has no Check. */
 export function gateResults(record, graph) {
   return nodes(graph).filter(node => node.properties?.aws_stage).map(stage => {
-    const checks = deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => node.type === 'AgentWorkflowCheck').map(({node, runId}) => ({title: node.title, result: record?.outputs?.[runId]?.aws_check?.[0]}));
+    const inner = deepNodes(stage.subgraph, `${stage.id}:`);
+    let checks = inner.filter(({node}) => node.type === 'AgentWorkflowCheck').map(({node, runId}) => ({title: node.title, result: record?.outputs?.[runId]?.aws_check?.[0]}));
+    // A step a person does (Your review decisions): its part is done when the queue reached the person.
+    const human = inner.filter(({node}) => node.type === 'AgentWorkflowReviewDecisions').map(({node, runId}) => ({node, done: record?.outputs?.[runId]?.aws_human?.[0]}));
+    if (!checks.length && human.length) checks = human.map(({node, done}) => ({title: node.title, result: done && {passed: true, evidence: `the review queue reached you · ${done.decided.toLocaleString()} decided · ${done.open.toLocaleString()} open${done.open ? ' (your turn: Review tab)' : ''}`}}));
     const status = !checks.length ? 'needs_user_review' : checks.some(c => !c.result) ? 'no_output' : checks.every(c => c.result.passed) ? 'passed' : 'failed';
-    return {step: stage.properties.aws_stage, status, checks: checks.map(c => ({title: c.title, passed: c.result?.passed ?? null, evidence: c.result?.evidence ?? 'did not run'}))};
+    const open = human.reduce((n, h) => n + (h.done?.open ?? 0), 0);
+    return {step: stage.properties.aws_stage, status, ...(open ? {open} : {}), checks: checks.map(c => ({title: c.title, passed: c.result?.passed ?? null, evidence: c.result?.evidence ?? 'did not run'}))};
   });
+}
+
+/** What each stage's nodes said on a run, by title: the numbers to judge it by (counts, rates,
+ *  sizes), readable without node ids. Scoring against a hidden answer key is left out. */
+export function stageSummaries(record, graph) {
+  const said = out => String(out?.aws_headline?.[0] ?? out?.text?.[0] ?? '').replace(/\s+/g, ' ').slice(0, 300);
+  return nodes(graph).filter(node => node.properties?.aws_stage).map(stage => ({
+    stage: stage.title,
+    nodes: deepNodes(stage.subgraph, `${stage.id}:`)
+      .filter(({node, runId}) => !node.isSubgraphNode?.() && record?.outputs?.[runId] && !USER_ONLY.has(node.type))
+      .map(({node, runId}) => ({node: node.title, said: said(record.outputs[runId])}))
+      .filter(item => item.said),
+  }));
 }
 
 /** Run outputs small enough for the agent: long texts shortened, long lists sampled, marked as such. */
@@ -380,38 +455,51 @@ async function digest(text) {
 /** Evidence for deriving contract step states: the stages and the nodes inside them (a node's step
  *  is the stage it sits in), the saved workflow (for the architecture rules) and, when the latest run
  *  of this workflow ran exactly the current graph, each step's Check results on that run. */
+// "2026-10-20T12:50" on the user's clock (toISOString alone would show UTC).
+const localTime = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
 export async function contractEvidence(app, api) {
   const graph = app.rootGraph ?? app.graph;
   const stages = nodes(graph).filter(node => node.properties?.aws_stage);
   const evidence = {
     nodes: [
-      ...nodes(graph).filter(node => !node.properties?.aws_stage).map(node => ({id: String(node.id), title: node.title, class_type: node.type, step: null, given: !!(node.properties?.aws_given || node.properties?.aws_input), note: /Note$/.test(node.type ?? '')})),
-      ...stages.flatMap(stage => deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => !node.isSubgraphNode?.()).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, step: stage.properties.aws_stage, scaffold: SCAFFOLD.has(node.type), fuzzy: node.type === 'AgentWorkflowFuzzyNode'}))),
+      ...nodes(graph).filter(node => !node.properties?.aws_stage).map(node => ({id: String(node.id), title: node.title, class_type: node.type, step: null, given: !!(node.properties?.aws_given || node.properties?.aws_input || node.properties?.aws_output), note: /Note$/.test(node.type ?? '')})),
+      ...stages.flatMap(stage => deepNodes(stage.subgraph, `${stage.id}:`).filter(({node}) => !node.isSubgraphNode?.()).map(({node, runId}) => ({id: runId, title: node.title, class_type: node.type, display: globalThis.LiteGraph?.registered_node_types?.[node.type]?.title, realizes: node.properties?.aws_realizes ?? null, step: stage.properties.aws_stage, scaffold: SCAFFOLD.has(node.type), fuzzy: node.type === 'AgentWorkflowFuzzyNode'}))),
     ],
     stages: stages.map(stage => ({step: stage.properties.aws_stage, title: stage.title, orphaned: !!stage.properties.aws_orphaned, stale: !!stage.properties.aws_stale,
-      takes: (stage.subgraph.inputs ?? []).map(p => [p.name, p.type]), gives: (stage.subgraph.outputs ?? []).map(p => [p.name, p.type, observedFields(stage.subgraph, p.name)])})),
+      takes: (stage.subgraph.inputs ?? []).map(p => [p.name, p.type]), gives: (stage.subgraph.outputs ?? []).map(p => [p.name, p.type, observedFields(stage.subgraph, p.name)]),
+      // What its Checks actually test, to compare with the check its gate agreed to.
+      checks: stage.subgraph.nodes.filter(n => n.type === 'AgentWorkflowCheck').map(n => ({watches: n.properties?.aws_watches ?? null, kind: n.widgets?.find(w => w.name === 'kind')?.value, expect: n.widgets?.find(w => w.name === 'expect')?.value ?? ''}))})),
     workflow: graph.serialize(),
-    gate_results: {}, run: null,
+    gate_results: {}, gate_checks: {}, open: {}, run: null,
   };
   const defs = await api.getNodeDefs();
   const analysis = analyzeGraph(graph.serialize(), withStageOutputs(graph, defs));
   // "No output node" is judged by the gates themselves: on an empty canvas it is progress, not drift.
   evidence.analysis = {outputs: analysis.outputs.map(o => o.title), problems: analysis.problems.filter(p => p.kind !== 'no_output_node').map(p => p.message)};
   const history = await api.fetchApi('/history?max_items=64').then(r => (r.ok ? r.json() : {}));
-  const executable = JSON.stringify((await app.graphToPrompt()).output);
+  const {output: prompt} = await app.graphToPrompt();
+  const executable = JSON.stringify(prompt);
+  evidence.prompt = prompt;  // examples' results count only for exactly this graph
   const match = latestMatchingRun(history, graph.id, executable);
   const fingerprint = await digest(executable);
   if (match) {
     evidence.run = {prompt_id: match.run.prompt[1], current: match.current};
     if (match.current && match.run.status?.completed) {
-      for (const gate of gateResults(match.run, graph)) evidence.gate_results[gate.step] = gate.status;
+      for (const gate of gateResults(match.run, graph)) {
+        evidence.gate_results[gate.step] = gate.status;
+        evidence.gate_checks[gate.step] = gate.checks;
+        if (gate.open) evidence.open[gate.step] = gate.open;  // pairs waiting for the user's review
+      }
       // Kept with the workflow, so the status survives a restart (ComfyUI's history does not).
-      graph.extra = {...graph.extra, aws_verified: {fingerprint, at: new Date().toISOString().slice(0, 16), gates: evidence.gate_results}};
+      graph.extra = {...graph.extra, aws_verified: {fingerprint, at: localTime(), gates: evidence.gate_results, checks: evidence.gate_checks, open: evidence.open}};
     }
   } else if (graph.extra?.aws_verified?.fingerprint === fingerprint) {
     // No run in this session yet, but exactly this graph was verified before.
     evidence.run = {prompt_id: null, current: true, at: graph.extra.aws_verified.at};
     evidence.gate_results = {...graph.extra.aws_verified.gates};
+    evidence.open = {...graph.extra.aws_verified.open};
+    evidence.gate_checks = {...graph.extra.aws_verified.checks};
   }
   return evidence;
 }
@@ -569,7 +657,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             node.disconnectInput(slot);
           }
         } else if (op.op === 'signature') {
-          // The workflow's API: inputs are widgets on top-level nodes, outputs are top-level stages.
+          // The workflow's API: inputs are widgets on top-level nodes, outputs are stages (each answered
+          // by its API output node, which App mode shows).
           if (op.stage != null) throw Error('The signature is set at the top level (no "stage").');
           const inputs = (op.inputs ?? []).map(({node: ref, widget}) => {
             const node = resolve(ref, op, added);
@@ -577,7 +666,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             if (!node.widgets?.some(w => w.name === widget)) throw Error(`${node.title} has no widget ${widget}.`);
             return {node: node.id, widget};
           });
-          const outputs = (op.outputs ?? []).map(ref => { const node = resolve(ref, op, added); if (!node) throw notFound(ref); return node.id; });
+          const outputs = (op.outputs ?? []).map(ref => { const node = resolve(ref, op, added); if (!node) throw notFound(ref); return node.properties?.aws_stage ? (outputNode(app.graph, `${node.properties.aws_stage}.`)?.id ?? node.id) : node.id; });
           if (!outputs.length) throw Error('Name at least one output: the stage (step id) whose results the API returns.');
           setSignature(app.graph, inputs, outputs);
         } else if (op.op !== 'arrange') throw Error(`Unsupported operation: ${op.op}`);
@@ -647,7 +736,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'skeleton') {
       if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
       app.canvas.emitBeforeChange();
-      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
+      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design, intent: args.intent, meta: args.meta}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
     }
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.
@@ -695,7 +784,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (!response.ok) throw Error('Cannot read native execution history.');
         const record = (await response.json())[latestPrompt];
         if (record) {
-          result.status=record.status; result.outputs=compactOutputs(agentOutputs(record));
+          // Each stage's numbers by node title first; the raw outputs (by node id) follow.
+          result.status=record.status; result.stages=stageSummaries(record, app.graph); result.outputs=compactOutputs(agentOutputs(record));
           result.image_previews=[];
           for (const output of Object.values(agentOutputs(record))) {
             for (const image of output.images??[]) {

@@ -53,7 +53,7 @@ const artifacts = process.env.ARTIFACTS;
     assert.match(run.outputs, /FUZZY TEST/, 'the plan ran as real nodes');
     assert.match(run.outputs, /1\. upper = CaseConverter\(string=\$input, mode=\\"UPPERCASE\\"\)/, 'the node shows its plan');
 
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-versions'));
     const first = page.locator('.aw-versions-item').first();
     await first.waitFor({timeout: 15000});
     assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Fuzzy plan #[\d:]+ · succeeded$/);

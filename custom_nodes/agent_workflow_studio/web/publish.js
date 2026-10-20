@@ -1,6 +1,7 @@
 // Publish the open workflow as an API: its signature is App mode's selection (extra.linearData) —
-// inputs are widgets on top-level nodes, outputs are top-level stages — and the server freezes the
-// runnable prompt at a version of the project history.
+// inputs are widgets on top-level nodes, outputs are the top-level output nodes of the contract's
+// promises (App mode shows them natively) — and the server freezes the runnable prompt at a version
+// of the project history.
 const slug = text => String(text ?? '').toLowerCase().replace(/^\d+\s*·\s*/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'value';
 
 // A widget promoted on a subgraph card belongs to the nodes inside it that its port feeds (all of
@@ -14,6 +15,23 @@ function promoted(node, widget) {
   }).filter(Boolean);
   if (!targets.length) throw Error(`${node.title}: ${widget} does not lead to a node inside.`);
   return targets;
+}
+
+/** A node by its App mode id (node ids are unique across the workflow, as App mode finds them: at the
+ *  top level or inside a stage), with its path in a run: "12", or "12:5" for node 5 inside stage 12. */
+export function nodeAtPath(graph, id) {
+  const top = graph.getNodeById(id);
+  if (top) return {node: top, path: String(top.id)};
+  for (const stage of graph.nodes ?? []) {
+    const inner = stage.subgraph?.getNodeById?.(id);
+    if (inner) return {node: inner, path: `${stage.id}:${inner.id}`};
+  }
+  return null;
+}
+
+/** The top-level output node of a promise delivered at "step.port" (or at any port of "step."). */
+export function outputNode(graph, from) {
+  return (graph.nodes ?? []).find(n => n.properties?.aws_output && (n.properties.aws_output_from === from || (from.endsWith('.') && n.properties.aws_output_from?.startsWith(from)))) ?? null;
 }
 
 /** The workflow's API signature from App mode, with each input's type, choices and current value. */
@@ -34,9 +52,12 @@ export function signatureOf(graph, defs) {
       type: choices ? 'COMBO' : schema?.[0], ...(choices ? {choices} : {}), default: top.widgets?.find(w => w.name === widget)?.value};
   });
   const outputs = (linear.outputs ?? []).map(id => {
-    const node = graph.getNodeById(id);
-    if (!node) throw Error(`App mode output ${id} is not on the canvas any more; choose it again.`);
-    return {name: unique(slug(node.title), `output_${id}`), node: id, title: node.title};
+    const found = nodeAtPath(graph, id);
+    if (!found) throw Error(`App mode output ${id} is not on the canvas any more; choose it again.`);
+    const {node, path} = found;
+    // An API output node answers under the contract's promised name.
+    const promised = node.type === 'AgentWorkflowApiOutput' ? node.widgets?.find(w => w.name === 'name')?.value : null;
+    return {name: unique(promised || slug(node.title), `output_${id}`), node: path, title: node.title};
   });
   return {inputs, outputs};
 }
@@ -44,6 +65,11 @@ export function signatureOf(graph, defs) {
 /** Set the signature (what the agent's "signature" edit and App mode both write). */
 export function setSignature(graph, inputs, outputs) {
   graph.extra = {...graph.extra, linearData: {inputs: inputs.map(({node, widget}) => [node, widget]), outputs}};
+  // App mode reads its selection from the workflow when one loads: record the change and have its
+  // store re-read it, so the workflow runs as an App right away (no reload). The store is reached
+  // through the Vue app (no public API); the App-mode browser test fails first if that changes.
+  globalThis.comfyAPI?.app?.app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.();
+  globalThis.document?.querySelector('#vue-app')?.__vue_app__?.config?.globalProperties?.$pinia?._s?.get('appMode')?.resetSelectedToWorkflow?.();
 }
 
 export async function publishWorkflow(app, api, name, description = '') {

@@ -31,7 +31,8 @@ def chat_command() -> list[str]:
     ]
 
 
-def commands(profile: str | None) -> set[str]:
+def commands(profile: str | None) -> tuple[set[str], list[str]]:
+    """Pi's commands and its active tools (from /comfy --check)."""
     with tempfile.TemporaryDirectory() as workspace:
         env = {
             **pi_cli._pi_environment(),
@@ -45,7 +46,10 @@ def commands(profile: str | None) -> set[str]:
             env["PI_CODING_AGENT_DIR"] = env["COMFY_PI_PARENT_AGENT_DIR"] = profile
         result = subprocess.run(
             chat_command(),
-            input=json.dumps({"type": "get_commands", "id": "smoke"}) + "\n",
+            input=json.dumps({"type": "get_commands", "id": "smoke"})
+            + "\n"
+            + json.dumps({"type": "prompt", "id": "check", "message": "/comfy --check"})
+            + "\n",
             capture_output=True,
             text=True,
             env=env,
@@ -54,12 +58,17 @@ def commands(profile: str | None) -> set[str]:
         )
     if result.returncode:
         raise AssertionError(f"Pi exited {result.returncode}: {result.stderr[-1500:]}")
+    names, active = None, None
     for line in result.stdout.splitlines():
         record = json.loads(line)
         if record.get("id") == "smoke":
             assert record.get("success"), record
-            return {item["name"] for item in record["data"]["commands"]}
-    raise AssertionError("Pi returned no get_commands response:\n" + result.stdout[-1500:])
+            names = {item["name"] for item in record["data"]["commands"]}
+        if record.get("method") == "notify" and '"comfy_tools"' in record.get("message", ""):
+            active = json.loads(record["message"])["active"]
+    if names is None or active is None:
+        raise AssertionError("Pi returned no commands or tool check:\n" + result.stdout[-1500:])
+    return names, active
 
 
 def main() -> int:
@@ -67,10 +76,13 @@ def main() -> int:
         print("SKIP pi_startup: Pi CLI not installed")
         return 0
     with tempfile.TemporaryDirectory() as empty_profile:
-        names = commands(empty_profile)
+        names, active = commands(empty_profile)
     assert "comfy" in names and "ponytail" not in names, names
+    # Every tool in the shared definition file is registered (the same file feeds Claude Code).
+    tools = {t["name"] for t in json.loads((PACKAGE / "agent_tools.json").read_text())}
+    assert tools <= set(active), sorted(tools - set(active))
     print("PASS pi_startup (empty Pi profile, no add-ons)")
-    names = commands(None)
+    names, _ = commands(None)
     assert "comfy" in names, names
     print(
         f"PASS pi_startup (user Pi profile, add-ons: {'ponytail' in names and 'Ponytail' or 'none'})"

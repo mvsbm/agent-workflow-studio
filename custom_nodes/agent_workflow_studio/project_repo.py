@@ -18,8 +18,15 @@ import threading
 import time
 from pathlib import Path
 
+from .native_layers import layers
 from .pi_chat_workspace import workspace_id_for_graph
-from .workflow_contract import from_plan_v1, from_yaml, render, report, to_yaml
+from .workflow_contract import (
+    from_plan_v1,
+    present,
+    render,
+    report,
+    validate_contract,
+)
 
 # Pairs: same/different/unsure; customers: correct/wrong; a record in a customer: not_this_person.
 REVIEW_DECISIONS = {"same", "different", "unsure", "correct", "wrong", "not_this_person"}
@@ -150,24 +157,41 @@ class ProjectRepo:
             self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author=author)
             return self._git("rev-parse", "HEAD").strip()
 
-    def save_contract(self, contract: dict) -> str:
-        """Commit the user-approved contract as contract.yaml (replacing a pre-contract spec.json)."""
+    def commit_contract(self, workflow: dict, purpose: str) -> str:
+        """Commit the workflow holding a just-approved contract natively, as the user's approval."""
         with self.lock:
             self._ensure()
-            (self.tree / "contract.yaml").write_text(to_yaml(contract))
-            self._git("add", "contract.yaml")
-            if (self.tree / "spec.json").exists():
+            (self.tree / "workflow.json").write_text(_snapshot(workflow))
+            self._git("add", "workflow.json")
+            if (
+                self.tree / "spec.json"
+            ).exists():  # a pre-contract plan is replaced by the contract
                 self._git("rm", "--quiet", "spec.json")
-            if not self._git("status", "--porcelain").strip():
-                return self._git("rev-parse", "HEAD").strip()
-            message = " ".join(f"Contract approved: {contract['purpose']}".split())[:500]
-            self._git("commit", "--quiet", "-m", message, author="user")
+            message = " ".join(f"Contract approved: {purpose}".split())[:500]
+            self._git("commit", "--quiet", "--allow-empty", "-m", message, author="user")
             return self._git("rev-parse", "HEAD").strip()
 
+    def adopt_template(self, workflow: dict) -> bool:
+        """A workflow opened with its contract inside (a template) becomes its own first version,
+        once: only while it has no history (so it never overrides what a user or agent did since)."""
+        if self.log():
+            return False
+        contract = validate_contract(present(layers(workflow)))
+        with self.lock:
+            self._ensure()
+            (self.tree / "workflow.json").write_text(_snapshot(workflow))
+            self._git("add", "workflow.json")
+            message = f"Template: {contract['purpose']} (contract shipped with the workflow)"
+            self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author="agent")
+        return True
+
     def load_contract(self) -> dict | None:
-        """The latest approved contract; a plan approved before contracts existed is converted."""
-        if (self.tree / "contract.yaml").is_file():
-            return from_yaml((self.tree / "contract.yaml").read_text())
+        """The contract the latest version holds natively, or a plan approved before contracts
+        existed (converted)."""
+        if (self.tree / "workflow.json").is_file():
+            found = layers(json.loads((self.tree / "workflow.json").read_text()))
+            if found:
+                return found
         if (self.tree / "spec.json").is_file():
             return from_plan_v1(json.loads((self.tree / "spec.json").read_text()))
         return None
@@ -264,12 +288,14 @@ class ProjectRepo:
         )
 
     def contract_at(self, sha: str) -> dict | None:
-        """The contract (or pre-contract plan) a commit approved, if any."""
-        found = self._file_at(sha, lambda name: name in ("contract.yaml", "spec.json"))
-        if not found:
-            return None
-        name, text = found
-        return from_yaml(text) if name == "contract.yaml" else from_plan_v1(json.loads(text))
+        """The contract a version introduced or changed (or a pre-contract plan), if any."""
+        found = self._file_at(sha, lambda name: name == "spec.json")
+        if found:
+            return from_plan_v1(json.loads(found[1]))
+        entry = next((e for e in self.log() if e["sha"] == sha), None)
+        now = layers(self.show(sha))
+        before = layers(self.show(entry["parent"])) if entry and entry["parent"] else None
+        return now if now and now != before else None
 
     def restore(self, sha: str) -> tuple[str | None, dict]:
         workflow = self.show(sha)
@@ -415,7 +441,7 @@ def install_project_routes() -> None:
         def run(repo):
             from .workflow_contract import hld, review
 
-            current = repo.load_contract()
+            current = present(repo.load_contract())
             if not current:
                 return {"contract": None}
             # The design as sentences and its review, computed once here for every reader.
@@ -427,6 +453,16 @@ def install_project_routes() -> None:
 
         return await call(request, run)
 
+    @routes.post(prefix + "/template")
+    async def template(request):
+        try:
+            body = await request.json()
+        except ValueError:
+            return web.json_response({"error": "invalid JSON body"}, status=400)
+        if not isinstance(body, dict) or not isinstance(body.get("workflow"), dict):
+            return web.json_response({"error": "workflow required"}, status=400)
+        return await call(request, lambda repo: {"adopted": repo.adopt_template(body["workflow"])})
+
     @routes.post(prefix + "/contract/status")
     async def contract_status(request):
         try:
@@ -437,8 +473,13 @@ def install_project_routes() -> None:
             return web.json_response({"error": "invalid evidence"}, status=400)
 
         def run(repo):
-            current = repo.load_contract()
-            return {"contract": current, **(report(current, evidence) if current else {})}
+            # The live canvas holds the contract (native layers); the last version if it has none.
+            current = layers(evidence.get("workflow")) or repo.load_contract()
+            accepted = repo.records("acceptance") if current else []
+            status = (
+                report(current, evidence, accepted[-1] if accepted else None) if current else {}
+            )
+            return {"contract": present(current), **status}
 
         return await call(request, run)
 
@@ -464,9 +505,13 @@ def install_project_routes() -> None:
     @routes.get(prefix + "/loop")
     async def loop_journal(request):
         def run(repo):
-            from .loop import budget_of
+            from .loop import budget_of, outside_loop
 
-            return {"journal": repo.records("loop"), "budget": budget_of(repo.load_contract())}
+            return {
+                "journal": repo.records("loop"),
+                "budget": budget_of(repo.load_contract()),
+                "outside": outside_loop(repo.log()),
+            }
 
         return await call(request, run)
 

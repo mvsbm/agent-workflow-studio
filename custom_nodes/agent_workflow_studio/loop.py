@@ -12,6 +12,19 @@ from __future__ import annotations
 from typing import Any
 
 BUDGET = {"iterations": 6, "stall": 2}  # defaults; a contract's `loop` may override them
+# The version message of an agent edit made while improving, but outside an iteration (not measured).
+OUTSIDE = "Outside the improve loop: "
+
+
+def outside_loop(log: list[dict]) -> list[str]:
+    """Unmeasured changes since the latest iteration (log newest first; [] before any iteration)."""
+    found = []
+    for commit in log:
+        if commit["message"].startswith("Loop "):
+            return found
+        if commit["message"].startswith(OUTSIDE):
+            found.append(commit["message"][len(OUTSIDE) :])
+    return []  # no iteration yet: building, not improving
 
 
 def snapshot(status: dict, acceptance: dict | None) -> dict:

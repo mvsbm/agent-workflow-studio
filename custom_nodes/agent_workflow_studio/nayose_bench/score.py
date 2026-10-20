@@ -132,6 +132,38 @@ def score(key_dir: Path, result_path: Path) -> dict:
     }
 
 
+def funnel(key_dir: Path, result_path: Path, candidates: list[tuple[str, str]]) -> dict:
+    """Where the true matches are lost: never compared as a pair (retrieval), or compared but not
+    merged (decisions, review, guard). Mentions are "system/record_id/role", as in the pairs."""
+    key = {}
+    for part in sorted(key_dir.glob("answer_key*.csv")):
+        with open(part, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                key[f"{r['system']}/{r['record_id']}/{r['role']}"] = (
+                    r["entity_id"],
+                    set(filter(None, r["tags"].split(";"))),
+                )
+    result, _ = load_result(result_path)
+    customer = {"/".join(m): c for m, c in result.items() if c}
+    compared = {frozenset(pair) for pair in candidates}
+    members = defaultdict(list)
+    for m, (entity, _) in key.items():
+        members[entity].append(m)
+    counts, missed = Counter(), Counter()
+    for group in members.values():
+        for a, b in combinations(group, 2):
+            counts["true pairs"] += 1
+            if customer.get(a) and customer.get(a) == customer.get(b):
+                # found directly, or joined through others (a = c = b)
+                counts["same customer"] += 1
+            elif frozenset((a, b)) not in compared:
+                counts["never a candidate"] += 1
+                missed.update(key[a][1] | key[b][1] or {"clean"})
+            else:
+                counts["candidate, not merged"] += 1
+    return {"counts": dict(counts), "never a candidate, by damage": dict(missed.most_common(6))}
+
+
 def text(report: dict) -> str:
     pw, b = report["pairwise"], report["bcubed"]
     worst = sorted(((v, t) for t, v in report["recall_by_damage"].items() if v is not None))[:6]

@@ -1,7 +1,10 @@
 // The design page: one shareable document generated from the workflow itself — the high-level
 // design (one sentence per stage), the data entities, each stage's low-level design (its nodes
-// and what they did on the last run), decisions, status, acceptance, the improve loop and the API.
+// and what they did on the last run), decisions, status, the gaps between plan and proof, the
+// improve loop and the API.
 // Nothing is written by hand, so it cannot disagree with the canvas.
+
+import {contractEvidence} from './pi_canvas.js';
 
 const line = text => String(text ?? '').replace(/\s+/g, ' ').trim();
 
@@ -32,6 +35,16 @@ export async function designPage(app, api) {
   if (review.length) out.push('', '## Design review', ...review.map(r => `- ${r.ok ? '✓' : '✗'} ${r.item}`));
   const verified = graph.extra?.aws_verified;
   if (verified) out.push('', '## Status', `Verified on the run of ${verified.at} (fingerprint ${verified.fingerprint}):`, ...Object.entries(verified.gates).map(([step, status]) => `- ${step}: ${status}`));
+  if (contract) {
+    // The same plan-vs-built-vs-proven comparison as the Contract tab (progress.py).
+    const evidence = await contractEvidence(app, api);
+    const response = await api.fetchApi(`${base}/contract/status`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)});
+    const trace = response.ok ? (await response.json()).trace : null;
+    if (trace) {
+      out.push('', '## Plan vs built vs proven', trace.summary, '', ...trace.requests.map(r => `- **${r.id}** (${r.priority}): ${r.verdict} · built by ${r.steps.map(s => `${s.id} (${s.state})`).join(', ') || 'no step'} · examples ${r.examples.map(e => `${e.id} ${e.status}`).join(', ') || 'none'}`));
+      out.push('', '## Gaps', ...(trace.gaps.length ? trace.gaps.map(g => `- [${g.severity}] ${g.where}: ${line(g.text)}`) : ['- none: everything agreed is built and proven on this version']));
+    }
+  }
   if (journal.length) out.push('', '## Improve loop', ...journal.map(j => `- #${j.n} **${j.verdict}**: ${line(j.hypothesis)} — ${line(j.change)}`));
   const mine = apis.filter(a => a.workflow_id === graph.id);
   if (mine.length) out.push('', '## API', ...mine.map(a => `- \`POST /agent-workflow-studio/api/${a.name}/run\` · version ${a.semver ?? ''} (${String(a.version).slice(0, 8)}) · inputs ${a.inputs.join(', ') || 'none'} · outputs ${a.outputs.join(', ')}`));

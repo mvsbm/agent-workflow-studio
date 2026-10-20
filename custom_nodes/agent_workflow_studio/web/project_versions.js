@@ -3,6 +3,7 @@
 // version as a new commit (history is never rewritten).
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
+import {registerWorkflowTab} from './workflow_drawer.js';
 
 const rootGraph = () => app.rootGraph ?? app.graph;
 const workflowId = () => rootGraph()?.id;
@@ -106,7 +107,7 @@ function createPanel() {
       const {commits} = await request('/log');
       status.textContent = commits.length
         ? `${commits.length} version${commits.length > 1 ? 's' : ''} of this workflow. Agent edits and saves are recorded automatically.`
-        : 'No versions yet. Agent edits and saves are recorded automatically.';
+        : 'No versions yet: nothing has been saved or changed by the agent since this workflow was opened. Save it (Ctrl/⌘ + S) to record the first version; after that, every save and agent edit is a version you can restore.';
       list.replaceChildren(...commits.map((commit, index) => item(commit, index === 0)));
     } catch (error) {
       status.textContent = error.message;
@@ -174,7 +175,8 @@ app.registerExtension({
     // Runs can add record versions; refresh when one finishes.
     for (const event of ['execution_success', 'execution_error']) api.addEventListener(event, () => window.dispatchEvent(new Event(CHANGED)));
     let panel;
-    app.extensionManager.sidebarTab.registerSidebarTab({
+    registerWorkflowTab({
+      order: 2,
       id: 'workflow-versions',
       icon: 'pi pi-history',
       title: 'Versions',

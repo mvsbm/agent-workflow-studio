@@ -41,6 +41,11 @@ class ComfyFixture:
             (nodes / pack.name).symlink_to(pack)
         for name in ("user/default/workflows", "output", "input", "temp", "models"):
             (self.root / name).mkdir(parents=True, exist_ok=True)
+        weights = COMFY / "models" / "agent_workflow_studio"
+        if (
+            weights.is_dir()
+        ):  # public model weights only (no user data): shared, not downloaded again
+            (self.root / "models" / "agent_workflow_studio").symlink_to(weights)
         (self.root / "user/default/comfy.templates.json").write_text("[]")
         (self.root / "user/default/comfy.settings.json").write_text(json.dumps(SETTINGS))
         self.port = free_port()

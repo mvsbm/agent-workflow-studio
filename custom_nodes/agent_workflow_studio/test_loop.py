@@ -16,6 +16,17 @@ def state(verified, failing=(), steps=4, examples=None, current=True):
 
 
 class LoopTests(unittest.TestCase):
+    def test_changes_outside_the_loop_are_counted_since_the_last_iteration(self) -> None:
+        from .loop import outside_loop
+
+        log = [  # newest first
+            {"message": "Outside the improve loop: raise threshold"},
+            {"message": "Loop 2 · same: x"},
+            {"message": "Outside the improve loop: older"},
+        ]
+        self.assertEqual(outside_loop(log), ["raise threshold"])
+        self.assertEqual(outside_loop(log[:1]), [])  # no iteration yet: still building
+
     def test_snapshot_reads_the_contract_report(self) -> None:
         status = {
             "freshness": "Based on the latest run of this exact graph.",

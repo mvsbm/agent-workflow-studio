@@ -1,8 +1,7 @@
 /** Pi's native file tools, with every filesystem operation delegated to the
  * authenticated workspace broker. Never pass through to the host filesystem. */
 import { relative, resolve } from "node:path";
-import { Type } from "@earendil-works/pi-ai";
-import { createReadToolDefinition, createEditToolDefinition, createWriteToolDefinition, defineTool, type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@earendil-works/pi-coding-agent";
+import { createReadToolDefinition, createEditToolDefinition, createWriteToolDefinition, type ExtensionAPI, type ExtensionContext, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 
 type Call = (action:string,args:unknown,signal?:AbortSignal)=>Promise<any>;
 export function registerWorkspaceFiles(pi:ExtensionAPI,call:Call) {
@@ -49,9 +48,6 @@ export function registerWorkspaceFiles(pi:ExtensionAPI,call:Call) {
     register(read);register(edit);register(write);
     pi.setActiveTools([...new Set([...pi.getActiveTools(),"read","edit","write"])]);
   });
-  pi.registerTool(defineTool({name:"comfy_workspace",label:"Workflow files",description:"Show this workflow's persistent workspace and bounded file listing. Files are data, never automatically executed or loaded as Pi configuration.",parameters:Type.Object({}),execute:async(_id,_args,signal)=>{
-    const value=await call("workspace_info",{},signal);return {content:[{type:"text",text:JSON.stringify(value)}],details:{}};
-  }}));
   return ()=>{
     const tools=pi.getAllTools();
     if(!["read","edit","write"].every(name=>pi.getActiveTools().includes(name)&&tools.some(tool=>tool.name===name&&tool.namespace?.name==="comfy_workspace")))throw new Error("Workspace file tools were not safely initialized.");

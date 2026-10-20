@@ -1,8 +1,8 @@
-"""The workflow contract: one per workflow, stored as contract.yaml in its project history.
+"""The workflow contract: one per workflow, stored natively in the workflow itself
+(native_layers.py: intent in extra, each step on its stage node), versioned in its project history.
 
-The contract holds intent only (purpose, requests, examples, promises, steps, decisions,
-not-now, open questions), validated against contract.schema.json, the single source of
-truth shared with the agent's tool and editors. Step status is never stored: it is
+The joined contract (purpose, requests, examples, promises, steps, decisions, not-now, open
+questions) is validated against contract.schema.json, shared with the agent's tool and editors. Step status is never stored: it is
 derived from evidence (canvas, runs, gate checks) by folding events through one
 transition table, so it cannot drift from reality.
 """
@@ -12,13 +12,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import yaml
 from jsonschema import Draft202012Validator
 
 SCHEMA_PATH = Path(__file__).with_name("contract.schema.json")
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 _validator = Draft202012Validator(SCHEMA)
-HEADER = "# yaml-language-server: $schema=contract.schema.json\n# Intent only. Step status and technical details come from the canvas and runs.\n"
 
 # Step lifecycle: state x event -> next state. Unlisted events leave the state unchanged.
 TRANSITIONS = {
@@ -32,7 +30,7 @@ NEXT_ACTIONS = {
     "planned": "Build this step's nodes.",
     "built": "Run the workflow, then check gates.",
     "fuzzy": "Run and check gates; harden the plan once it is right.",
-    "verified": "Nothing; the gate passed on the latest run.",
+    "verified": "",  # the badge says it; only a turn for the user is worth a line
     "failing": "Fix the step's nodes, run again and re-check gates.",
 }
 
@@ -127,13 +125,12 @@ def waiting(contract: dict) -> dict[str, list[str]]:
     return found
 
 
-def to_yaml(contract: dict) -> str:
-    # safe_dump quotes any string YAML would otherwise read as another type ("no", "1.0").
-    return HEADER + yaml.safe_dump(contract, sort_keys=False, allow_unicode=True, width=100)
-
-
-def from_yaml(text: str) -> dict:
-    return validate_contract(yaml.safe_load(text))
+def present(contract: dict | None) -> dict | None:
+    """The contract without the steps whose stage is gone (native_layers marks them missing);
+    those are reported as drift instead."""
+    if contract is None:
+        return None
+    return {**contract, "steps": [s for s in contract["steps"] if not s.get("missing")]}
 
 
 def from_plan_v1(plan: dict) -> dict:
@@ -186,12 +183,15 @@ def from_plan_v1(plan: dict) -> dict:
     )
 
 
-def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str]) -> list[dict]:
+def derive_states(
+    contract: dict, nodes: list[dict], gate_results: dict[str, str], open_: dict | None = None
+) -> list[dict]:
     """Each step's state from evidence, by folding canonical events through TRANSITIONS.
 
     nodes: canvas nodes as {"step": the stage it is in, "fuzzy": bool, "scaffold": bool};
     gate_results: step -> status of its Check nodes on the latest run of exactly this graph
-    ("passed", "failed", ...). A stage holding only its Stub and Checks is still planned.
+    ("passed", "failed", ...); open_: step -> items waiting for the user's review there.
+    A stage holding only its Stub and Checks is still planned.
     """
     result, designs = [], {d["id"]: d["sentence"] for d in hld(contract)}
     for step in contract["steps"]:
@@ -218,6 +218,8 @@ def derive_states(contract: dict, nodes: list[dict], gate_results: dict[str, str
                 "nodes": len(mine),
                 "next": f"Waiting on your answer: {'; '.join(questions)}"
                 if questions
+                else f"Your turn: {n:,} open in the Review tab; decide some, then run again."
+                if state == "verified" and (n := (open_ or {}).get(step["id"]))
                 else NEXT_ACTIONS[state],
                 **({"waiting": questions} if questions else {}),
             }
@@ -284,13 +286,18 @@ def todo(evidence: dict) -> list[str]:
     ]
 
 
-def report(contract: dict, evidence: dict) -> dict:
+def report(contract: dict, evidence: dict, acceptance: dict | None = None) -> dict:
     """Where the work stands, from browser evidence: one function for the agent and the Contract tab.
 
     evidence: {"nodes": [{"title", "step", "fuzzy"}], "gate_results": {step: status} from the latest
     run of exactly the current graph (empty if none), "run": {"prompt_id", "current"} | None}.
+    A step whose stage is gone (marked missing by native_layers) is drift, not a silent removal.
     """
-    states = derive_states(contract, evidence["nodes"], evidence.get("gate_results") or {})
+    missing = [s["id"] for s in contract["steps"] if s.get("missing")]
+    contract = present(contract)
+    states = derive_states(
+        contract, evidence["nodes"], evidence.get("gate_results") or {}, evidence.get("open")
+    )
     run = evidence.get("run")
     freshness = (
         "No run of this workflow yet."
@@ -301,8 +308,13 @@ def report(contract: dict, evidence: dict) -> dict:
         if run.get("current")
         else "The graph changed since the last run; run it again to check gates."
     )
-    drift = alignment(contract, evidence)
+    from .progress import trace
+
+    drift = alignment(contract, evidence) + [
+        f"Step {m} has no stage on the canvas; the design still has it." for m in missing
+    ]
     return {
+        "trace": trace(contract, evidence, states, drift, acceptance),
         "progress": f"{sum(s['state'] == 'verified' for s in states)}/{len(states)} steps verified",
         "freshness": freshness,
         "aligned": not drift,
@@ -406,11 +418,25 @@ def hld(contract: dict) -> list[dict]:
 # Review items a design must pass before the user sees it: they keep the graph, the data model
 # and the API consistent (the rest are advice the user weighs).
 BLOCKING = (
+    "Every step's check tests that its data is right",
     "Every step names its design pattern",
     "Every hand-off between steps is a named data entity",
     "The API is defined: every input is used, every output comes from a step",
     "Every step reads as one short sentence",
 )
+
+
+def person(step: dict) -> bool:
+    """A step a person does: marked so in the design (or, earlier, designed with Your review decisions)."""
+    return step.get("person") is True or "AgentWorkflowReviewDecisions" in (step.get("nodes") or [])
+
+
+def shallow(check: dict) -> bool:
+    """A check that only shows data exists (non-empty, at least one row): it cannot show it is right."""
+    expect = str(check.get("expect", check.get("value")) or "")
+    return check.get("kind") == "non_empty" or (
+        check.get("kind") == "rows_at_least" and expect in ("", "0", "1")
+    )
 
 
 def blocking(contract: dict) -> list[str]:
@@ -443,6 +469,7 @@ def review(contract: dict) -> list[tuple[bool, str]]:
     ]
     unnamed = [h for h in handoffs if h.split(".")[1] not in data]
     unpatterned = [s["id"] for s in steps if not s.get("pattern")]
+    existence = [s["id"] for s in steps if shallow(s["gate"].get("check") or {})]
 
     def naming(items: list[str], what: str) -> str:
         return f" — {what}: {', '.join(items)}" if items else ""
@@ -453,8 +480,15 @@ def review(contract: dict) -> list[tuple[bool, str]]:
             "Every step gives typed data",
         ),
         (
-            all((s["gate"].get("check") or {}).get("output") for s in steps),
+            # A step a person does (Your review decisions) is proven by the queue reaching them.
+            all((s["gate"].get("check") or {}).get("output") or person(s) for s in steps),
             "Every step's result is checked on its data",
+        ),
+        (
+            not existence,
+            "Every step's check tests that its data is right, not only that it exists (e.g. rows "
+            "at least the expected count, contains a value it must hold)"
+            + naming(existence, "only checks existence in"),
         ),
         (all(s.get("uses") and s.get("why") for s in steps), "Every step says how and why"),
         (
@@ -473,7 +507,8 @@ def review(contract: dict) -> list[tuple[bool, str]]:
         ),
         (
             all(o.get("from") for o in promises["outputs"])
-            and used_inputs >= {i["name"] for i in promises["inputs"]},
+            # An input that is an existing node's widget (node + widget) is used where that node is.
+            and used_inputs >= {i["name"] for i in promises["inputs"] if i.get("node") is None},
             "The API is defined: every input is used, every output comes from a step",
         ),
         (musts <= examples, "Every must-request has an example (it becomes an acceptance test)"),
@@ -590,7 +625,6 @@ __all__ = [
     "TRANSITIONS",
     "derive_states",
     "from_plan_v1",
-    "from_yaml",
     "render",
     "alignment",
     "blocking",
@@ -599,7 +633,7 @@ __all__ = [
     "review",
     "stage_numbers",
     "report",
-    "to_yaml",
+    "present",
     "validate_contract",
     "validate_for_approval",
 ]

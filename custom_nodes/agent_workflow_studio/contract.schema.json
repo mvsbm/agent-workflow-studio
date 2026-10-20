@@ -277,6 +277,10 @@
             "minLength": 1,
             "maxLength": 60,
             "description": "The design pattern the step follows (e.g. pipes and filters, content-based router, review queue)."
+          },
+          "person": {
+            "type": "boolean",
+            "description": "A step a person does (you decide, e.g. in the Review tab): proven when the work reaches them, not by a data check."
           }
         },
         "required": [

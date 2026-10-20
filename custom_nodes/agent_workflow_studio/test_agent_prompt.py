@@ -1,27 +1,30 @@
-"""The chat's environment prompt stays consistent with the tools the extension registers."""
+"""The chat's environment prompt stays consistent with the agent's tools (agent_tools.json)."""
 
 from __future__ import annotations
 
+import json
 import re
 import unittest
 from pathlib import Path
 
 HERE = Path(__file__).parent
 PROMPT = (HERE / "prompts" / "comfyui_agent.md").read_text()
+TOOLS = json.loads((HERE / "agent_tools.json").read_text())
 EXTENSION = (HERE / "pi_chat_extension.ts").read_text()
-FILES = (HERE / "pi_chat_files.ts").read_text()
 
 
 class AgentPromptTests(unittest.TestCase):
     def test_every_registered_comfy_tool_is_documented(self) -> None:
-        registered = set(re.findall(r'name:"(comfy_[a-z_]+)"', EXTENSION + FILES))
-        self.assertTrue(registered)
+        registered = {tool["name"] for tool in TOOLS}
+        self.assertEqual(len(registered), 17)
         for tool in registered:
             with self.subTest(tool=tool):
                 self.assertIn(f"`{tool}`", PROMPT)
 
     def test_documented_edit_operations_match_the_schema(self) -> None:
-        operations = set(re.findall(r'op: Type\.Literal\("([a-z]+)"\)', EXTENSION))
+        edit = next(t for t in TOOLS if t["name"] == "comfy_edit_workflow")
+        variants = edit["parameters"]["properties"]["operations"]["items"]["anyOf"]
+        operations = {v["properties"]["op"]["const"] for v in variants}
         self.assertEqual(
             operations,
             {
@@ -42,8 +45,6 @@ class AgentPromptTests(unittest.TestCase):
 
     def test_the_extension_expects_exactly_the_bundled_skills(self) -> None:
         # Pi refuses to start when the count differs, so a new skill must update both.
-        import re
-
         from .pi_chat import REQUIRED_SKILLS
 
         skills = {p.parent.name for p in (Path(__file__).parent / "skills").glob("*/SKILL.md")}
@@ -54,11 +55,27 @@ class AgentPromptTests(unittest.TestCase):
     def test_placeholders_are_filled_by_the_extension(self) -> None:
         for placeholder in re.findall(r"\{\{[A-Z_]+\}\}", PROMPT):
             with self.subTest(placeholder=placeholder):
-                self.assertIn(f'replaceAll("{placeholder}"', EXTENSION)
+                self.assertIn(f'replaceAll("{placeholder}"', EXTENSION)  # Pi
+
+    def test_claude_code_gets_the_prompt_filled_in(self) -> None:
+        from .claude_chat import system_prompt
+
+        prompt = system_prompt("WF", "/workspace/dir")
+        self.assertNotRegex(prompt, r"\{\{[A-Z_]+\}\}")
+        self.assertIn("/workspace/dir", prompt)
 
     def test_tool_schemas_avoid_tuples(self) -> None:
-        # Type.Tuple emits array-form "items", invalid JSON Schema 2020-12; providers reject it.
-        self.assertNotIn("Type.Tuple", EXTENSION + FILES)
+        # Array-form "items" (a tuple) is invalid JSON Schema 2020-12; providers reject it.
+        def walk(value):
+            if isinstance(value, dict):
+                self.assertNotIsInstance(value.get("items"), list)
+                for item in value.values():
+                    walk(item)
+            elif isinstance(value, list):
+                for item in value:
+                    walk(item)
+
+        walk(TOOLS)
 
     def test_prompt_has_no_references_to_removed_features(self) -> None:
         for stale in ("node-development", "managed worker", "activation", "Nayose"):

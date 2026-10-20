@@ -96,21 +96,45 @@ class ProjectRepoTests(unittest.TestCase):
         self.repo.commit(graph((1, "B", [])), "two", "agent")
         self.assertFalse(marker.exists())
 
-    def test_contract_versions_and_conversion_of_old_plans(self) -> None:
+    def test_the_contract_lives_in_the_workflow_and_versions_show_when_it_changed(self) -> None:
+        from .native_layers import embed
+        from .test_native_layers import workflow
         from .test_workflow_contract import CONTRACT
 
-        sha = self.repo.save_contract(CONTRACT)
-        self.assertIsNone(self.repo.show(sha))  # a contract version has no canvas snapshot
-        self.assertEqual(self.repo.contract_at(sha), CONTRACT)
-        self.assertEqual(self.repo.load_contract(), CONTRACT)
-        self.assertEqual(self.repo.diff(sha)["added"], [])
-        with self.assertRaisesRegex(ValueError, "no canvas snapshot"):
-            self.repo.restore(sha)
-        self.assertTrue(
-            (self.repo.tree / "contract.yaml").read_text().startswith("# yaml-language-server")
+        approved = embed(CONTRACT, workflow())
+        sha = self.repo.commit_contract(approved, CONTRACT["purpose"])
+        top = self.repo.log()[0]
+        self.assertEqual(
+            (top["author"], top["message"]), ("user", f"Contract approved: {CONTRACT['purpose']}")
         )
-        built = self.repo.commit(graph((1, "A", [])), "build", "agent")
-        self.assertIsNone(self.repo.contract_at(built))
+        self.assertEqual(self.repo.load_contract(), CONTRACT)
+        self.assertEqual(self.repo.contract_at(sha), CONTRACT)
+        self.assertFalse((self.repo.tree / "contract.yaml").exists())  # one source: the workflow
+        moved = {**approved, "extra": {**approved["extra"], "ds": {"scale": 2}}}
+        later = self.repo.commit(moved, "pan", "user")
+        self.assertIsNone(self.repo.contract_at(later))  # the contract did not change here
+        amended = embed({**CONTRACT, "purpose": "Label reviews, now in two languages."}, moved)
+        changed = self.repo.commit(amended, "amend", "agent")
+        self.assertEqual(
+            self.repo.contract_at(changed)["purpose"], "Label reviews, now in two languages."
+        )
+        self.repo.restore(sha)  # an approval is a full snapshot: it can be restored
+        self.assertEqual(self.repo.load_contract(), CONTRACT)
+
+    def test_a_template_brings_its_contract_once(self) -> None:
+        from .native_layers import embed
+        from .test_native_layers import workflow
+        from .test_workflow_contract import CONTRACT
+
+        self.assertTrue(self.repo.adopt_template(embed(CONTRACT, workflow())))
+        self.assertEqual(self.repo.load_contract(), CONTRACT)
+        first = self.repo.log()
+        self.assertEqual((len(first), first[0]["author"]), (1, "agent"))
+        self.assertIn("contract shipped with the workflow", first[0]["message"])
+        # Never over what happened since: a second open, or a workflow with history, keeps its own.
+        other = embed({**CONTRACT, "purpose": "other"}, workflow())
+        self.assertFalse(self.repo.adopt_template(other))
+        self.assertEqual(self.repo.load_contract(), CONTRACT)
 
     def test_loads_a_plan_approved_before_contracts(self) -> None:
         old = ProjectRepo(self.root, "older-workflow")
@@ -136,9 +160,11 @@ class ProjectRepoTests(unittest.TestCase):
         old._ensure()
         old._git("add", "spec.json")
         old._git("commit", "--quiet", "-m", "old plan")
+        from .native_layers import embed
+        from .test_native_layers import workflow
         from .test_workflow_contract import CONTRACT
 
-        old.save_contract(CONTRACT)
+        old.commit_contract(embed(CONTRACT, workflow()), CONTRACT["purpose"])
         self.assertFalse(
             (old.tree / "spec.json").exists(), "the old plan is replaced, not kept beside it"
         )

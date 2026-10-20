@@ -90,7 +90,7 @@ const artifacts = process.env.ARTIFACTS;
     assert.equal(result.openapi.paths['/agent-workflow-studio/api/greet-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.value.type, 'string');
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));
     // The Contract tab shows what is published and how to call it.
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-contract'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-contract'));
     await page.locator('.aw-contract-api').getByText(/Published as greet-e2e · version/).waitFor({timeout: 15000});
     await page.screenshot({path: path.join(artifacts, 'api.png')});
     assert.deepEqual(errors, []);

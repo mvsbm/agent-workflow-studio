@@ -4,7 +4,7 @@ description: Write, follow and amend the workflow contract (requests, examples, 
 ---
 # Workflow contracts
 
-Every workflow you build or extend, and every set of files you produce for the user, has one contract, approved by the user and versioned as `contract.yaml`. It records intent only; step status and technical details are derived from the canvas and runs. The user may be non-technical: write every plain field so they can check it at a glance.
+Every workflow you build or extend, and every set of files you produce for the user, has one contract, approved by the user and stored in the workflow itself: intent in its extra data, each step on its stage node (the HLD), and each node inside a stage tagged with the HLD clause it realizes (`takes <port>`, `does`, `gives <port>`: the LLD). Step status is derived from the canvas and runs, never stored. The user may be non-technical: write every plain field so they can check it at a glance.
 
 ## Writing the contract (`comfy_propose_contract`)
 
@@ -20,12 +20,13 @@ Every workflow you build or extend, and every set of files you produce for the u
   - Data jobs are pipelines: make each stage its own step (load and clean, find candidates, compare and score, decide, review, report), each built as its own Agent Tool or nodes, so the canvas shows how the result was made. Two steps for a whole matching or analytics job hides the work. Matching and nayose jobs mirror the architecture, one step each, with the step ids from the agent guide: profile_data → one cleansing lane per source system → find_candidates → deterministic_matching → probabilistic_matching → your_review → consolidate_customers → publish_results; decided pairs leave each matching stage through its matched/different branches straight to consolidation. The decision is never logic buried in a tool, so the user can read and edit how pairs are decided and see the whole decision tree.
 - **existing work**: if the canvas already holds the user's own nodes (not `given`), a step `adopts` them by id: on approval they become that step's stage with their wiring kept, and you edit them there.
 - **ports**: every step is a stage with typed ports. `gives` names its outputs and their socket types (`TABLE`, `PAIRS`, `DECISIONS`, `CUSTOMERS`, `STRING`, `IMAGE`, …; `*` while unknown); `takes` names its inputs, each an earlier step's output (`"profile_data.folder"`) or a type for data entering the workflow. Steps that take from the same step are parallel lanes. On approval the canvas gets this skeleton, wired.
-- **gate** on every step: `says` how we know it worked, in plain words. Add a `check` whenever data can prove it: `{"output": <a port in gives>, "kind": rows_at_least | non_empty | contains | equals | regex | image_count_at_least, "value": …}`. It becomes a Check node on that output inside the stage; the step is verified when its Checks pass on the latest run.
+- **gate** on every step: `says` how we know it worked, in plain words. Add a `check` whenever data can prove it: `{"output": <a port in gives>, "kind": rows_at_least | non_empty | contains | equals | regex | image_count_at_least, "value": …}`. It becomes a Check node on that output inside the stage; the step is verified when its Checks pass on the latest run. The check must test that the data is **right**, not only that it exists: `non_empty` or `rows_at_least 1` is refused by the design review. Check the expected count (`rows_at_least 1000`), a value it must hold (`contains`, `regex`, `equals`), or a measured number the step outputs (`at_least`).
 - **decisions**: one line each with `why` and, if useful, `instead_of`. `by: user` only for answers the user actually gave; your own choices are `by: agent`.
 - Every `must` and `should` request needs a covering step; otherwise move it to `not_now`. Keep the contract short: one line per entry.
 
 ## Building against the contract
 
+- The promises are the workflow's App: approval adds a top-level input node per promised input and a top-level output node per promised output (fed by the stage that delivers it) and sets ComfyUI's App mode to them. A promised output's value is shown in App mode as a file (CSV for a table, JSON for data, text), and the API returns it by name. The Contract tab reports any difference between the promises and App mode as a gap.
 - Approval creates one stage per step, with its typed ports, a Stub passing data through and a Check per gate. Build inside each stage (`"stage": "<step id>"` on every operation): real nodes wired from the input ports to the output ports, one stage per batch. The Stub disappears and the Check follows by itself; stages are already wired to each other. Nodes cannot be added outside a stage.
 - One edit batch per stage (or several stages) is right; tiny batches waste turns. Each structural edit returns a `graph_check` with drift and a to-do list; fix every problem before running and work through the to-dos.
 - If an output does not fit an input, use `comfy_find_converter` rather than rewiring around it.
@@ -40,7 +41,7 @@ Every workflow you build or extend, and every set of files you produce for the u
 | verified | its gate passed on the latest run | nothing |
 | failing | its gate failed on the latest run | fix the smallest part of the step, run, re-check |
 
-Any structural edit resets gate outcomes, so verified steps return to built until re-checked. Use `comfy_contract_status` to see every step's state, nodes outside every stage and the to-do list; report progress to the user as "N of M steps verified".
+Any structural edit resets gate outcomes, so verified steps return to built until re-checked. Use `comfy_contract_status` to see every step's state, nodes outside every stage and the to-do list; report progress to the user as "N of M steps verified", together with its `gaps` (must-haves not yet proven by an example on this version, Checks that differ from the agreed one): the user sees the same list in the Contract tab.
 
 ## Quality gates for data jobs
 

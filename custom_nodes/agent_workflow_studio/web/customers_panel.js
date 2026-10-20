@@ -3,6 +3,7 @@
 // reason) and the merges refused into it (look-alikes kept out). Read-only; Review is for deciding.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
+import {registerWorkflowTab} from './workflow_drawer.js';
 
 const PAGE = 40;
 const rootGraph = () => app.rootGraph ?? app.graph;
@@ -93,7 +94,7 @@ function createPanel() {
       const body = await response.json();
       if (!response.ok) throw Error(body.error ?? 'Could not load customers.');
       if (!body.customers) {
-        status.textContent = 'No customers yet. Run a workflow with a Cluster guard node.';
+        status.textContent = 'No customers yet: run the workflow. Its Cluster guard step builds customers, and this tab shows why records were joined and what was kept apart.';
         customers = [];
         return list.replaceChildren();
       }
@@ -125,7 +126,8 @@ app.registerExtension({
     document.head.append(style);
     let panel;
     api.addEventListener('execution_success', () => panel?.isConnected && panel.load());
-    app.extensionManager.sidebarTab.registerSidebarTab({
+    registerWorkflowTab({
+      order: 5,
       id: 'workflow-customers',
       icon: 'pi pi-id-card',
       title: 'Customers',

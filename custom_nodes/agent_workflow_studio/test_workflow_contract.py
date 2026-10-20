@@ -9,11 +9,11 @@ import unittest
 from .workflow_contract import (
     SCHEMA_PATH,
     TRANSITIONS,
+    blocking,
     derive_states,
     from_plan_v1,
-    from_yaml,
     render,
-    to_yaml,
+    review,
     validate_contract,
     validate_for_approval,
 )
@@ -134,14 +134,6 @@ class ContractTests(unittest.TestCase):
                 changed(lambda c: c["open_questions"].append({"question": "?", "step": "nope"}))
             )
 
-    def test_yaml_round_trip_keeps_strings_as_strings(self) -> None:
-        tricky = changed(lambda c: c["examples"][0]["expect"].update(label="no"))
-        text = to_yaml(tricky)
-        self.assertTrue(text.startswith("# yaml-language-server: $schema=contract.schema.json"))
-        self.assertEqual(from_yaml(text), tricky)  # "no" stays a string, not false
-        with self.assertRaises(ValueError):
-            from_yaml("contract: 2\npurpose: x\n")
-
     def test_converts_plans_approved_before_contracts(self) -> None:
         plan = {
             "goal": "Show the text hello world.",
@@ -198,6 +190,9 @@ class ContractTests(unittest.TestCase):
         tidy = derive_states(waits, [{"step": "tidy"}], {"tidy": "passed"})[1]
         self.assertEqual((tidy["state"], tidy["waiting"]), ("built", ["Emoji allowed?"]))
         self.assertEqual(tidy["next"], "Waiting on your answer: Emoji allowed?")
+        # A verified review step with open items: the user's turn, not a problem.
+        review = derive_states(CONTRACT, [{"step": "tidy"}], {"tidy": "passed"}, {"tidy": 1606})[1]
+        self.assertEqual((review["state"], review["next"][:16]), ("verified", "Your turn: 1,606"))
         # The skeleton's Stub and Checks do not make a stage built.
         self.assertEqual(states([{"step": "classify", "scaffold": True}])["classify"], "planned")
         self.assertEqual(states([{"step": "classify", "fuzzy": True}])["classify"], "fuzzy")
@@ -306,6 +301,22 @@ class ContractTests(unittest.TestCase):
             ],
         )
 
+    def test_a_person_step_and_a_given_input_need_no_wiring_or_check(self) -> None:
+        contract = copy.deepcopy(CONTRACT)
+        contract["steps"][1]["gate"] = {"says": "You confirm each label."}
+        contract["promises"]["inputs"] = [
+            {"name": "seed", "kind": "integer", "node": 9, "widget": "seed"}
+        ]
+        contract["steps"][0]["takes"] = {"review": "STRING"}
+        checked = "Every step's result is checked on its data"
+        self.assertFalse(dict((i, ok) for ok, i in review(contract))[checked])  # nobody checks tidy
+        contract["steps"][1]["nodes"] = ["AgentWorkflowReviewDecisions"]  # a person does
+        items = {i: ok for ok, i in review(contract)}
+        self.assertTrue(items[checked])
+        self.assertTrue(
+            items["The API is defined: every input is used, every output comes from a step"]
+        )
+
     def test_the_design_reads_as_sentences_and_is_reviewed(self) -> None:
         from .workflow_contract import hld, review
 
@@ -325,7 +336,14 @@ class ContractTests(unittest.TestCase):
                     uses="Map values",
                     why="support reads plain labels",
                     pattern="message translator",
-                    gate={"says": "plain", "check": {"output": "label", "kind": "non_empty"}},
+                    gate={
+                        "says": "plain",
+                        "check": {
+                            "output": "label",
+                            "kind": "regex",
+                            "value": "^(positive|negative)$",
+                        },
+                    },
                 ),
                 c.update(data={"label": {"description": "positive or negative, per review"}}),
             )
@@ -339,6 +357,12 @@ class ContractTests(unittest.TestCase):
         )
         self.assertIn("→ to you (output label)", sentences[1])
         self.assertTrue(all(ok for ok, _ in review(design)), review(design))
+        # A check that only shows the data exists cannot verify a step: the proposal is refused.
+        exists = copy.deepcopy(design)
+        exists["steps"][1]["gate"]["check"] = {"output": "label", "kind": "non_empty"}
+        self.assertEqual(
+            [b.split(" — ")[1] for b in blocking(exists)], ["only checks existence in: tidy"]
+        )
         bare = {item: ok for ok, item in review(CONTRACT)}
         self.assertFalse(bare["Every step says how and why"])
         self.assertIn("DESIGN REVIEW:", render(design))

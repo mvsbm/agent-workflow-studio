@@ -19,6 +19,7 @@ from aiohttp import WSMsgType, web
 
 from . import loop as improve_loop
 from .agent_tools import NAME, approval_text, code_hash
+from .native_layers import layers, split
 from .pi_auth import (
     all_provider_api_key_env_names,
     provider_credential_environment,
@@ -193,6 +194,20 @@ class PiChatSession:
         self.initialized = asyncio.Event()
         self.turns = 0
         self.send_lock = asyncio.Lock()
+        self.launch(config, origin)
+
+    def bridge_environment(self, origin):
+        """How the agent's tools reach this session; inherited by the agent's tool process, never in argv."""
+        return {
+            "COMFY_PI_BRIDGE_URL": origin + PREFIX + "/bridge/" + self.id,
+            "COMFY_PI_BRIDGE_TOKEN": self.token,
+            "COMFY_PI_WORKSPACE_DIR": str(self.workspace.path),
+            "COMFY_PI_WORKFLOW_ID": self.workspace.id,
+            "COMFY_PI_WORKFLOW_GRAPH_ID": self.graph_id,
+        }
+
+    def launch(self, config, origin):
+        """The agent process's command and environment (Pi here; claude_chat.py for Claude Code)."""
         config = validate_pi_model_config(config) if config is not None else None
         command, provider, _, _ = _build_command(config, offline=False)
         # The structured-output node forbids action tools. Chat must instead use
@@ -240,15 +255,7 @@ class PiChatSession:
             self.profile = tempfile.TemporaryDirectory(prefix="studio-pi-chat-")
             environment["PI_CODING_AGENT_DIR"] = self.profile.name
             environment.update(credentials)
-        environment.update(
-            {
-                "COMFY_PI_BRIDGE_URL": origin + PREFIX + "/bridge/" + self.id,
-                "COMFY_PI_BRIDGE_TOKEN": self.token,
-                "COMFY_PI_WORKSPACE_DIR": str(self.workspace.path),
-                "COMFY_PI_WORKFLOW_ID": self.workspace.id,
-                "COMFY_PI_WORKFLOW_GRAPH_ID": self.graph_id,
-            }
-        )
+        environment.update(self.bridge_environment(origin))
         self.command, self.environment = command, environment
 
     async def start(self):
@@ -329,7 +336,7 @@ class PiChatSession:
                 response["value"] = record["value"]
             else:
                 raise ValueError("Invalid permission response.")
-            await self.send(response)
+            await self.answer_dialog(response)
         elif kind == "comfy_result":
             future = self.pending.get(record.get("id"))
             if future is None or future.done():
@@ -340,6 +347,9 @@ class PiChatSession:
                 future.set_result(record.get("result"))
         else:
             raise ValueError("Unsupported chat command.")
+
+    async def answer_dialog(self, response):
+        await self.send(response)
 
     def configuration(self):
         return {
@@ -594,7 +604,28 @@ class PiChatSession:
         if action == "edit" and self.contract is not None:
             # The approved design's wiring: the canvas refuses top-level edits that contradict it.
             arguments = {**arguments, "design": wiring(self.contract)}
+        outside = (
+            action == "edit"
+            and self.contract is not None
+            and not self.loop_pending
+            and any(
+                isinstance(op, dict) and op.get("op") in STRUCTURAL | {"widget"}
+                for op in operations or []
+            )
+            and await asyncio.to_thread(self.repo.records, "loop")
+        )
+        if outside:
+            # Improving, but outside an iteration: allowed, never hidden (the version says so).
+            summary = str(arguments.get("summary") or "canvas edit")
+            arguments = {**arguments, "summary": (improve_loop.OUTSIDE + summary)[:200]}
         result = await self.canvas_action(action, arguments)
+        if outside:
+            result = {
+                **result,
+                "outside_loop": "This change is not part of an improve-loop iteration, so it is not "
+                "measured; the version and the Contract tab say so. Change a built workflow through "
+                "comfy_loop_step (hypothesis + the change), then run and check gates.",
+            }
         if structural:
             result = {**result, "graph_check": await self.check_graph()}
         return result
@@ -611,7 +642,7 @@ class PiChatSession:
         result = {"summary": analysis["summary"], "problems": problems, "will_not_run": idle}
         if self.contract is not None:
             evidence = await self.canvas_action("contract_evidence", {})
-            status = report(self.contract, evidence)
+            status = report(self.live(evidence), evidence)
             result["contract"] = {
                 "aligned": status["aligned"],
                 "drift": status["drift"],
@@ -637,17 +668,43 @@ class PiChatSession:
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
             gates = await self.canvas_action("gates", {})
-            return {**gates, "loop": await self.loop_state()}
+            evidence = await self.canvas_action("contract_evidence", {})
+            accepted = await asyncio.to_thread(self.repo.records, "acceptance")
+            trace = report(self.live(evidence), evidence, accepted[-1] if accepted else None)[
+                "trace"
+            ]
+            unproven = [
+                r["id"]
+                for r in trace["requests"]
+                if r["priority"] == "must" and r["verdict"] != "proven"
+            ]
+            return {
+                **gates,
+                "loop": await self.loop_state(evidence),
+                # Passing gates are not the user's requests met: say what is still unproven.
+                "plan_vs_built": trace["summary"],
+                "gaps": [
+                    f"[{g['severity']}] {g['where']}: {g['text']}" for g in trace["gaps"][:15]
+                ],
+                **(
+                    {
+                        "before_reporting": f"Must-haves {', '.join(unproven)} are not proven on this "
+                        "version: run comfy_run_examples, and report any that still fail or have no example."
+                    }
+                    if unproven
+                    else {}
+                ),
+            }
         if action == "loop_step":
             return await self.start_iteration(arguments if isinstance(arguments, dict) else {})
         if action == "tool_propose":
             return await self.propose_tool(arguments if isinstance(arguments, dict) else {})
         if action == "contract_status":
             evidence = await self.canvas_action("contract_evidence", {})
-            status = report(self.contract, evidence)
+            accepted = await asyncio.to_thread(self.repo.records, "acceptance")
+            status = report(self.live(evidence), evidence, accepted[-1] if accepted else None)
             loop = await self.loop_state(evidence)
             examples = (self.contract or {}).get("examples") or []
-            accepted = await asyncio.to_thread(self.repo.records, "acceptance")
             if examples and not (accepted and accepted[-1]["passed"] == accepted[-1]["total"]):
                 status["todo"] = [
                     "Run the contract's examples as acceptance tests (comfy_run_examples)",
@@ -658,6 +715,12 @@ class PiChatSession:
                     k: status[k]
                     for k in ("progress", "freshness", "steps", "nodes_outside_steps", "todo")
                 },
+                # The same honest comparison the user sees: report these gaps, never claim past them.
+                "plan_vs_built": status["trace"]["summary"],
+                "gaps": [
+                    f"[{g['severity']}] {g['where']}: {g['text']}"
+                    for g in status["trace"]["gaps"][:15]
+                ],
                 "loop": loop,
             }
         contract = validate_for_approval(
@@ -681,14 +744,23 @@ class PiChatSession:
                 "approved": False,
                 "message": "The user did not approve the contract; ask what to change.",
             }
-        sha = await asyncio.to_thread(self.repo.save_contract, contract)
         self.contract = contract
         # The approved design becomes the canvas skeleton: a typed, wired stage per step, the API's
-        # inputs as top-level nodes and its signature; titles and sentences come from the HLD.
+        # inputs as top-level nodes and its signature; titles and sentences come from the HLD. The
+        # contract is stored natively in the workflow: intent in extra, each step on its stage.
+        intent, design, _ = split(contract)
         skeleton = await self.canvas_action(
             "skeleton",
-            {"steps": contract["steps"], "promises": contract["promises"], "design": hld(contract)},
+            {
+                "steps": contract["steps"],
+                "promises": contract["promises"],
+                "design": hld(contract),
+                "intent": intent,
+                "meta": design,
+            },
         )
+        workflow = (await self.canvas_action("contract_evidence", {}))["workflow"]
+        sha = await asyncio.to_thread(self.repo.commit_contract, workflow, contract["purpose"])
         return {
             "approved": True,
             "version": sha[:8],
@@ -696,6 +768,10 @@ class PiChatSession:
             "skeleton": skeleton,
             "next": 'Build each stage: edit with "stage": "<step id>", replacing its Stub.',
         }
+
+    def live(self, evidence: dict) -> dict:
+        """The contract the canvas holds now (native layers), else the one approved in this chat."""
+        return layers(evidence.get("workflow")) or self.contract
 
     async def measure(self, evidence: dict | None = None) -> tuple[dict, dict]:
         """The loop's measured state now (and the evidence it came from)."""
@@ -708,7 +784,7 @@ class PiChatSession:
             if acceptance
             else ({"passed": 0, "total": examples} if examples else None)
         )
-        state = improve_loop.snapshot(report(self.contract, evidence), last)
+        state = improve_loop.snapshot(report(self.live(evidence), evidence), last)
         return state, evidence
 
     async def start_iteration(self, arguments: dict) -> dict:
@@ -759,7 +835,9 @@ class PiChatSession:
             await asyncio.to_thread(self.repo.add_record, entry, message, evidence["workflow"])
             journal.append(entry)
             closed, self.loop_pending = entry, None
+        outside = improve_loop.outside_loop(await asyncio.to_thread(self.repo.log))
         return {
+            **({"outside_loop": outside} if outside else {}),
             **(
                 {"closed": {k: closed[k] for k in ("n", "verdict", "hypothesis")}} if closed else {}
             ),
@@ -895,7 +973,11 @@ def install_pi_chat_routes():
                             raise ValueError("Start the Pi session first.")
                         if len(sessions) >= 2:
                             raise ValueError("Two Pi sessions are already open.")
-                        session = PiChatSession(
+                        config = record.get("pi_config")
+                        kind = PiChatSession
+                        if isinstance(config, dict) and config.get("agent") == "claude_code":
+                            from .claude_chat import ClaudeChatSession as kind
+                        session = kind(
                             socket,
                             f"{request.scheme}://{request.host}",
                             record.get("pi_config"),
@@ -937,6 +1019,13 @@ def install_pi_chat_routes():
                 sessions.pop(session.id, None)
                 await session.close()
         return socket
+
+    @server.routes.get("/agent-workflow-studio/claude/status")
+    async def claude_status(request):
+        from .claude_chat import login_status
+
+        local_request(request)
+        return web.json_response(await asyncio.to_thread(login_status))
 
     @server.routes.post(PREFIX + "/bridge/{session_id}")
     async def bridge(request):

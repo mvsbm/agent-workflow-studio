@@ -97,14 +97,14 @@ decide: {match: 2, review: 1}
     assert.deepEqual(typed.types, ['DECISIONS', 'STRING', 'DECISIONS', 'DECISIONS', 'PAIRS']);
     assert.equal(typed.stub, 'PAIRS');
     // Customers tab: the largest customer opens to its records and the chain of matches that joined them.
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-customers'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-customers'));
     const largest = page.locator('.aw-review-list details').first();
     await largest.locator('summary').click({timeout: 30000});
     await largest.locator('ol').waitFor({timeout: 10000});
     const why = (await largest.innerText()).replace(/\s+/g, ' ');
     assert.match(why, /Joined by \(\d+\) .* ↔ .* — /, why);
     await page.screenshot({path: path.join(artifacts, 'customers-tab.png')});
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-customers'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).closeWorkflowDrawer());
     // At a glance: every wire is labelled with what flows along it, and zoomed out each node shows its headline.
     const glance = () => page.evaluate(async () => {
       const app = window.comfyAPI.app.app, canvas = app.canvas;

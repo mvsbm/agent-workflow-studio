@@ -20,6 +20,33 @@ class CheckTests(unittest.TestCase):
         self.assertEqual(judge(None, "non_empty", ""), (False, "nothing"))
         self.assertEqual(judge("output/report.csv", "non_empty", ""), (True, "a value"))
 
+    def test_an_api_output_is_a_file_app_mode_can_show(self) -> None:
+        import csv as csv_module
+        import tempfile
+        from pathlib import Path
+
+        from .check_node import app_file
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            table = app_file("customers", {"columns": ["id"], "rows": [{"id": "C1"}]}, out)
+            self.assertEqual((table["subfolder"], table["type"]), ("app_outputs", "output"))
+            self.assertTrue(table["filename"].endswith(".csv"))
+            rows = list(csv_module.DictReader(open(out / "app_outputs" / table["filename"])))
+            self.assertEqual(rows, [{"id": "C1"}])
+            self.assertTrue(app_file("summary", {"f1": 0.9}, out)["filename"].endswith(".json"))
+            (out / "nayose").mkdir()
+            (out / "nayose" / "result.csv").write_text("a\n1\n")
+            written = app_file(
+                "customer_file", "nayose/result.csv", out
+            )  # shown as the workflow wrote it
+            self.assertEqual(
+                written, {"filename": "result.csv", "subfolder": "nayose", "type": "output"}
+            )
+            self.assertTrue(
+                app_file("x", "../../etc/passwd", out)["filename"].endswith(".txt")
+            )  # never outside
+
 
 if __name__ == "__main__":
     unittest.main()

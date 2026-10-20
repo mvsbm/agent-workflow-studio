@@ -10,6 +10,7 @@ from .table_nodes import (
     normalize,
     parse_date,
     report,
+    similar_pairs,
 )
 
 
@@ -56,6 +57,24 @@ class TableNodeTests(unittest.TestCase):
         after = make("t", [{"kana": "スズキ"}, {"kana": "サトウ"}])
         tables = report("Normalize text", before, after, {}, ["kana"])
         self.assertEqual(tables["aws_tables"][1]["rows"], [["kana", "ｽｽﾞｷ", "スズキ"]])
+
+    def test_map_parts_of_values(self) -> None:
+        from .table_nodes import MapValues
+
+        t = make("t", [{"kana": "カ)サンワケンセツ"}, {"kana": "サンワコウギヨウ(カ"}])
+        out = MapValues.execute(t, "kana", "カ): (カ:", "parts of values").args[0]
+        self.assertEqual([r["kana"] for r in out["rows"]], ["サンワケンセツ", "サンワコウギヨウ"])
+
+    def test_similar_values_meet_despite_a_typo_or_a_cut(self) -> None:
+        values = [
+            ("a", "ヒラベキキ"),
+            ("b", "ヒラベキ"),
+            ("c", "ヒラヘキキ"),
+            ("d", "スズキハナコ"),
+        ]
+        self.assertEqual(
+            similar_pairs(values, 0.5), {("a", "b"), ("a", "c")}
+        )  # one typo in five: 0.5
 
     def test_follow_a_record_through_the_run(self) -> None:
         from comfy_execution.utils import CurrentNodeContext

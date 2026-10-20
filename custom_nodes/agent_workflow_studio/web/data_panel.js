@@ -3,6 +3,7 @@
 // each one. A declared field the run did not carry is marked; so is data no entity names.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
+import {registerWorkflowTab} from './workflow_drawer.js';
 import {observedFields} from './pi_canvas.js';
 
 const rootGraph = () => app.rootGraph ?? app.graph;
@@ -13,7 +14,12 @@ function flows(graph) {
   const out = {};
   for (const stage of graph.nodes.filter(n => n.properties?.aws_stage)) {
     for (const port of stage.subgraph.outputs ?? []) (out[port.name] ??= {gives: [], takes: []}).gives.push({stage: stage.title, type: port.type, seen: observedFields(stage.subgraph, port.name)});
-    for (const port of stage.subgraph.inputs ?? []) (out[port.name] ??= {gives: [], takes: []}).takes.push(stage.title);
+    // An input numbered for several sources (matched_1, matched_2, …) takes that entity.
+    for (const port of stage.subgraph.inputs ?? []) {
+      const entity = port.name.replace(/_\d+$/, '');
+      const takers = (out[entity] ??= {gives: [], takes: []}).takes;
+      if (!takers.includes(stage.title)) takers.push(stage.title);
+    }
   }
   return out;
 }
@@ -113,7 +119,7 @@ function createPanel() {
     const flow = flows(graph);
     // Entities first (as designed), then other data that flows between stages without a name.
     const names = [...Object.keys(declared), ...Object.keys(flow).filter(n => !declared[n] && flow[n].gives.length && flow[n].takes.length)];
-    status.textContent = names.length ? `${Object.keys(declared).length} entities in the design · fields as seen on the last run` : 'No data model yet: it comes from the design the agent proposes.';
+    status.textContent = names.length ? `${Object.keys(declared).length} entities in the design · fields as seen on the last run` : 'No data model: the entities passed between steps come from the contract\'s design. Ask the agent in the chat to plan this workflow.';
     list.replaceChildren(...names.map(name => entityCard(name, declared[name], flow[name])));
   };
   refresh.addEventListener('click', () => root.load());
@@ -133,7 +139,8 @@ app.registerExtension({
       .aw-data-fields { display: flex; flex-wrap: wrap; gap: 4px 10px; font-family: monospace; font-size: 12px; }`));
     let panel;
     api.addEventListener('execution_success', () => panel?.isConnected && panel.load());
-    app.extensionManager.sidebarTab.registerSidebarTab({
+    registerWorkflowTab({
+      order: 3,
       id: 'workflow-data', icon: 'pi pi-sitemap', title: 'Data',
       tooltip: 'Data · the entities this workflow passes between its stages (ERD), as designed and as seen',
       type: 'custom',

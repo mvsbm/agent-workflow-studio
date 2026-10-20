@@ -443,11 +443,17 @@ class DecisionRules(io.ComfyNode):
                 writer.writeheader()
                 writer.writerows(d for d in decided if d["decision"] in outcomes)
         by_id = {pair_id(row, i): row for i, row in enumerate(rows)}
+        reranked = any(by_id[d["id"]].get("rerank_score") is not None for d in decided)
         uncertain = sorted(
             (d for d in decided if d["decision"] == "review"),
-            key=lambda d: abs(
-                (d["score"] or 0)
-                - (spec["decide"].get("match", 0) + spec["decide"].get("review", 0)) / 2
+            # Reranked pairs: likeliest matches first (most of your yes-clicks early); else the closest calls.
+            key=lambda d: (
+                -(by_id[d["id"]].get("rerank_score") or 0)
+                if reranked
+                else abs(
+                    (d["score"] or 0)
+                    - (spec["decide"].get("match", 0) + spec["decide"].get("review", 0)) / 2
+                )
             ),
         )
         # Only this stage's own decisions: an earlier stage spot-checks its own.
@@ -462,6 +468,11 @@ class DecisionRules(io.ComfyNode):
                     "b": by_id[d["id"]].get("b") or {"mention": d["right"]},
                     "score": round(float(d["score"]), 2) if d["score"] not in (None, "") else None,
                     "reason": d["why"]
+                    + (
+                        f" · reranker {by_id[d['id']]['rerank_score']:.2f}"
+                        if by_id[d["id"]].get("rerank_score") is not None
+                        else ""
+                    )
                     if d["decision"] == "review"
                     else f"Spot check · {d['branch']} decided {d['decision']}: {d['why']}",
                 }

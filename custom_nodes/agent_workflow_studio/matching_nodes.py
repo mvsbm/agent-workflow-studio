@@ -826,7 +826,7 @@ class ClusterGuard(io.ComfyNode):
                         tooltip=f"A stage's {kind} branch (Decision rules, Your review decisions).",
                     )
                     for kind in ("matched", "different")
-                    for i in (1, 2, 3)
+                    for i in (1, 2, 3, 4)
                 ),
                 io.Int.Input(
                     "max_size",
@@ -1045,6 +1045,13 @@ class ReviewDecisions(io.ComfyNode):
                 f"{len(split['matched']):,} same",
                 f"{len(split['different']):,} different",
                 f"{len(split['open']):,} open",
+            ],
+            # Read by the contract: this step's machine part is done; the open pairs are the user's turn.
+            "aws_human": [
+                {
+                    "open": len(split["open"]),
+                    "decided": len(split["matched"]) + len(split["different"]),
+                }
             ],
             "aws_tables": [
                 table("Your review decisions", facts),

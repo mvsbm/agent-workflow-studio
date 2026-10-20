@@ -4,6 +4,7 @@
 // inputs["review_labels"], so the next run can learn from and be measured against them.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
+import {registerWorkflowTab} from './workflow_drawer.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const PAGE = 40;
@@ -186,7 +187,7 @@ function createPanel() {
       ({review, labels, run} = await request('/review'));
       labels ??= {};
       if (!review) {
-        status.textContent = 'Nothing to review yet. When an agent tool writes review.json in its run folder, its candidate pairs and matched customers show here.';
+        status.textContent = 'Nothing to review yet: run the workflow. Pairs a step could not decide (Decision rules, Your review decisions, or an agent tool writing review.json) and spot checks of its automatic decisions come here for you to decide.';
         tabs.replaceChildren();
         more.hidden = true;
         return list.replaceChildren();
@@ -212,7 +213,8 @@ app.registerExtension({
     document.head.append(el('link', null, {rel: 'stylesheet', href: new URL('./review_panel.css', import.meta.url).href}));
     let panel;
     api.addEventListener('execution_success', () => panel?.isConnected && panel.load());
-    app.extensionManager.sidebarTab.registerSidebarTab({
+    registerWorkflowTab({
+      order: 4,
       id: 'workflow-review',
       icon: 'pi pi-users',
       title: 'Review',

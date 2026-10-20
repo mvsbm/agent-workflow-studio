@@ -9,6 +9,7 @@ changed, so the logic of each step is on the canvas, not in code.
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import re
 import unicodedata
@@ -653,7 +654,7 @@ class MapValues(io.ComfyNode):
             display_name="Map values",
             category=CATEGORY,
             search_aliases=["replace", "dictionary", "itaiji", "variant kanji", "lookup map"],
-            description="Replaces characters or whole values using a visible map (from:to pairs), e.g. variant kanji 髙 → 高.",
+            description="Replaces characters, parts of values or whole values using a visible map (from:to pairs), e.g. variant kanji 髙 → 高, OCR look-alikes in readings 力 → カ, or a company marker ｶ) → nothing (ｶ):).",
             inputs=[
                 Table.Input("table", display_name="Table", tooltip="Rows to map."),
                 io.String.Input(
@@ -672,8 +673,8 @@ class MapValues(io.ComfyNode):
                 io.Combo.Input(
                     "mode",
                     display_name="Replace",
-                    options=["characters", "whole values"],
-                    tooltip="Each character, or the whole value.",
+                    options=["characters", "whole values", "parts of values"],
+                    tooltip="Each character, the whole value, or each place a from-text appears (longest first; an empty to removes it).",
                 ),
             ],
             outputs=[Table.Output(display_name="table", tooltip="Rows with values mapped.")],
@@ -696,6 +697,12 @@ class MapValues(io.ComfyNode):
                 if mode == "characters":
                     mapped = "".join(pairs.get(ch, ch) for ch in value)
                     used.update(ch for ch in value if ch in pairs)
+                elif mode == "parts of values":
+                    mapped = value
+                    for part in sorted(pairs, key=len, reverse=True):
+                        if part and part in mapped:
+                            used[part] += 1
+                            mapped = mapped.replace(part, pairs[part])
                 else:
                     mapped = pairs.get(value, value)
                     used[value] += value in pairs
@@ -960,6 +967,36 @@ class SplitName(io.ComfyNode):
 
 
 # --- matching: candidates and comparison ------------------------------------------------------
+COMMON_PIECE = 1000  # a 2-character piece more records share than this says nothing (skipped)
+
+
+def similar_pairs(
+    values: list[tuple[str, str]], least: float, top: int = 10
+) -> set[tuple[str, str]]:
+    """Sparse retrieval: records whose values share most of their 2-character pieces (cosine of the
+    piece sets at least ``least``), the ``top`` closest per record. Catches a typo or a cut-off
+    reading that an exact key misses."""
+    pieces = [{v[i : i + 2] for i in range(len(v) - 1)} or {v} for _, v in values]
+    index = defaultdict(list)
+    for i, ps in enumerate(pieces):
+        for piece in ps:
+            index[piece].append(i)
+    found = set()
+    for i, ps in enumerate(pieces):
+        shared = Counter(
+            j for piece in ps if len(index[piece]) <= COMMON_PIECE for j in index[piece] if j != i
+        )
+        close = [
+            (n / (len(ps) * len(pieces[j])) ** 0.5, j)
+            for j, n in shared.items()
+            if n / (len(ps) * len(pieces[j])) ** 0.5 >= least
+        ]
+        for _, j in sorted(close, reverse=True)[:top]:
+            if values[i][0] != values[j][0]:
+                found.add(tuple(sorted((values[i][0], values[j][0]))))
+    return found
+
+
 class FindCandidates(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -968,7 +1005,7 @@ class FindCandidates(io.ComfyNode):
             display_name="Find candidate pairs",
             category=CATEGORY,
             search_aliases=["blocking", "candidates", "pairs", "record linkage"],
-            description="Blocking: rows that share a value in any of the key columns become candidate pairs (each pass listed). Groups larger than the limit are skipped (a common surname would pair everyone).",
+            description="Finds the pairs worth comparing. Exact keys (blocking): rows sharing a value in a key become pairs; groups larger than the limit are skipped (a common surname would pair everyone). Similar values (sparse retrieval): `kana ~ 0.5` pairs rows whose kana share most of their 2-character pieces, so a typo or a cut-off reading still meets. Each pass is listed with its count.",
             inputs=[
                 Table.Input(
                     "table", display_name="Records", tooltip="One row per record (mention)."
@@ -984,7 +1021,7 @@ class FindCandidates(io.ComfyNode):
                     display_name="Blocking keys",
                     multiline=True,
                     default="kana\nbirth\nphone",
-                    tooltip="One pass per line; a line may join columns with + (kana+birth).",
+                    tooltip="One pass per line: a column, columns joined with + (kana+birth), or column ~ similarity (kana ~ 0.5: one typo in five letters still meets).",
                 ),
                 io.Int.Input(
                     "max_group",
@@ -1007,12 +1044,21 @@ class FindCandidates(io.ComfyNode):
     def execute(cls, table: Any, id: str, keys: str, max_group: int) -> io.NodeOutput:  # noqa: A002
         t = check_table(table)
         ids = columns_of(id)
-        passes = [
-            [c.strip() for c in line.split("+")] for line in keys.splitlines() if line.strip()
-        ]
-        need_columns(t, ids + [c for p in passes for c in p])
+        lines = [line.strip() for line in keys.splitlines() if line.strip()]
+        similar = [line.split("~") for line in lines if "~" in line]
+        passes = [[c.strip() for c in line.split("+")] for line in lines if "~" not in line]
+        need_columns(t, ids + [c for p in passes for c in p] + [c.strip() for c, _ in similar])
         mention = lambda r: "/".join(str(r.get(c) or "") for c in ids)  # noqa: E731
         found, notes = defaultdict(set), {}
+        for column, least in similar:
+            column, least = column.strip(), float(least)
+            values = [(mention(r), str(r[column])) for r in t["rows"] if r.get(column)]
+            close = similar_pairs(values, least)
+            for pair in close:
+                found[pair].add(f"{column}~")
+            notes[f"pass {column} ~ {least:g}"] = (
+                f"{len(close):,} pairs (similar, up to 10 per record)"
+            )
         for p in passes:
             groups = defaultdict(list)
             for r in t["rows"]:
@@ -1180,11 +1226,15 @@ class CompareFields(io.ComfyNode):
             if isinstance(how, dict) and how.get("common")
         }
         rows, levels = [], defaultdict(Counter)
-        for i, p in enumerate(pt["rows"]):
+        for p in pt["rows"]:
             a, b = by_id.get(p["left"]), by_id.get(p["right"])
             if a is None or b is None:
                 continue
-            row = {"id": f"p{i + 1}", "left": p["left"], "right": p["right"]}
+            # Stable across runs (not the row number), so your review decisions stay on their pair.
+            digest = hashlib.sha1(f"{p['left']}|{p['right']}".encode()).hexdigest()[:12]
+            row = {"id": f"p{digest}", "left": p["left"], "right": p["right"]}
+            # A rule can send pairs only an embedding model found to the reranker.
+            row["found_by"] = "embedding" if p.get("keys") == "embedding" else "keys"
             for field, how in spec.items():
                 how = how if isinstance(how, dict) else {}
                 row[field] = compare_value(

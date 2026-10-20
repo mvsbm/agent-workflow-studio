@@ -98,6 +98,27 @@ class Bench(unittest.TestCase):
         self.assertEqual(merged["pairwise"]["recall"], 1.0)
         self.assertLess(merged["pairwise"]["precision"], 0.05)
 
+    def test_funnel_says_where_matches_are_lost(self):
+        from .score import funnel
+
+        perfect = self.write(
+            [(k["system"], k["record_id"], k["role"], k["entity_id"]) for k in self.key]
+        )
+        mention = lambda k: f"{k['system']}/{k['record_id']}/{k['role']}"  # noqa: E731
+        from collections import defaultdict
+        from itertools import combinations
+
+        groups = defaultdict(list)
+        for k in self.key:
+            groups[k["entity_id"]].append(mention(k))
+        everyone = [pair for g in groups.values() for pair in combinations(g, 2)]  # all true pairs
+        counts = funnel(self.root / "key", perfect, everyone)["counts"]
+        self.assertEqual(counts["same customer"], counts["true pairs"])
+        lost = funnel(self.root / "key", self.write([]), [])["counts"]
+        self.assertEqual(lost["never a candidate"], lost["true pairs"])
+        alone = funnel(self.root / "key", self.write([]), everyone)["counts"]
+        self.assertEqual(alone["candidate, not merged"], alone["true pairs"])
+
 
 if __name__ == "__main__":
     unittest.main()

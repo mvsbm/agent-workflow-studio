@@ -32,7 +32,7 @@ const REVIEW = {
     const run = path.join(output, 'agent_tools', id, 'match-20261014-120000');
     fs.mkdirSync(run, {recursive: true});
     fs.writeFileSync(path.join(run, 'review.json'), JSON.stringify(REVIEW));
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-review'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-review'));
     const status = page.locator('.aw-review-status');
     await status.filter({hasText: 'Pairs: 0 of 2 decided · Customers: 0 of 1 checked'}).waitFor({timeout: 30000});
 

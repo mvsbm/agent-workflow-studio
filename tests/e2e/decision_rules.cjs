@@ -52,7 +52,7 @@ const PAIRS = [
     assert.match(decisions, /p3,,,review,Score 4 to 9,4,\+4 reading exact = 4/);
 
     // The uncertain pair shows in Review with its reason; deciding it overrides the rules.
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-review'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-review'));
     await page.getByText('+4 reading exact = 4').waitFor({timeout: 30000});
     await page.getByRole('group', {name: 'Is pair p3 the same person?'}).getByRole('button', {name: 'Same'}).click();
     await page.locator('.aw-review-status').filter({hasText: /Saved · version/}).waitFor({timeout: 30000});

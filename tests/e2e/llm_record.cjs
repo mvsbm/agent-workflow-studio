@@ -43,7 +43,7 @@ const artifacts = process.env.ARTIFACTS;
     assert.match(run.outputs, /fake answer/);
     assert.match(run.outputs, /Run record: version [0-9a-f]{8}/);
 
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.workflow-versions'); });
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-versions'));
     const first = page.locator('.aw-versions-item').first();
     await first.waitFor({timeout: 15000});
     assert.match(await first.locator('.aw-versions-message').textContent(), /^Run · Pi CLI Structured LLM #[\d:]+ · succeeded$/);

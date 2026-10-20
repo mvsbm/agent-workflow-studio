@@ -19,7 +19,7 @@ Four bundled skills guide it: **node creation, workflow debugging, connector/con
 
 ### Contracts: planning before building
 
-Every workflow the agent builds has one **contract**, agreed with you before any node is added and versioned as `contract.yaml` in the workflow's history. The agent first asks multiple-choice questions (each with an "Other" answer) until the requirements are clear, then proposes the contract in plain language:
+Every workflow the agent builds has one **contract**, agreed with you before any node is added and stored in the workflow itself: the intent in the workflow's extra data, each step on its stage node (the high-level design), and each node inside a stage tagged with the part of the design it realizes (the low-level design). Every change is a version in the workflow's history. The agent first asks multiple-choice questions (each with an "Other" answer) until the requirements are clear, then proposes the contract in plain language:
 
 - **Purpose**, and **what you asked for**: each request in your own words next to the agent's restatement ("When …, the workflow …"), with a priority (must / should / could).
 - **Examples** of input and expected output, and the **promised** inputs and outputs.
@@ -89,7 +89,7 @@ cd agent-workflow-studio
 ./run-local.sh    # http://127.0.0.1:8188
 ```
 
-The installer copies two demo workflows into your library: **Studio - Fuzzy Slug** (a fuzzy node turns text into a slug and shows the plan it chose) and **Studio - LLM Sentiment** (a Structured LLM node classifies a review). Both are set to `opencode-go / deepseek-v4-flash` with a Studio Keychain key; change the **Pi CLI · Model Config** node to use another model. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
+The installer copies the nayose workflows into your library: **Studio - Nayose benchmark** (the synthetic exports and the hidden-key score) and **Studio - Nayose reference (no code)** (the whole matching pipeline in visible nodes). Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
 ## Development
 
