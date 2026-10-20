@@ -46,7 +46,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
     if (task.template) {
       // Start from a shipped template (fresh id, so every run has its own history), and run it
       // once so its data exists before the agent starts, exactly as a user would.
-      const workflow = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'workflows', task.template), 'utf8'));
+      const workflow = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows', task.template), 'utf8'));
       workflow.id = crypto.randomUUID();
       await page.evaluate(async workflow => {
         const app = window.comfyAPI.app.app;

@@ -90,6 +90,16 @@ const artifacts = process.env.ARTIFACTS;
     assert.match(JSON.stringify(result.job.outputs), /yo there/, 'the job ran the latest version');
     assert.equal(result.openapi.paths['/agent-workflow-studio/api/greet-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.value.type, 'string');
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));
+    // The studio's workflows come from the package, in ComfyUI's own Templates browser.
+    const templates = await page.evaluate(async () => (await (await fetch('/workflow_templates')).json()).agent_workflow_studio);
+    assert.deepEqual([...templates].sort(), ['Studio - Nayose benchmark', 'Studio - Nayose reference (no code)']);
+    // Old run outputs: a native setting and a menu command; a dry run of an empty output removes nothing.
+    const housekeeping = await page.evaluate(async () => {
+      const app = window.comfyAPI.app.app;
+      const preview = await (await fetch('/agent-workflow-studio/outputs/cleanup', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({days: 30})})).json();
+      return {days: app.extensionManager.setting.get('AgentWorkflowStudio.KeepOutputsDays'), command: !!app.extensionManager.command.commands.find(c => c.id === 'AgentWorkflowStudio.CleanOutputs'), dry: preview.dry_run};
+    });
+    assert.deepEqual(housekeeping, {days: 30, command: true, dry: true});
     // The Contract tab shows what is published and how to call it.
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-contract'));
     await page.locator('.aw-contract-api').getByText(/^Published as greet-e2e · 1\.0\.1 \([0-9a-f]{8}\)/).waitFor({timeout: 15000});

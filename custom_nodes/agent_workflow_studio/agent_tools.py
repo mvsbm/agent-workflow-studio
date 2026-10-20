@@ -161,8 +161,19 @@ def approval_text(name: str, description: str, inputs: list, outputs: list, code
 
 
 def run_folder(output_root: Path, workflow_id: str, name: str) -> Path:
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    return output_root / "agent_tools" / workflow_id[:36] / f"{name}-{stamp}"
+    """A new folder for one run of a tool, created here: never shared with another run, even
+    within the same millisecond."""
+    base = output_root / "agent_tools" / workflow_id[:36]
+    base.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S") + f"{int(time.time() * 1000) % 1000:03d}"
+    for n in range(1000):
+        folder = base / (f"{name}-{stamp}" + (f"-{n}" if n else ""))
+        try:
+            folder.mkdir()
+            return folder
+        except FileExistsError:
+            continue
+    raise RuntimeError("Could not create a run folder.")
 
 
 __all__ = [

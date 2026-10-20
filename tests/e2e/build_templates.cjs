@@ -1,4 +1,4 @@
-// Builds workflows/Studio - Nayose benchmark.json in an isolated ComfyUI: the data generator as a
+// Builds example_workflows/Studio - Nayose benchmark.json in an isolated ComfyUI: the data generator as a
 // subgraph (people → activity → three legacy exports), a Score node, and a how-to note; run once so
 // every stage's tables are saved in the template. Usage: scripts/build_templates.sh
 const {chromium} = require('playwright-core');
@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const base = process.env.BASE;
-const target = path.join(__dirname, '..', '..', 'workflows', 'Studio - Nayose benchmark.json');
+const target = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows', 'Studio - Nayose benchmark.json');
 const NOTE = `# Nayose benchmark: everything on this canvas
 
 1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.

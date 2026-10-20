@@ -89,7 +89,7 @@ cd agent-workflow-studio
 ./run-local.sh    # http://127.0.0.1:8188
 ```
 
-The installer copies the nayose workflows into your library: **Studio - Nayose benchmark** (the synthetic exports and the hidden-key score) and **Studio - Nayose reference (no code)** (the whole matching pipeline in visible nodes). Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
+The nayose workflows ship with the package and appear in ComfyUI's own **Templates** browser (under this node pack): **Studio - Nayose benchmark** (the synthetic exports and the hidden-key score) and **Studio - Nayose reference (no code)** (the whole matching pipeline in visible nodes, published as an API that takes your exports). They always match the installed version. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
 ## Development
 
