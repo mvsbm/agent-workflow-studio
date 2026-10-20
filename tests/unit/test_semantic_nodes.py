@@ -1,5 +1,7 @@
 """Semantic matching: nearest neighbours and rerank levels (the models themselves are not loaded here)."""
 
+# Verifies: R19
+
 import unittest
 
 import torch

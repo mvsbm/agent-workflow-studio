@@ -1,4 +1,5 @@
 // The platform behaviours that bit us, kept as checks so an upgrade that changes them is noticed.
+// Verifies: R15
 module.exports = {
   id: 'known_pitfalls',
   assumes: 'ui values are lists (a bare string arrives as characters); Vue nodes mode renders nodes as DOM above the canvas, classic does not',

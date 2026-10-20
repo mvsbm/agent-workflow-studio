@@ -63,6 +63,16 @@ class TraceabilityTests(unittest.TestCase):
             "verified instead (*Verified by:* …) in REQUIREMENTS.md.",
         )
 
+    def test_every_ci_test_file_names_what_it_verifies(self) -> None:
+        unnamed = [
+            str(p.relative_to(REPO))
+            for p in ci_tests()
+            if not MARKER.search(p.read_text(encoding="utf-8"))
+        ]
+        self.assertEqual(
+            unnamed, [], "Add `Verifies: Rn` naming the requirement each file protects."
+        )
+
     def test_tests_cite_only_real_requirements(self) -> None:
         unknown = sorted(set(matrix()) - set(requirements()))
         self.assertEqual(

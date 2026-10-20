@@ -1,5 +1,6 @@
 // The workflow's interface is App mode's selection (extra.linearData): it must survive save and
 // point at nodes inside stages, and the flattened prompt must carry those nodes under known ids.
+// Verifies: R15, R16
 module.exports = {
   id: 'app_signature',
   assumes: 'App mode inputs/outputs (extra.linearData) survive save/reload; they hold bare node ids (no stage path), so the signature names top-level nodes only',

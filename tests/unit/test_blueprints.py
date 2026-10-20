@@ -1,6 +1,8 @@
 """The recurring stage patterns ship as native blueprints, in sync with the nayose reference, and
 carry no one's contract (no aws_ tags)."""
 
+# Verifies: R9
+
 import json
 import unittest
 
