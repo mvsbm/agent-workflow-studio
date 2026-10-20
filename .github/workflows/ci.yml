@@ -42,10 +42,11 @@ jobs:
     needs: lint
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      AGENT_WORKFLOW_STUDIO_HOME: ${{ runner.temp }}/aws
-      E2E_KEEP: ${{ runner.temp }}/e2e
     steps:
+      - name: Install into the runner's temp directory (runner.temp exists only inside steps)
+        run: |
+          echo "AGENT_WORKFLOW_STUDIO_HOME=$RUNNER_TEMP/aws" >> "$GITHUB_ENV"
+          echo "E2E_KEEP=$RUNNER_TEMP/e2e" >> "$GITHUB_ENV"
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           persist-credentials: false
