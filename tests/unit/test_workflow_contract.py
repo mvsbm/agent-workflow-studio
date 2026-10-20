@@ -17,6 +17,7 @@ from custom_nodes.agent_workflow_studio.workflow_contract import (
     review,
     validate_contract,
     validate_for_approval,
+    validate_intent,
 )
 
 CONTRACT = {
@@ -207,6 +208,30 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(
             all(target in TRANSITIONS for row in TRANSITIONS.values() for target in row.values())
         )
+
+    def test_every_problem_comes_back_at_once(self) -> None:
+        from custom_nodes.agent_workflow_studio.native_layers import intent_of
+
+        # Consistency: two independent mistakes, one answer.
+        broken = copy.deepcopy(CONTRACT)
+        broken["steps"][0]["covers"] = ["R9"]
+        broken["steps"][1]["gate"]["check"] = {"output": "nope", "kind": "contains", "value": "x"}
+        with self.assertRaises(ValueError) as caught:
+            validate_contract(broken)
+        message = str(caught.exception)
+        self.assertRegex(message, r"^\d+ problems to fix together: 1\) ")
+        self.assertIn("covers unknown request(s): R9", message)
+        self.assertIn("the check is on nope", message)
+        # Intent: design keys, a missing title and a schema error in the same answer.
+        intent = intent_of(copy.deepcopy(CONTRACT))
+        intent["steps"] = []
+        intent["requests"][0].pop("title")
+        intent["purpose"] = 42
+        with self.assertRaises(ValueError) as caught:
+            validate_intent(intent)
+        message = str(caught.exception)
+        for part in ("steps belong to the design", "short title", "Invalid contract at purpose"):
+            self.assertIn(part, message)
 
     def test_a_duplicate_id_is_named(self) -> None:
         twice = copy.deepcopy(CONTRACT)

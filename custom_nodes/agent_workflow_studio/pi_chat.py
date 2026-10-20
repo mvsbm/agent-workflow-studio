@@ -75,6 +75,63 @@ CONTRACT_ACTIONS = {
 }
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
+# Minimal correct shapes, shown when a proposal's shape is wrong (a model fixes a shape best by example).
+CONTRACT_SHAPE = (
+    '{"contract": {"contract": 2, "purpose": "…", "requests": [{"id": "R1", "title": "…", "you_said": "…", '
+    '"we_understood": "When …, the workflow …", "priority": "must"}], "examples": [{"id": "E1", "covers": '
+    '["R1"], "given": {"orders": "orders_sample"}, "expect": {"totals": "north"}}], "promises": {"inputs": '
+    '[{"name": "orders", "kind": "folder", "description": "…", "example": "orders_sample"}], "outputs": '
+    '[{"name": "totals", "kind": "table", "description": "…"}]}, "decisions": [], "not_now": [], '
+    '"open_questions": []}}'
+)
+DESIGN_SHAPE = (
+    '{"design": {"steps": [{"id": "total", "purpose": "…", "approach": "fixed", "covers": ["R1"], '
+    '"takes": {"orders": "input.orders"}, "gives": {"totals": "TABLE"}, "uses": "Read table, Summarize", '
+    '"why": "…", "pattern": "Pipes and filters", "gate": {"says": "…", "check": {"output": "totals", '
+    '"kind": "rows_at_least", "value": 1}}}], "data": {"totals": {"description": "…", "key": ["region"], '
+    '"fields": ["region", "revenue"]}}, "decisions": [{"id": "D2", "decision": "…", "why": "…", "by": '
+    '"agent"}], "outputs": {"totals": "total.totals"}}}'
+)
+
+
+def as_object(value: object) -> object:
+    """A tool argument as meant: JSON text parsed (models sometimes send objects as text), and
+    optional fields sent as null dropped (null means "not given")."""
+    if isinstance(value, str) and value.strip()[:1] in ("{", "["):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+    if isinstance(value, dict):
+        return {k: as_object(v) for k, v in value.items() if v is not None}
+    if isinstance(value, list):
+        return [as_object(v) for v in value]
+    return value
+
+
+def renumbered(design: dict, intent: dict) -> dict:
+    """A first design's own decisions renumbered after the contract's (they share one numbering).
+    Only before anything is built: no LLD can cite them yet."""
+    taken = {d.get("id") for d in intent.get("decisions") or [] if isinstance(d, dict)}
+    numbers = [int(i[1:]) for i in taken if isinstance(i, str) and i[1:].isdigit()]
+    next_free, out = max(numbers, default=0) + 1, []
+    for d in design.get("decisions") or []:
+        if isinstance(d, dict) and d.get("id") in taken:
+            d = {**d, "id": f"D{next_free}"}
+            next_free += 1
+        out.append(d)
+    return {**design, "decisions": out} if "decisions" in design else design
+
+
+def shape_hint(problems: list[str], shape: str) -> str:
+    """A minimal correct example, when a problem is about the shape itself."""
+    return (
+        f" Expected shape, e.g. {shape}"
+        if any("Invalid" in p or "Malformed" in p for p in problems)
+        else ""
+    )
+
+
 REQUIRED_SKILLS = {
     "comfyui-node-creation",
     "comfyui-workflow-debugging",
@@ -771,10 +828,22 @@ class PiChatSession:
 
     async def propose_contract(self, arguments: dict) -> dict:
         """The contract: what the user wants (intent only). Its design comes next, approved on its own."""
-        intent = validate_intent(arguments.get("contract"))
-        if failing := [item for ok, item in api_review.contract_rules(intent) if not ok]:
-            # The API design standard is checked before the user is asked: fix these, then propose again.
-            raise ValueError("API review: fix before proposing — " + "; ".join(failing) + ".")
+        # Every problem in one answer (shape, consistency and the API standard): one retry fixes all.
+        intent, problems = as_object(arguments.get("contract")), []
+        try:
+            intent = validate_intent(intent)
+        except ValueError as error:
+            problems.append(str(error))
+        try:
+            problems += [item for ok, item in api_review.contract_rules(intent) if not ok]
+        except (AttributeError, KeyError, TypeError):
+            pass  # too broken to review yet; the problems above say why
+        if problems:
+            raise ValueError(
+                "Fix before proposing — "
+                + " | ".join(problems)
+                + shape_hint(problems, CONTRACT_SHAPE)
+            )
         design = design_of(self.contract) if self.contract else None
         if design and design["steps"]:
             # An amended contract must still fit the approved design (else amend the design too).
@@ -798,17 +867,37 @@ class PiChatSession:
     async def propose_design(self, arguments: dict) -> dict:
         """The high-level design (HLD): the abstracted workflow. On approval it becomes the stages."""
         # The design, or its fields sent without the wrapper (a common slip; the fields are the same).
-        design = arguments.get("design", arguments if "steps" in arguments else None)
+        design = as_object(arguments.get("design", arguments if "steps" in arguments else None))
+        if isinstance(design, dict) and self.phase() == "design":
+            design = renumbered(design, intent_of(self.contract))
         if not isinstance(design, dict):
-            raise ValueError("Give the design: {steps, data, decisions, loop, outputs}.")
-        contract = validate_for_approval(join(intent_of(self.contract), design))
-        if failing := blocking(contract):
-            # The design standard is checked before the user is asked: fix these, then propose again.
+            # Say what arrived (its type and keys, not its values), so the next try can be right.
+            got = type(arguments.get("design")).__name__ if "design" in arguments else "no design"
+            raise ValueError(
+                f"Give the design as an object (received {got}; arguments had: {', '.join(sorted(arguments)) or 'nothing'})."
+                + shape_hint(["Invalid"], DESIGN_SHAPE)
+            )
+        # Every problem in one answer: shape and consistency, then the design review (incl. the API standard).
+        problems, contract = [], None
+        try:
+            joined = join(intent_of(self.contract), design)
+            contract = validate_for_approval(joined)
+        except (ValueError, AttributeError, KeyError, TypeError) as error:
+            problems.append(
+                str(error) if isinstance(error, ValueError) else f"Malformed design: {error}"
+            )
+            joined = None
+        try:
+            problems += blocking(contract or joined)
+        except (AttributeError, KeyError, TypeError):
+            pass  # too broken to review yet; the problems above say why
+        if problems:
             raise ValueError(
                 "Design review: fix before proposing — "
-                + "; ".join(failing)
+                + " | ".join(problems)
                 + ". Name each port that hands data to another step after its entity in `data`; give every "
                 "promised output its step in `outputs` and use every promised input; keep purpose, uses and why short."
+                + shape_hint(problems, DESIGN_SHAPE)
             )
         # The user approved the contract already: the card leads with the design, not the same text again.
         text = render(contract)
@@ -848,6 +937,10 @@ class PiChatSession:
             raise ValueError(
                 "Build stages once the design is approved: comfy_propose_contract, then comfy_propose_design."
             )
+        arguments = {
+            **arguments,
+            **{k: as_object(arguments[k]) for k in ("nodes", "wires") if k in arguments},
+        }
         step = next((s for s in self.contract["steps"] if s["id"] == arguments.get("step")), None)
         if step is None:
             ids = ", ".join(s["id"] for s in self.contract["steps"])
