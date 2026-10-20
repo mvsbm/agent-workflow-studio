@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import re
 
-from .progress import clauses
+from .native_layers import SCAFFOLD, stage_nodes
+from .progress import clauses, tags
 
 KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 MAX_NODES = 40
@@ -99,3 +100,57 @@ def validate_lld(step: dict, spec: object, decisions: list[str] = ()) -> dict:
     if unfed := sorted(gives - set(fed)):
         raise ValueError(f"Step {step['id']} gives {', '.join(unfed)}, but no wire feeds it.")
     return {"step": step["id"], "nodes": nodes, "wires": wires}
+
+
+def lld_gaps(workflow: dict) -> list[str]:
+    """The LLD rules checked on the stages as they are now (hand edits included), not only when built:
+    every port of a stage wired inside it, every part of its step realized by a node, and no node
+    inside it that traces to nothing (a traceability orphan)."""
+    definitions = {d.get("id"): d for d in (workflow.get("definitions") or {}).get("subgraphs", [])}
+
+    def tagged(node: dict) -> list[str]:
+        return tags({"realizes": (node.get("properties") or {}).get("aws_realizes")})
+
+    gaps = []
+    for step_id, stage in stage_nodes(workflow).items():
+        step, definition = (
+            (stage.get("properties") or {}).get("aws_step"),
+            definitions.get(stage.get("type")),
+        )
+        if not step or not definition:
+            continue
+        inputs = [i.get("name") for i in definition.get("inputs", [])]
+        outputs = [o.get("name") for o in definition.get("outputs", [])]
+        boundary_in = (definition.get("inputNode") or {}).get("id", -10)
+        boundary_out = (definition.get("outputNode") or {}).get("id", -20)
+        links = definition.get("links", [])
+        used = {
+            inputs[x["origin_slot"]]
+            for x in links
+            if x.get("origin_id") == boundary_in and x["origin_slot"] < len(inputs)
+        }
+        fed = {
+            outputs[x["target_slot"]]
+            for x in links
+            if x.get("target_id") == boundary_out and x["target_slot"] < len(outputs)
+        }
+        title = stage.get("title") or definition.get("name") or step_id
+        gaps += [
+            f"{title}: takes {p}, but nothing inside uses it"
+            for p in step.get("takes", {})
+            if p not in used
+        ]
+        gaps += [
+            f"{title}: gives {p}, but nothing inside feeds it"
+            for p in step.get("gives", {})
+            if p not in fed
+        ]
+        working = [n for n in definition.get("nodes", []) if n.get("type") not in SCAFFOLD]
+        realized = {t for n in working for t in tagged(n)}
+        gaps += [f"{title}: no node realizes {c}" for c in clauses(step) if c not in realized]
+        gaps += [
+            f"{title}: {n.get('title') or n.get('type')} realizes nothing in the design (tag it, or remove it)"
+            for n in working
+            if not tagged(n)
+        ]
+    return gaps

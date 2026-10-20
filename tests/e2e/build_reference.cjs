@@ -48,9 +48,9 @@ const CONTRACT = {
   contract: 2,
   purpose: 'Give every person mention in three legacy insurance systems one customer id, with uncertain pairs decided by you.',
   requests: [
-    {id: 'R1', you_said: 'find whether customers are the same person across the policy, claims and payment systems', we_understood: 'When the exports are read, the workflow gives every person mention a customer id, the same id for the same person.', priority: 'must'},
-    {id: 'R2', you_said: 'a person checks what the machine is unsure of', we_understood: 'When a pair is uncertain, the workflow sends it to you in the Review tab instead of guessing.', priority: 'should'},
-    {id: 'R3', you_said: 'each system is dirty in its own way', we_understood: 'When records are cleaned, each system gets its own cleaning lane.', priority: 'should'},
+    {id: 'R1', title: 'One customer id per person', you_said: 'find whether customers are the same person across the policy, claims and payment systems', we_understood: 'When the exports are read, the workflow gives every person mention a customer id, the same id for the same person.', priority: 'must'},
+    {id: 'R2', title: 'You check uncertain pairs', you_said: 'a person checks what the machine is unsure of', we_understood: 'When a pair is uncertain, the workflow sends it to you in the Review tab instead of guessing.', priority: 'should'},
+    {id: 'R3', title: 'Own cleaning lane per system', you_said: 'each system is dirty in its own way', we_understood: 'When records are cleaned, each system gets its own cleaning lane.', priority: 'should'},
   ],
   examples: [{id: 'E1', covers: ['R1'], given: {seed: 7}, expect: {customer_file: 'nayose_result.csv'}, note: 'The default data: the run publishes one customer id per mention.'}],
   promises: {

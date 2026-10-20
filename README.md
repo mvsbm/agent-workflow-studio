@@ -26,7 +26,7 @@ Every workflow the agent builds has one **contract**, agreed with you before any
 - **Steps**, each covering your requests, with typed inputs and outputs (`takes` / `gives`: TABLE, PAIRS, STRING, IMAGE, …) and how we know it worked (its **success gate**, checked on the data by a **Check** node where it can be).
 - **Decisions** (each with why, and whether you or the agent decided), what is **not now**, and **open questions**, which must be resolved before you can approve.
 
-You approve it in the chat; the agent cannot add nodes to a workflow, or write files to its workspace (except scratch files under `tmp/`), without an approved contract, and changing it means proposing an amendment you approve again. Contracts are YAML checked against `contract.schema.json`, which editors such as VS Code use to validate hand edits. Each step's state (planned, built, fuzzy, verified, failing) is never written down: it is derived from the canvas and the latest gate check, so progress ("2 of 3 steps verified") always matches reality. Plans approved before contracts existed are converted automatically.
+You approve it in the chat; the agent cannot add nodes to a workflow, or write files to its workspace (except scratch files under `tmp/`), without an approved contract, and changing it means proposing an amendment you approve again. The contract, its design (one stage per step) and each stage's nodes are stored in the workflow itself and checked against `contract.schema.json`; the **Design** tab traces them both ways (each request → the stages serving it → the nodes realizing each part of a stage, and back). Each step's state (planned, built, fuzzy, verified, failing) is never written down: it is derived from the canvas and the latest gate check, so progress ("2 of 3 steps verified") always matches reality. Plans approved before contracts existed are converted automatically.
 
 **Each step is a stage.** When you approve the contract, the canvas gets its skeleton: one stage (a subgraph card) per step, numbered by what it depends on (independent steps, such as one cleaning lane per source system, share a number and a column), wired by its typed ports, with a **Stub** passing data through until the step is built and a **Check** node for its gate. The agent builds inside the stages; it cannot place nodes outside them. A step's state comes from its stage: planned (only Stub and Checks), built, fuzzy, verified (its Checks pass on the latest run of exactly this graph) or failing.
 
@@ -96,6 +96,10 @@ The installer copies the nayose workflows into your library: **Studio - Nayose b
 ```bash
 scripts/test.sh   # Python (unittest, via the installed ComfyUI venv) + JS (node --test)
 ```
+
+Tests live in the repository, outside the shipped node folder: `tests/unit` (Python, importing the package as ComfyUI loads it), `tests/web` (front-end modules), `tests/e2e` (browser) and `tests/eval` (the real agent). GitHub Actions (`.github/workflows/ci.yml`) runs the lint, unit, web and browser suites on every push and pull request; the real-agent evaluation stays a manual command.
+
+**Every workflow has its own CI/CD.** Its tests are stored in it and versioned with it, one level per layer: the contract's examples (acceptance), each stage's Checks (integration), the design rules on every stage (ports wired, every part of a step realized, no node that traces to nothing) and no regression since the last release. **Run checks** (Contract tab, or the agent's `comfy_run_examples`) runs them all on exactly this graph and keeps the run as a version (`Checks · ✓ design · ✓ stage Checks · ✓ examples · ✓ no regression`). Publishing needs a green run; each release says why its version moved (major: the API, minor: the design, patch: inside stages), callers can pin `name@x.y.z`, and **Roll back** points the API at an earlier release.
 
 ```bash
 scripts/e2e.sh    # real Pi startup check, then a browser test: the agent builds and runs a workflow

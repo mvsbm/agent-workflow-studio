@@ -4,12 +4,12 @@ description: Write, follow and amend the workflow contract (intent), its design 
 ---
 # Workflow contracts
 
-Every workflow you build or extend, and every set of files you produce for the user, has three layers, each approved or checked in turn and stored in the workflow itself: the **contract** (intent, `comfy_propose_contract`), the **design** (HLD, `comfy_propose_design`: each step a stage node) and each stage's **LLD** (`comfy_build_step`: the nodes inside, each tagged with the HLD clause it realizes). Step status is derived from the canvas and runs, never stored. The user may be non-technical: write every plain field so they can check it at a glance.
+Every workflow you build or extend, and every set of files you produce for the user, has three layers, each approved or checked in turn and stored in the workflow itself: the **contract** (intent, `comfy_propose_contract`), the **design** (HLD, `comfy_propose_design`: each step a stage node) and each stage's **LLD** (`comfy_build_step`: the nodes inside, each tagged with the HLD clause it realizes). They trace to each other in one vocabulary: a stage *serves* requests (its `covers`), a node *realizes* a part of its stage (`takes <port>`, `does`, `gives <port>`), and a Check or an example *verifies* it. Step status is derived from the canvas and runs, never stored. The user may be non-technical: write every plain field so they can check it at a glance.
 
 ## Writing the contract (`comfy_propose_contract`): what the user wants
 
 - **purpose**: 1-3 sentences: who it is for, what problem it solves, what good looks like.
-- **requests**: one per thing the user wants. `you_said` quotes the user's words exactly; `we_understood` restates it as "When <situation>, the workflow <does what>." Priority `must` / `should` / `could`. Split compound wishes into separate requests.
+- **requests**: one per thing the user wants. `title`: a few words naming it (≤ 40 characters, e.g. `Own cleaning lane per system`): the user sees it on the canvas wherever the request is referenced, so it must make sense alone. `you_said` quotes the user's words exactly; `we_understood` restates it as "When <situation>, the workflow <does what>." Priority `must` / `should` / `could`. Split compound wishes into separate requests.
 - **Nuance**: turn subjective wishes ("friendly tone", "looks good") into `examples`, or into a gate the user confirms. Contradictions and unknowns go to `open_questions` and are asked with `comfy_ask_user` before proposing. A question that only one step depends on, while the rest can be built, may stay open tied to that step (`{"question": …, "step": …}`): that stage shows it is waiting and cannot be verified until the user answers (amend the contract with the answer as a decision). Any other open question blocks approval. Things the user wants later go to `not_now`.
 - **examples**: concrete `given` → `expect` pairs using the promised input/output names. Prefer 2-4 that show the edges (empty input, unusual case), not just the happy path.
 - **promises**: the inputs the user provides and the outputs they get, each with a kind (text, image, ...) and ideally an example value.
@@ -47,6 +47,10 @@ Every workflow you build or extend, and every set of files you produce for the u
 | failing | its gate failed on the latest run | fix the smallest part of the step, run, re-check |
 
 Any structural edit resets gate outcomes, so verified steps return to built until re-checked. Use `comfy_contract_status` to see every step's state, nodes outside every stage and the to-do list; report progress to the user as "N of M steps verified", together with its `gaps` (must-haves not yet proven by an example on this version, Checks that differ from the agreed one): the user sees the same list in the Contract tab.
+
+## The workflow's CI
+
+Every workflow is an app with its own tests, stored in it and versioned with it: its examples (acceptance: the contract), each stage's Checks (integration: the design), and the LLD rules on every stage (design: ports wired, every part realized, no node that traces to nothing). `comfy_run_examples` runs them all on exactly this graph, plus a regression check against the last release, and keeps the run as a version. Run it before you report the work done; report its summary as it is and fix what fails. The user publishes only a green run; you never publish.
 
 ## Quality gates for data jobs
 

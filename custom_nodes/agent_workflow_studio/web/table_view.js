@@ -1,6 +1,7 @@
 // Tables inside nodes: Nayose benchmark stages and Preview table show their data as small tables
 // (ui.aws_tables), kept in node properties so they survive reloads and appear in Versions.
 import {app} from '../../scripts/app.js';
+import {quietly} from './pi_canvas.js';
 
 const TYPES = new Set(['AgentWorkflowSplitName', 'AgentWorkflowReviewDecisions', 'AgentWorkflowReadTable', 'AgentWorkflowWriteTable', 'AgentWorkflowStackRoles', 'AgentWorkflowConcatenate', 'AgentWorkflowFilterRows', 'AgentWorkflowJoinTables', 'AgentWorkflowNormalizeText', 'AgentWorkflowMapValues', 'AgentWorkflowParseDates', 'AgentWorkflowExtractDigits', 'AgentWorkflowFindCandidates', 'AgentWorkflowCompareFields', 'AgentWorkflowAttachGroups', 'AgentWorkflowParseNumbers', 'AgentWorkflowRemoveDuplicates', 'AgentWorkflowComputeColumn', 'AgentWorkflowSummarize', 'AgentWorkflowDataChecks', 'AgentWorkflowGenerateRecords', 'AgentWorkflowDamageValues', 'AgentWorkflowCompareToTruth', 'AgentWorkflowCheck', 'AgentWorkflowStub', 'AgentWorkflowAgentTool', 'AgentWorkflowDecisionRules', 'AgentWorkflowProfileData', 'AgentWorkflowLearnWeights', 'AgentWorkflowLLMSuggestions', 'AgentWorkflowClusterGuard', 'AgentWorkflowNayosePeople', 'AgentWorkflowNayoseActivity', 'AgentWorkflowNayoseExport', 'AgentWorkflowNayoseScore', 'AgentWorkflowPreviewTable']);
 
@@ -153,9 +154,10 @@ app.registerExtension({
       if (rules && box && box.value !== rules) box.value = rules;
       // For glance.js: wire labels and the zoomed-out line (else the first line of the node's text).
       const line = [].concat(output?.aws_headline ?? output?.text?.[0]?.split('\n')[0] ?? [])[0];
-      if (output?.aws_wires || line) this.properties = {...this.properties, aws_wires: output?.aws_wires, aws_headline: line?.slice(0, 600)};
+      // What the run showed is kept on the node (it survives a reload) without becoming an undo step.
+      if (output?.aws_wires || line) quietly(app, () => { this.properties = {...this.properties, aws_wires: output?.aws_wires, aws_headline: line?.slice(0, 600)}; });
       if (!output?.aws_tables && !output?.aws_flow && !output?.aws_tree) return;
-      this.properties = {...this.properties, aws_tables: output.aws_tables, aws_flow: output.aws_flow, aws_tree: output.aws_tree};
+      quietly(app, () => { this.properties = {...this.properties, aws_tables: output.aws_tables, aws_flow: output.aws_flow, aws_tree: output.aws_tree}; });
       render(ensureView(this), output.aws_tables, output.aws_flow, output.aws_tree);
     };
   },

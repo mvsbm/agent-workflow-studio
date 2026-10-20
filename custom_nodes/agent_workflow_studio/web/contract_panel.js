@@ -5,7 +5,7 @@ import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {registerWorkflowTab} from './workflow_drawer.js';
 import {contractEvidence} from './pi_canvas.js';
-import {publishWorkflow, runExamples} from './publish.js';
+import {publishWorkflow, rollbackApi, runChecks} from './publish.js';
 import {designPage} from './design_page.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
@@ -53,10 +53,10 @@ function requestsSection(trace) {
   for (const r of trace.requests) {
     const item = el('li');
     const head = el('div');
-    head.append(chip(...VERDICT[r.verdict]), el('strong', ` ${r.id} · ${r.priority ?? '—'}`));
+    head.append(chip(...VERDICT[r.verdict]), el('strong', ` ${r.id} · ${r.title ?? ''}`), el('small', ` ${r.priority ?? ''}`));
     item.append(head, el('div', r.we_understood ?? r.you_said ?? ''));
     if (r.you_said) item.append(el('small', `You said: “${r.you_said}”`));
-    item.append(el('small', `Built by: ${r.steps.map(s => `${s.id} (${s.state ?? '?'})`).join(', ') || 'no step'} · Examples: ${r.examples.map(e => `${e.id} ${MARK[e.status]}`).join(', ') || 'none'}`));
+    item.append(el('small', `Served by: ${r.steps.map(s => `${s.id} (${s.state ?? '?'})`).join(', ') || 'no step'} · Examples: ${r.examples.map(e => `${e.id} ${MARK[e.status]}`).join(', ') || 'none'} (they verify it)`));
     list.append(item);
   }
   section.append(list);
@@ -102,13 +102,14 @@ function apiSection() {
   const name = el('input', null, {type: 'text', placeholder: 'api name, e.g. nayose', className: 'p-inputtext p-component', size: 18});
   name.setAttribute('aria-label', 'API name');
   const publish = el('button', 'Publish as API', {type: 'button', className: 'p-button p-component p-button-sm'});
-  const examples = el('button', 'Run examples', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: "Run the contract's examples as acceptance tests; publishing needs them to pass"});
+  const examples = el('button', 'Run checks', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: "This workflow's CI: its design, every stage's Checks, the contract's examples and no regression since the last release, on exactly this graph. Publishing needs them all to pass."});
+  const back = el('button', 'Roll back', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', hidden: true});
   const result = el('p', null, {role: 'status'});
   // The outer loop: run the published workflow on a schedule; each run's Checks become a version.
   const every = el('input', null, {type: 'number', min: '0', step: '5', placeholder: 'minutes', className: 'p-inputtext p-component', style: 'width: 7em'});
   every.setAttribute('aria-label', 'Watch every N minutes (0 stops)');
   const watch = el('button', 'Watch', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: 'Run the published API on a schedule and record whether its Checks pass'});
-  section.append(el('h3', 'API'), info, name, publish, examples, every, watch, result);
+  section.append(el('h3', 'API'), info, name, examples, publish, back, every, watch, result);
   watch.addEventListener('click', async () => {
     try {
       const response = await api.fetchApi(`/agent-workflow-studio/api/${encodeURIComponent(name.value.trim())}/watch`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: Number(every.value || 0)})});
@@ -121,17 +122,25 @@ function apiSection() {
     }
   });
   examples.addEventListener('click', async () => {
-    result.textContent = 'Running the examples…';
+    result.textContent = 'Running the checks…';
     try {
-      const done = await runExamples(app, api);
-      result.textContent = `Examples: ${done.passed}/${done.total} passed` + done.results.filter(r => !r.passed).map(r => ` · ${r.example}: ${r.misses.join('; ')}`).join('');
+      const done = await runChecks(app, api);
+      result.textContent = `Checks: ${done.summary}` + done.stages.filter(s => s.status !== 'passed').map(s => ` · ${s.label}: ${s.detail.slice(0, 3).join('; ')}`).join('');
     } catch (error) {
       result.textContent = error.message;
     }
   });
   const show = item => {
     const call = `curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": …`).join(', ')}}}'`;
-    info.replaceChildren(el('div', `Published as ${item.name} · version ${item.version.slice(0, 8)} · ${item.published_at}`),
+    // Earlier releases can be returned to (callers pinned to name@x.y.z keep theirs).
+    const earlier = (item.versions ?? []).filter(v => v !== item.semver);
+    back.hidden = !earlier.length;
+    back.textContent = `Roll back to ${earlier.at(-1) ?? ''}`;
+    back.onclick = async () => {
+      try { await rollbackApi(api, item.name, earlier.at(-1)); result.textContent = `${item.name} now serves ${earlier.at(-1)}.`; await section.load(); } catch (error) { result.textContent = error.message; }
+    };
+    info.replaceChildren(el('div', `Published as ${item.name} · ${item.semver ?? ''} (${item.version.slice(0, 8)}) · ${item.published_at}`),
+      ...(item.notes ? [el('div', item.notes)] : []),
       el('div', `Inputs: ${item.inputs.join(', ') || 'none'} · outputs: ${item.outputs.join(', ')}`),
       el('div', item.watch ? `Watched every ${item.watch.every_minutes} min · last: ${item.watch.last ? `${item.watch.last.passing ? '✓ passing' : '✗ FAILING'} (checks ${item.watch.last.checks}) at ${item.watch.last.at}` : 'not run yet'}` : 'Not watched.'),
       el('code', call, {className: 'aw-contract-call'}),
@@ -148,7 +157,7 @@ function apiSection() {
     result.textContent = 'Publishing…';
     try {
       const done = await publishWorkflow(app, api, name.value.trim());
-      result.textContent = `Published version ${done.version}: POST ${done.endpoint}` + (done.todo.length ? ` · still to do: ${done.todo.join('; ')}` : '');
+      result.textContent = `Published ${done.semver} (${done.version}): ${done.notes} POST ${done.endpoint}` + (done.todo.length ? ` · still to do: ${done.todo.join('; ')}` : '');
       await section.load();
     } catch (error) {
       result.textContent = error.message;

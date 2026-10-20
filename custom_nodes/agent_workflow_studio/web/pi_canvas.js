@@ -31,6 +31,16 @@ export function withStageOutputs(graph, defs) {
 // The skeleton (one stage per step, wired, a Stub inside, a Check per gate) is built on approval.
 const SCAFFOLD = new Set(['AgentWorkflowStub', 'AgentWorkflowCheck', 'AgentWorkflowApiOutput']);
 const humanize = id => id.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+/** Display state kept in the workflow (stage cards, run outputs shown on nodes, the verification) is
+ *  not a change the user made: write it without adding an undo step, by folding it into ComfyUI's
+ *  tracked state. (User edits are recorded on mouse-up and agent edits as they apply, so nothing of
+ *  theirs is waiting here; what may be is ComfyUI's own re-layout, which is not a step either.) */
+export function quietly(app, write) {
+  const tracker = app.extensionManager?.workflow?.activeWorkflow?.changeTracker;
+  write();
+  if (tracker?.activeState && app.rootGraph) tracker.activeState = JSON.parse(JSON.stringify(app.rootGraph.serialize()));
+}
+
 export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
 
 /** Pack nodes into one stage subgraph for a contract step, titled "N · Step name". */
@@ -168,6 +178,7 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
   // Titles come from the approved design (the HLD) when given; numbering mirrors it otherwise.
   const numbers = design ? Object.fromEntries(design.map(d => [d.id, Number(/^(\d+)/.exec(d.title)?.[1] ?? 1)])) : stageNumbers(steps);
   const sentence = Object.fromEntries((design ?? []).map(d => [d.id, d.sentence]));
+  const blackBox = Object.fromEntries((design ?? []).map(d => [d.id, d.description ?? d.sentence]));
   for (const step of steps) {
     let stage = stageNode(graph, step.id);
     // Existing work the step takes over (the user's nodes from before the contract), wiring kept.
@@ -194,7 +205,7 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
     if (stale && !stage.properties?.aws_stale) notes.push(`${stage.title}: its design changed; recheck what is inside it.`);
     // The HLD lives on the stage itself: its step, and its sentence as the subgraph's native description.
     stage.properties = {...stage.properties, aws_stage_order: numbers[step.id], aws_orphaned: false, ...(now ? {aws_design: now} : {}), aws_stale: stale, aws_step: step};
-    if (now) stage.subgraph.description = now;
+    if (now) stage.subgraph.description = blackBox[step.id];
     const sg = stage.subgraph;
     const ensure = (ports, name, type, add) => {
       const port = ports.find(p => p.name === name);
@@ -442,8 +453,10 @@ export function agentOutputs(record) {
 /** The most recent run of this workflow in /history, and whether it ran exactly the current graph. */
 export function latestMatchingRun(history, workflowId, executable) {
   const runs = Object.values(history ?? {}).filter(run => run.prompt?.[3]?.extra_pnginfo?.workflow?.id === workflowId);
-  const run = runs.at(-1);
-  return run ? {run, current: JSON.stringify(run.prompt[2]) === executable} : null;
+  // The latest run of exactly this graph counts, even when later runs (its examples, through the
+  // API with other inputs) ran something else; without one, the latest run, which is not current.
+  const exact = runs.findLast(run => JSON.stringify(run.prompt[2]) === executable);
+  return exact ? {run: exact, current: true} : runs.length ? {run: runs.at(-1), current: false} : null;
 }
 
 async function digest(text) {
@@ -491,8 +504,10 @@ export async function contractEvidence(app, api) {
         evidence.gate_checks[gate.step] = gate.checks;
         if (gate.open) evidence.open[gate.step] = gate.open;  // pairs waiting for the user's review
       }
-      // Kept with the workflow, so the status survives a restart (ComfyUI's history does not).
-      graph.extra = {...graph.extra, aws_verified: {fingerprint, at: localTime(), gates: evidence.gate_results, checks: evidence.gate_checks, open: evidence.open}};
+      // Kept with the workflow, so the status survives a restart (ComfyUI's history does not). Written
+      // only when it changed: reading the status must not become a change in the user's undo history.
+      const verified = {fingerprint, gates: evidence.gate_results, checks: evidence.gate_checks, open: evidence.open}, {at, ...before} = graph.extra?.aws_verified ?? {};
+      if (JSON.stringify(before) !== JSON.stringify(verified)) quietly(app, () => { graph.extra = {...graph.extra, aws_verified: {...verified, at: localTime()}}; });
     }
   } else if (graph.extra?.aws_verified?.fingerprint === fingerprint) {
     // No run in this session yet, but exactly this graph was verified before.
@@ -753,8 +768,9 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return {stored: true};
     }
     if (action === 'examples') {
-      const {runExamples} = await import('./publish.js');
-      return runExamples(app, api);
+      // The agent runs the whole CI (examples, then the pipeline); it never publishes.
+      const {runChecks} = await import('./publish.js');
+      return runChecks(app, api, 'agent');
     }
     if (action === 'harden') {
       // Freezing a fuzzy step's latest plan into deterministic nodes is the user's call.

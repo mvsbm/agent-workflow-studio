@@ -2,7 +2,7 @@
 // Its state is visible by color and on the node: Planned (not run) -> Fuzzy (the model
 // plans it each run; latest plan shown) -> Hardened (the plan frozen into a native
 // subgraph of real nodes, titled with the goal; no model call on later runs).
-import {deepNodes} from './pi_canvas.js';
+import {deepNodes, quietly} from './pi_canvas.js';
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
 import {commitWorkflow} from './project_versions.js';
@@ -165,7 +165,7 @@ app.registerExtension({
       // Inside a stage the run names the node by its path ("stage:node").
       const node = deepNodes(app.rootGraph ?? app.graph).find(({runId}) => runId === String(detail.node))?.node;
       if (node?.type !== FUZZY) return;
-      node.properties = {...node.properties, aws_plan: plan, aws_plan_text: detail.output.text?.[0] ?? ''};
+      quietly(app, () => { node.properties = {...node.properties, aws_plan: plan, aws_plan_text: detail.output.text?.[0] ?? ''}; });
       showPlan(node);
     });
   },

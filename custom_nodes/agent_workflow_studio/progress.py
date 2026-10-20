@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .workflow_contract import shallow
+from .workflow_contract import shallow, title_of
 
 SEVERITY = ["blocking", "unproven", "yours", "design", "deferred"]
 
@@ -224,6 +224,7 @@ def trace(
         requests.append(
             {
                 "id": r["id"],
+                "title": title_of(r),
                 "priority": r.get("priority"),
                 "you_said": r.get("you_said"),
                 "we_understood": r.get("we_understood"),

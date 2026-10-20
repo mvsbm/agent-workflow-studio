@@ -1,5 +1,6 @@
-// The open workflow's panels (contract, versions, data, review, customers) as tabs in ComfyUI's own
-// right panel, in its Workflow overview: what it shows when nothing is selected. ComfyUI has no API
+// The open workflow's panels (design, contract, versions, data, review, customers) as tabs in ComfyUI's
+// own right panel, in its Workflow overview: what it shows when nothing is selected. Tabs marked
+// `selection` (Design) also show beside the native tabs of a selected node, and follow the selection. ComfyUI has no API
 // for that panel's tabs, so ours attach to it by its test ids (the frontend is pinned, and a browser
 // test fails if they change); when the panel cannot be found, the Workflow drawer shows them instead.
 import {app} from '../../scripts/app.js';
@@ -9,11 +10,14 @@ const FLAG = 'agent-workflow-studio:overview';  // 'drawer': always use the draw
 let active = null, shownFor = null, shownIn = null, scheduled = false;
 
 const el = (tag, props = {}, text) => Object.assign(document.createElement(tag), props, text == null ? {} : {textContent: text});
-const graphId = () => (app.rootGraph ?? app.graph)?.id;
+// What a tab shows depends on the workflow and, for selection tabs, on what is selected.
+const graphId = () => `${(app.rootGraph ?? app.graph)?.id}|${app.canvas?.graph?.id}:${Object.keys(app.canvas?.selected_nodes ?? {}).join(',')}`;
 const panel = () => document.querySelector('[data-testid="properties-panel"]');
 // Only the Workflow overview (nothing selected) has the Nodes tab.
 const inOverview = root => Boolean(root?.querySelector('[data-testid="panel-tab-nodes"]'));
 export const overviewDisabled = () => localStorage.getItem(FLAG) === 'drawer';
+
+const shownTabs = root => (inOverview(root) ? workflowTabs() : workflowTabs().filter(t => t.selection));
 
 function render(host) {
   const tab = workflowTabs().find(t => t.id === active);
@@ -37,9 +41,10 @@ function attach() {
   let row = root.querySelector('[data-testid="aw-overview-tabs"]');
   let host = root.querySelector('[data-testid="aw-overview-content"]');
   const native = [...root.children].find(child => child !== section && child !== host);
-  const show = inOverview(root) && !overviewDisabled() && nativeNav;
+  const tabs = shownTabs(root), current = tabs.some(t => t.id === active) ? active : null;
+  const show = !overviewDisabled() && nativeNav && tabs.length;
   if (!show) {
-    // A node is selected (its own view) or we are off: the native panel as it is.
+    // We are off, or the panel has no place for our tabs: the native panel as it is.
     if (row) row.hidden = true;
     if (host) host.hidden = true;
     if (native) native.style.display = '';
@@ -64,25 +69,25 @@ function attach() {
     root.append(host);
   }
   row.hidden = false;
-  const tabs = workflowTabs(), look = nativeNav.querySelector('[data-testid^="panel-tab-"]')?.className ?? '';
-  const painted = `${active}|${tabs.map(t => t.id).join(',')}`;
+  const look = nativeNav.querySelector('[data-testid^="panel-tab-"]')?.className ?? '';
+  const painted = `${current}|${tabs.map(t => t.id).join(',')}`;
   if (row.dataset.painted !== painted) {  // repaint only on change: painting is itself a DOM change
     row.dataset.painted = painted;
     row.replaceChildren(...tabs.map(tab => {
       const button = el('button', {type: 'button', className: `${look} aw-overview-tab`, title: tab.tooltip ?? tab.title}, tab.title);
       button.dataset.testid = `aw-tab-${tab.id}`;
-      button.dataset.state = tab.id === active ? 'active' : 'inactive';
+      button.dataset.state = tab.id === current ? 'active' : 'inactive';
       button.setAttribute('role', 'tab');
-      button.setAttribute('aria-selected', String(tab.id === active));
+      button.setAttribute('aria-selected', String(tab.id === current));
       button.addEventListener('click', () => select(tab.id));
       return button;
     }));
   }
-  root.classList.toggle('aw-overview-on', Boolean(active));
-  if (native) native.style.display = active ? 'none' : '';
-  host.hidden = !active;
-  // Again when the workflow changed, or ComfyUI rebuilt its panel (a fresh, empty host).
-  if (active && (shownFor !== graphId() || shownIn !== host)) render(host);
+  root.classList.toggle('aw-overview-on', Boolean(current));
+  if (native) native.style.display = current ? 'none' : '';
+  host.hidden = !current;
+  // Again when the workflow or the selection changed, or ComfyUI rebuilt its panel (a fresh, empty host).
+  if (current && (shownFor !== graphId() || shownIn !== host)) render(host);
 }
 
 /** Open the native panel in its Workflow overview on one of our tabs; false when it is not there. */

@@ -90,6 +90,7 @@ CONTRACT = {
     "requests": [
         {
             "id": "R1",
+            "title": "Show hello world",
             "you_said": "build a hello world workflow",
             "we_understood": "When run, the workflow shows hello world.",
             "priority": "must",
@@ -280,6 +281,7 @@ TOOL_CONTRACT = {
     "requests": [
         {
             "id": "R1",
+            "title": "Shout with a tool",
             "you_said": "make it loud with a tool",
             "we_understood": "When run, the tool uppercases the text.",
             "priority": "must",

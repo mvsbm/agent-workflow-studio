@@ -15,7 +15,7 @@ export async function designPage(app, api) {
   const [{contract, design = [], review = []}, {journal = []}, {apis = []}] = await Promise.all([get(`${base}/contract`), get(`${base}/loop`), get('/agent-workflow-studio/api')]);
   const out = [`# ${line(contract?.purpose ?? graph.extra?.title ?? 'Workflow')}`, ''];
   if (contract) {
-    out.push('## What was asked', ...contract.requests.map(r => `- **${r.id}** (${r.priority}) “${line(r.you_said)}” — ${line(r.we_understood)}`), '');
+    out.push('## What was asked', ...contract.requests.map(r => `- **${r.id}${r.title ? ` · ${line(r.title)}` : ''}** (${r.priority}) “${line(r.you_said)}” — ${line(r.we_understood)}`), '');
     out.push('## High-level design', ...design.map(d => `- **${d.title}**: ${line(d.sentence)}${d.pattern ? ` *(${d.pattern})*` : ''}`), '');
     if (contract.data && Object.keys(contract.data).length) {
       out.push('## Data', ...Object.entries(contract.data).map(([name, e]) => `- **${name}**${e.key?.length ? ` (key ${e.key.join(', ')})` : ''}: ${line(e.description)}${e.fields?.length ? ` — fields ${e.fields.join(', ')}` : ''}${Object.entries(e.refs ?? {}).map(([f, t]) => ` · ${f} → ${t}`).join('')}`), '');
@@ -41,7 +41,7 @@ export async function designPage(app, api) {
     const response = await api.fetchApi(`${base}/contract/status`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(evidence)});
     const trace = response.ok ? (await response.json()).trace : null;
     if (trace) {
-      out.push('', '## Plan vs built vs proven', trace.summary, '', ...trace.requests.map(r => `- **${r.id}** (${r.priority}): ${r.verdict} · built by ${r.steps.map(s => `${s.id} (${s.state})`).join(', ') || 'no step'} · examples ${r.examples.map(e => `${e.id} ${e.status}`).join(', ') || 'none'}`));
+      out.push('', '## Plan vs built vs proven', trace.summary, '', ...trace.requests.map(r => `- **${r.id}${r.title ? ` · ${line(r.title)}` : ''}** (${r.priority}): ${r.verdict} · served by ${r.steps.map(s => `${s.id} (${s.state})`).join(', ') || 'no step'} · examples ${r.examples.map(e => `${e.id} ${e.status}`).join(', ') || 'none'}`));
       out.push('', '## Gaps', ...(trace.gaps.length ? trace.gaps.map(g => `- [${g.severity}] ${g.where}: ${line(g.text)}`) : ['- none: everything agreed is built and proven on this version']));
     }
   }

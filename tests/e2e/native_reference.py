@@ -20,7 +20,7 @@ def main(path: str) -> None:
     with open(path, encoding="utf-8") as file:
         workflow = json.load(file)
     contract = validate_contract(workflow["extra"].pop("aws_contract"))  # the builder's joined one
-    sentences = {d["id"]: d["sentence"] for d in hld(contract)}
+    sentences = {d["id"]: d["description"] for d in hld(contract)}
     workflow = infer_realizes(embed(contract, workflow, sentences))
     with open(path, "w", encoding="utf-8") as file:
         file.write(json.dumps(workflow, indent=1, ensure_ascii=False) + "\n")

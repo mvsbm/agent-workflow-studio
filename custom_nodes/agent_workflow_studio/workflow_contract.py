@@ -10,6 +10,7 @@ transition table, so it cannot drift from reality.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -36,9 +37,26 @@ NEXT_ACTIONS = {
 }
 
 
+def title_of(request: dict) -> str:
+    """A request's short name (IEEE 29148: an id is never shown alone). Contracts from before titles
+    get one from their restatement: "When records are cleaned, each system gets …" → "each system gets …"."""
+    if request.get("title"):
+        return request["title"]
+    text = re.sub(r"^When [^,]*, (the workflow )?", "", request.get("we_understood") or "").rstrip(
+        "."
+    )
+    text = text[:1].upper() + text[1:]
+    return text if len(text) <= 40 else text[:39].rstrip() + "…"
+
+
 def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
     """Raise ValueError unless the contract matches the schema and is internally consistent.
     intent_only: the contract before its design (no steps yet), so nothing covers its requests yet."""
+    for r in contract.get("requests") or [] if isinstance(contract, dict) else []:
+        if isinstance(r, dict) and not r.get("title"):
+            r["title"] = title_of(
+                r
+            )  # stored before titles existed; a new contract must give its own
     validator = _validator
     if intent_only:  # checked against the intent schema (no steps); the steps list stays empty here
         global _intent_validator
@@ -130,6 +148,12 @@ def validate_intent(intent: object) -> dict:
         )
     if str(intent.get("contract")) == "2":
         intent["contract"] = 2  # some models send the marker as text
+    if untitled := [
+        str(r.get("id")) for r in intent.get("requests") or [] if not (r or {}).get("title")
+    ]:
+        raise ValueError(
+            f"Give each request a short title (a few words the user will see on the canvas): {', '.join(untitled)}."
+        )
     validate_contract({**intent, "steps": []}, intent_only=True)
     if blocking := [q for q in intent["open_questions"] if isinstance(q, str)]:
         raise ValueError(
@@ -570,10 +594,33 @@ def hld(contract: dict) -> list[dict]:
                 "id": step["id"],
                 "title": titles[step["id"]],
                 "sentence": sentence,
+                "description": black_box(step, contract, takes),
                 "pattern": step.get("pattern", ""),
             }
         )
     return out
+
+
+def black_box(step: dict, contract: dict, takes: list[str]) -> str:
+    """The stage seen from outside (arc42 building-block black box): what it does, its interface,
+    the requests it serves in the user's words, and how it is verified. Shown as its native description."""
+    requests = {r["id"]: r for r in contract["requests"]}
+    lines = [
+        f"Does: {step['purpose'].rstrip('. ')}"
+        + (f" using {step['uses']}" if step.get("uses") else "")
+    ]
+    if takes:
+        lines.append(f"Takes: {', '.join(takes)}")
+    if step.get("gives"):
+        lines.append("Gives: " + ", ".join(f"{k} ({v})" for k, v in step["gives"].items()))
+    for rid in step.get("covers", []):
+        if r := requests.get(rid):
+            lines.append(f"Serves {rid} · {title_of(r)}: you said “{r['you_said']}”")
+    if (step.get("gate") or {}).get("says"):
+        lines.append(f"Verified when: {step['gate']['says']}")
+    if step.get("why"):
+        lines.append(f"Because: {step['why']}")
+    return "\n".join(lines)
 
 
 # Review items a design must pass before the user sees it: they keep the graph, the data model
@@ -699,7 +746,7 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
     lines = [f"PURPOSE: {contract['purpose']}", "", "WHAT YOU ASKED FOR:"]
     for r in contract["requests"]:
         lines += [
-            f"  {r['id']} ({r['priority']}) you said: “{r['you_said']}”",
+            f"  {r['id']} · {title_of(r)} ({r['priority']}) you said: “{r['you_said']}”",
             f"      we understood: {r['we_understood']}",
         ]
     if contract["examples"]:
@@ -789,6 +836,7 @@ def _closing(contract: dict) -> list[str]:
 
 
 __all__ = [
+    "title_of",
     "NEXT_ACTIONS",
     "SCHEMA",
     "TRANSITIONS",

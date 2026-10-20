@@ -91,7 +91,10 @@ const artifacts = process.env.ARTIFACTS;
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));
     // The Contract tab shows what is published and how to call it.
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-contract'));
-    await page.locator('.aw-contract-api').getByText(/Published as greet-e2e · version/).waitFor({timeout: 15000});
+    await page.locator('.aw-contract-api').getByText(/^Published as greet-e2e · 1\.0\.1 \([0-9a-f]{8}\)/).waitFor({timeout: 15000});
+    // What changed, and the release a rollback returns to.
+    await page.locator('.aw-contract-api').getByText('Patch: only inside stages (nodes or settings); the design and the API are the same.').waitFor({timeout: 5000});
+    await page.locator('.aw-contract-api').getByRole('button', {name: 'Roll back to 1.0.0'}).waitFor({timeout: 5000});
     await page.screenshot({path: path.join(artifacts, 'api.png')});
     assert.deepEqual(errors, []);
     console.log('PASS api');

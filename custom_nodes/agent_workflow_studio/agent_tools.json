@@ -573,8 +573,8 @@
  },
  {
   "name": "comfy_run_examples",
-  "label": "Run examples",
-  "description": "Run the contract's examples as acceptance tests through the workflow's API path (given → the promised inputs, expect → the promised outputs). Results are recorded as a version; publishing needs them all to pass on exactly this graph.",
+  "label": "Run checks",
+  "description": "Run this workflow's checks (its CI) on exactly this graph: the contract's examples through the API path (given → the promised inputs, expect → the promised outputs), then the whole pipeline: design (no drift, every stage's LLD wired and traced, App = promises), every stage's Checks, the examples, and no regression since the last release. The run is kept as a version; the user can publish only when all pass. Returns each level with what failed.",
   "parameters": {
    "type": "object",
    "properties": {}

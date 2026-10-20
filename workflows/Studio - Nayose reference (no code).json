@@ -5344,7 +5344,7 @@
      }
     ],
     "extra": {},
-    "description": "takes folder (STRING) → Look at the three exports before cleaning using Profile data (EDA) → gives folder (STRING) → to 2 · Clean policies, 2 · Clean claims, 2 · Clean payments, because each column’s dirt decides its cleaning"
+    "description": "Does: Look at the three exports before cleaning using Profile data (EDA)\nTakes: folder (STRING)\nGives: folder (STRING)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: The synthetic exports were profiled.\nBecause: each column’s dirt decides its cleaning"
    },
    {
     "id": "e9b718fc-cff5-4b3a-a882-07d8e4c5fecc",
@@ -7588,7 +7588,7 @@
      }
     ],
     "extra": {},
-    "description": "takes folder from 1 · Profile data → Clean the policy system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates → gives table (TABLE) → to 3 · Enrich, because it stores three roles side by side"
+    "description": "Does: Clean the policy system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 policy mentions come out (5,480 on the default data).\nBecause: it stores three roles side by side"
    },
    {
     "id": "9d01d789-c9e1-4343-a3c5-5df6b4a738ab",
@@ -9766,7 +9766,7 @@
      }
     ],
     "extra": {},
-    "description": "takes folder from 1 · Profile data → Clean the claims system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates → gives table (TABLE) → to 3 · Enrich, because clerks type variant kanji"
+    "description": "Does: Clean the claims system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 2,200 claim mentions come out (2,699 on the default data).\nBecause: clerks type variant kanji"
    },
    {
     "id": "5e672cc3-5e8b-4279-8b40-b319cf6b559e",
@@ -10748,7 +10748,7 @@
      }
     ],
     "extra": {},
-    "description": "takes folder from 1 · Profile data → Clean the payment system’s mentions in its own lane using Read table, Stack roles, Normalize text → gives table (TABLE) → to 3 · Enrich, because it holds only bank kana"
+    "description": "Does: Clean the payment system’s mentions in its own lane using Read table, Stack roles, Normalize text\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 payment mentions come out (5,396 on the default data).\nBecause: it holds only bank kana"
    },
    {
     "id": "d865f0de-f3dd-40c7-9b55-f495c0ad1b5a",
@@ -11949,7 +11949,7 @@
      }
     ],
     "extra": {},
-    "description": "takes a from 2 · Clean policies, b from 2 · Clean claims, c from 2 · Clean payments → Join the lanes and fix OCR look-alikes and company marks using Concatenate tables, Map values → gives table (TABLE) → to 4 · Find candidates, 5 · Compare, 10 · Publish, because the same name must read the same way"
+    "description": "Does: Join the lanes and fix OCR look-alikes and company marks using Concatenate tables, Map values\nTakes: a from 2 · Clean policies, b from 2 · Clean claims, c from 2 · Clean payments\nGives: table (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: All mentions go on: at least 11,500 (13,575 on the default data).\nBecause: the same name must read the same way"
    },
    {
     "id": "c89f8fcc-06dd-4aa4-aead-6b7f86912fbb",
@@ -12283,7 +12283,7 @@
      }
     ],
     "extra": {},
-    "description": "takes table from 3 · Enrich → Pair mentions that share a key using Find candidate pairs (blocking keys) → gives pairs (TABLE) → to 5 · Compare, because comparing every pair is too slow"
+    "description": "Does: Pair mentions that share a key using Find candidate pairs (blocking keys)\nTakes: table from 3 · Enrich\nGives: pairs (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 candidate pairs (about 58,000 on the default data).\nBecause: comparing every pair is too slow"
    },
    {
     "id": "e503f43d-784b-4282-aadc-7be8282c9911",
@@ -12729,7 +12729,7 @@
      }
     ],
     "extra": {},
-    "description": "takes records from 3 · Enrich, pairs from 4 · Find candidates → Compare each pair field by field using Compare fields → gives data (PAIRS) → to 6 · Decide rules, because decisions need plain levels"
+    "description": "Does: Compare each pair field by field using Compare fields\nTakes: records from 3 · Enrich, pairs from 4 · Find candidates\nGives: data (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 pairs compared (57,624 on the default data).\nBecause: decisions need plain levels"
    },
    {
     "id": "8b6f4157-b750-40e8-bab9-202924971378",
@@ -13430,7 +13430,7 @@
      }
     ],
     "extra": {},
-    "description": "takes data from 5 · Compare → Settle the certain pairs by rule using Decision rules → gives matched (DECISIONS), different (DECISIONS), unsettled (PAIRS) → to 7 · Decide score, 9 · Group customers, because sure cases need no score"
+    "description": "Does: Settle the certain pairs by rule using Decision rules\nTakes: data from 5 · Compare\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 7,000 certain matches (9,857 on the default data).\nBecause: sure cases need no score"
    },
    {
     "id": "a1efed7b-aded-4fc5-819e-d84c918f40a9",
@@ -14566,7 +14566,7 @@
      }
     ],
     "extra": {},
-    "description": "takes data from 6 · Decide rules → Score the rest with learned points using Learn weights, Decision rules → gives matched (DECISIONS), different (DECISIONS), unsettled (PAIRS) → to 8 · You verify, 9 · Group customers, because each field’s evidence differs"
+    "description": "Does: Score the rest with learned points using Learn weights, Decision rules\nTakes: data from 6 · Decide rules\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 30,000 scored matches (38,520 on the default data).\nBecause: each field’s evidence differs"
    },
    {
     "id": "b900bde9-3f59-42cd-9f00-c7458b68c37c",
@@ -14872,7 +14872,7 @@
      }
     ],
     "extra": {},
-    "description": "takes data from 7 · Decide score → You decide the pairs the score is unsure of using Your review decisions → gives matched (DECISIONS), different (DECISIONS) → to 9 · Group customers, because a person beats a guess"
+    "description": "Does: You decide the pairs the score is unsure of using Your review decisions\nTakes: data from 7 · Decide score\nGives: matched (DECISIONS), different (DECISIONS)\nServes R2 · You check uncertain pairs: you said “a person checks what the machine is unsure of”\nVerified when: The unsure pairs reached you in the Review tab.\nBecause: a person beats a guess"
    },
    {
     "id": "7e61038d-ab79-4cff-99f1-68e53ebd0fee",
@@ -15660,7 +15660,7 @@
      }
     ],
     "extra": {},
-    "description": "takes matched_1 from 6 · Decide rules, matched_2 from 7 · Decide score, matched_3 from 8 · You verify, different_1 from 6 · Decide rules, different_2 from 7 · Decide score, different_3 from 8 · You verify → Group matches into customers, refusing bad merges using Cluster guard → gives customers (CUSTOMERS) → to 10 · Publish, because one wrong link must not chain many"
+    "description": "Does: Group matches into customers, refusing bad merges using Cluster guard\nTakes: matched_1 from 6 · Decide rules, matched_2 from 7 · Decide score, matched_3 from 8 · You verify, different_1 from 6 · Decide rules, different_2 from 7 · Decide score, different_3 from 8 · You verify\nGives: customers (CUSTOMERS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).\nBecause: one wrong link must not chain many"
    },
    {
     "id": "b61a8fe2-18b6-4469-a2b6-0ccefe3cf983",
@@ -16255,7 +16255,7 @@
      }
     ],
     "extra": {},
-    "description": "takes records from 3 · Enrich, groups from 9 · Group customers → Write one customer id per mention using Attach group ids, Write table → gives path (STRING) → to you (output customer_file), because the systems need one shared id"
+    "description": "Does: Write one customer id per mention using Attach group ids, Write table\nTakes: records from 3 · Enrich, groups from 9 · Group customers\nGives: path (STRING)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: The result file is written.\nBecause: the systems need one shared id"
    }
   ]
  },
@@ -16394,19 +16394,22 @@
      "id": "R1",
      "you_said": "find whether customers are the same person across the policy, claims and payment systems",
      "we_understood": "When the exports are read, the workflow gives every person mention a customer id, the same id for the same person.",
-     "priority": "must"
+     "priority": "must",
+     "title": "One customer id per person"
     },
     {
      "id": "R2",
      "you_said": "a person checks what the machine is unsure of",
      "we_understood": "When a pair is uncertain, the workflow sends it to you in the Review tab instead of guessing.",
-     "priority": "should"
+     "priority": "should",
+     "title": "You check uncertain pairs"
     },
     {
      "id": "R3",
      "you_said": "each system is dirty in its own way",
      "we_understood": "When records are cleaned, each system gets its own cleaning lane.",
-     "priority": "should"
+     "priority": "should",
+     "title": "Own cleaning lane per system"
     }
    ],
    "examples": [

@@ -154,6 +154,17 @@ def next_version(previous: dict | None, signature: dict, design: str) -> str:
     return f"{major}.{minor}.{patch + 1}"
 
 
+def release_notes(previous: dict | None, signature: dict, design: str) -> str:
+    """Why this version number, in the words of next_version: what changed for callers."""
+    if not previous or "semver" not in previous:
+        return "First release."
+    if signature_key(previous["signature"]) != signature_key(signature):
+        return "Major: the API changed (its inputs or outputs); callers must update."
+    if previous.get("design") != design:
+        return "Minor: the design changed (its stages or their wiring); the API is the same."
+    return "Patch: only inside stages (nodes or settings); the design and the API are the same."
+
+
 def collect_checks(outputs: dict) -> list[dict]:
     """Every Check that ran, wherever it sits: its node path, pass/fail and evidence."""
     return [
@@ -289,6 +300,7 @@ def install_api_routes() -> None:
     from server import PromptServer
 
     from .architecture import COMPLETENESS, check
+    from .native_layers import layers
     from .project_repo import ProjectRepo, projects_root
     from .routes import _is_local_request
     from .workflow_contract import hld
@@ -333,17 +345,16 @@ def install_api_routes() -> None:
             if blocking:
                 raise ValueError("Not ready to publish: " + "; ".join(blocking))
             repo = ProjectRepo(root, request.match_info["workflow_id"])
-            # The contract's examples are acceptance tests: they must have passed on exactly this graph.
-            if (repo.load_contract() or {}).get("examples"):
-                last = last_acceptance(repo)
-                if (
-                    not last
-                    or last["prompt_hash"] != prompt_hash(spec["prompt"])
-                    or last["passed"] < last["total"]
-                ):
-                    raise ValueError(
-                        "Run the contract's examples (acceptance tests) on this exact workflow first; all must pass."
-                    )
+            # A release needs a green CI run (design, stage Checks, examples, no regression) of
+            # exactly this graph.
+            ci = None
+            if layers(spec["workflow"]) or repo.load_contract():
+                runs = repo.records("pipeline")
+                ci = runs[-1] if runs else None
+                if not ci or ci["prompt_hash"] != prompt_hash(spec["prompt"]):
+                    raise ValueError("Run the checks on this exact workflow first; all must pass.")
+                if not ci["green"]:
+                    raise ValueError(f"The checks did not all pass: {ci['summary']}.")
             # A publish is always its own version in the history, with what was published.
             published = {"kind": "publish", "name": spec["name"], "signature": spec["signature"]}
             message = f"Publish API {spec['name']}"
@@ -361,7 +372,10 @@ def install_api_routes() -> None:
                 "workflow_id": repo.id,
                 "version": sha,
                 "semver": next_version(previous, spec["signature"], design),
+                "notes": release_notes(previous, spec["signature"], design),
                 "design": design,
+                # What passed in this release: later releases must not lose it (regression).
+                "checks": (ci or {}).get("checks"),
                 "published_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }
             (published_dir(root) / spec["name"]).mkdir(parents=True, exist_ok=True)
@@ -374,6 +388,7 @@ def install_api_routes() -> None:
                 "name": spec["name"],
                 "semver": record["semver"],
                 "version": sha[:8],
+                "notes": record["notes"],
                 "endpoint": f"/agent-workflow-studio/api/{spec['name']}/run",
                 "openapi": f"/agent-workflow-studio/api/{spec['name']}/openapi.json",
                 "todo": [
@@ -383,9 +398,69 @@ def install_api_routes() -> None:
 
         return await guarded(request, handler)
 
-    def last_acceptance(repo) -> dict | None:
-        found = repo.records("acceptance")
-        return found[-1] if found else None
+    def latest_published(workflow_id: str) -> dict | None:
+        """The newest release of this workflow under any API name, for the regression check."""
+        found = [s for _, s in published_specs() if s.get("workflow_id") == workflow_id]
+        return max(found, key=lambda s: s.get("published_at", ""), default=None)
+
+    @routes.post("/agent-workflow-studio/projects/{workflow_id}/pipeline")
+    async def pipeline_run(request):
+        """One CI run of the workflow as it is in the browser; kept as a version of the workflow."""
+
+        async def handler():
+            from .pipeline import run
+
+            evidence = await request.json()
+            if not isinstance(evidence, dict) or not isinstance(evidence.get("nodes"), list):
+                raise ValueError("Send the workflow's evidence (contractEvidence).")
+            repo = ProjectRepo(root, request.match_info["workflow_id"])
+            contract = layers(evidence.get("workflow")) or repo.load_contract()
+            if not contract:
+                raise ValueError(
+                    "This workflow has no contract: there is nothing to check it against."
+                )
+            result = run(contract, evidence, repo.records("acceptance"), latest_published(repo.id))
+            sha = await asyncio.to_thread(
+                repo.add_record,
+                {"kind": "pipeline", **result},
+                f"Checks · {result['summary']}",
+                evidence.get("workflow") or {},
+                str(evidence.get("author") or "user"),
+            )
+            return {**result, "version": sha[:8]}
+
+        return await guarded(request, handler)
+
+    @routes.post("/agent-workflow-studio/api/{name}/rollback")
+    async def rollback(request):
+        """Point the API back at an earlier release (callers pinned to name@x.y.z are unaffected)."""
+
+        async def handler():
+            name, semver = request.match_info["name"], str((await request.json()).get("semver", ""))
+            if not NAME.fullmatch(name) or not re.fullmatch(r"\d+\.\d+\.\d+", semver):
+                raise ValueError("Give the API name and a version such as 1.2.0.")
+            path = published_dir(root) / name / f"{semver}.json"
+            if not path.is_file():
+                raise ValueError(f"{name} has no version {semver}.")
+            spec = json.loads(path.read_text(encoding="utf-8"))
+            (published_dir(root) / f"{name}.json").write_text(
+                json.dumps(spec, ensure_ascii=False), encoding="utf-8"
+            )
+            repo = ProjectRepo(root, spec["workflow_id"])
+            # A release event in the workflow's history; the workflow itself stays as it is now.
+            current = repo.tree / "workflow.json"
+            await asyncio.to_thread(
+                repo.add_record,
+                {"kind": "rollback", "name": name, "semver": semver},
+                f"Roll back API {name} to {semver}",
+                json.loads(current.read_text(encoding="utf-8"))
+                if current.is_file()
+                else spec["workflow"],
+                "user",
+            )
+            return {"name": name, "semver": semver}
+
+        return await guarded(request, handler)
 
     @routes.post("/agent-workflow-studio/projects/{workflow_id}/acceptance")
     async def acceptance(request):
@@ -451,10 +526,16 @@ def install_api_routes() -> None:
                             "semver",
                             "published_at",
                             "description",
+                            "notes",
                             "watch",
                         )
                     }
                     | {
+                        # Every release kept, oldest first: what a rollback can return to.
+                        "versions": sorted(
+                            (p.stem for p in (published_dir(root) / spec["name"]).glob("*.json")),
+                            key=lambda v: tuple(int(x) for x in v.split(".")),
+                        ),
                         "inputs": [i["name"] for i in spec["signature"].get("inputs", [])],
                         "outputs": [o["name"] for o in spec["signature"]["outputs"]],
                     }

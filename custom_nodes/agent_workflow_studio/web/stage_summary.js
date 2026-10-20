@@ -50,3 +50,63 @@ export function stageSummary(inner) {
   return lines.filter(Boolean).slice(0, 4);
 }
 
+
+/** "takes a · does · gives b, c": the step's parts in reading order, ports of a kind together. */
+export function partsText(tags) {
+  const ports = kind => tags.filter(t => t.startsWith(`${kind} `)).map(t => t.slice(kind.length + 1));
+  const rest = tags.filter(t => !/^(takes|gives) /.test(t) && t !== 'does');
+  return [ports('takes').length && `takes ${ports('takes').join(', ')}`, tags.includes('does') && 'does',
+    ports('gives').length && `gives ${ports('gives').join(', ')}`, ...rest].filter(Boolean).join(' · ');
+}
+
+const SCAFFOLD_TYPES = ['AgentWorkflowStub', 'AgentWorkflowCheck', 'AgentWorkflowApiOutput'];
+/** A request as it is shown everywhere: its id with its title, never the id alone (IEEE 29148). */
+// Contracts from before titles: the same fallback as workflow_contract.title_of.
+const fallbackTitle = text => { const t = text.replace(/^When [^,]*, (the workflow )?/, '').replace(/\.$/, ''); return t.charAt(0).toUpperCase() + t.slice(1, 40); };
+export const requestLabel = r => `${r.id} · ${r.title || fallbackTitle(r.we_understood ?? '')}`;
+
+const working = stage => (stage.subgraph?.nodes ?? []).filter(n => !SCAFFOLD_TYPES.includes(n.type)).sort((a, b) => a.pos[0] - b.pos[0] || a.pos[1] - b.pos[1]);
+/** A node's number inside its stage, in reading order (2.3: stage 2, third node). */
+export const numberOf = (node, stage) => `${stage.properties?.aws_stage_order ?? '?'}.${working(stage).indexOf(node) + 1}`;
+
+/** What a node's design badges say. A stage serves requests; a node inside a stage gets its number in
+ *  reading order (2.3: stage 2, third node, as in a levelled data-flow diagram) and the part of its
+ *  step it realizes; a Check verifies; a node outside the design says so. */
+export function designLabels(node, stage, requests = []) {
+  const props = node.properties ?? {};
+  if (props.aws_step) return (props.aws_step.covers ?? []).map(id => {
+    const request = requests.find(r => r.id === id);
+    return {text: `serves ${request ? requestLabel(request) : id}`, kind: 'request'};
+  });
+  if (!stage) return [];
+  if (node.type === 'AgentWorkflowCheck') return [{text: 'verifies the stage', kind: 'gate'}];
+  if (SCAFFOLD_TYPES.includes(node.type)) return [];
+  const number = numberOf(node, stage), tags = [].concat(props.aws_realizes ?? []);
+  return [tags.length ? {text: `${number} · ${partsText(tags)}`, kind: 'part'} : {text: `${number} · + extra, not in the design`, kind: 'extra'}];
+}
+
+/** A stage from the outside and the inside (arc42 black box / white box): what its step says, each
+ *  part of it with the nodes realizing it (✗ when none), its Checks, and nodes not in the design. */
+export function stageView(stage, requests = []) {
+  const step = stage.properties?.aws_step ?? {}, nodes = working(stage);
+  const label = n => `${numberOf(n, stage)} ${n.title ?? n.type}`;
+  const tagsOf = n => [].concat(n.properties?.aws_realizes ?? []);
+  const parts = [...Object.keys(step.takes ?? {}).map(p => `takes ${p}`), 'does', ...Object.keys(step.gives ?? {}).map(p => `gives ${p}`)];
+  return {
+    title: stage.title,
+    serves: (step.covers ?? []).map(id => requests.find(r => r.id === id)).filter(Boolean),
+    description: stage.subgraph?.description ?? '',
+    parts: parts.map(part => ({part, nodes: nodes.filter(n => tagsOf(n).includes(part)).map(label)})),
+    checks: (stage.subgraph?.nodes ?? []).filter(n => n.type === 'AgentWorkflowCheck').map(n => n.title ?? 'Check'),
+    gate: step.gate?.says ?? '',
+    extra: nodes.filter(n => !tagsOf(n).length).map(label),
+  };
+}
+
+/** Why a node exists, from the request down: [the requests its stage serves, the stage, the node
+ *  with the part it realizes], e.g. ["R3 · Own cleaning lane", "2 · Clean policies", "2.3 Split name · does"]. */
+export function nodePath(node, stage, requests = []) {
+  const served = (stage.properties?.aws_step?.covers ?? []).map(id => requests.find(r => r.id === id)).filter(Boolean).map(requestLabel);
+  const tags = [].concat(node.properties?.aws_realizes ?? []);
+  return [served.join(' + ') || 'no request', stage.title, `${numberOf(node, stage)} ${node.title ?? node.type} · ${tags.length ? partsText(tags) : 'not in the design'}`];
+}

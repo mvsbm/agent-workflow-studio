@@ -98,3 +98,28 @@ export async function runExamples(app, api) {
   if (!response.ok) throw Error(body.error ?? 'The examples could not run.');
   return body;
 }
+
+/** The workflow's CI: run its examples on this exact graph (when it has any), then the whole pipeline
+ *  (design, stage Checks, examples, no regression). The run is kept as a version; publishing needs it green. */
+export async function runChecks(app, api, author = 'user') {
+  const graph = app.rootGraph ?? app.graph;
+  const examples = graph.extra?.aws_contract?.examples?.length ? await runExamples(app, api) : null;
+  const {contractEvidence} = await import('./pi_canvas.js');
+  const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/pipeline`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({...await contractEvidence(app, api), author}),
+  });
+  const body = await response.json();
+  if (!response.ok) throw Error(body.error ?? 'The checks could not run.');
+  return {...body, examples};
+}
+
+/** Point the published API back at an earlier release. */
+export async function rollbackApi(api, name, semver) {
+  const response = await api.fetchApi(`/agent-workflow-studio/api/${encodeURIComponent(name)}/rollback`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({semver}),
+  });
+  const body = await response.json();
+  if (!response.ok) throw Error(body.error ?? 'Rollback failed.');
+  return body;
+}

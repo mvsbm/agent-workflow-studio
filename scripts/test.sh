@@ -9,13 +9,14 @@ COMFYUI_DIR="$APP_HOME/ComfyUI"
 [[ -x "$COMFYUI_DIR/.venv/bin/python" ]] || { echo "Run install.sh first." >&2; exit 1; }
 
 cd "$COMFYUI_DIR"
+# Tests live in the repo, not in the shipped node folder; they import the package as ComfyUI loads it.
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover \
-    -s custom_nodes/agent_workflow_studio -t . -p 'test_*.py'
+    -s "$PACKAGE_ROOT/tests/unit" -t "$PACKAGE_ROOT/tests" -p 'test_*.py'
 cd "$PACKAGE_ROOT"
 # Parse every front-end module as ES module (node --check misses errors such as duplicate const).
 for module in custom_nodes/agent_workflow_studio/web/*.js; do
     node --experimental-vm-modules --no-warnings -e "new (require('vm').SourceTextModule)(require('fs').readFileSync(process.argv[1], 'utf8'))" "$module"
 done
-for test in custom_nodes/agent_workflow_studio/web/test_*.mjs; do
+for test in tests/web/test_*.mjs; do
     node --test "$test"
 done

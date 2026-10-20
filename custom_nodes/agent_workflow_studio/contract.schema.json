@@ -25,6 +25,12 @@
             "type": "string",
             "pattern": "^R[0-9]{1,2}$"
           },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "A few words naming the request, shown wherever it is referenced (badges, the Design tab): e.g. 'Own cleaning lane per system'."
+          },
           "you_said": {
             "type": "string",
             "minLength": 1,
@@ -47,6 +53,7 @@
         },
         "required": [
           "id",
+          "title",
           "you_said",
           "we_understood",
           "priority"

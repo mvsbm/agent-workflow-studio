@@ -43,7 +43,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await contract.waitFor({timeout: 60000});
     const contractText = await contract.textContent();
     assert.match(contractText, /PURPOSE: Show the text hello world\./);
-    assert.match(contractText, /R1 \(must\) you said: “build a hello world workflow”/);
+    assert.match(contractText, /R1 · Show hello world \(must\) you said: “build a hello world workflow”/);
     assert.doesNotMatch(contractText, /Stage:/);
     await page.screenshot({path: path.join(artifacts, 'approve-contract.png')});
     await contract.getByRole('button', {name: 'Allow'}).click();
@@ -85,6 +85,24 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       .filter(n => n.properties?.aws_lld_key).map(n => [n.properties.aws_lld_key, n.properties.aws_realizes]).sort())),
       [['cat', ['does', 'gives text']], ['src', ['does']]]);
 
+    const panel = '[data-testid="properties-panel"]';
+    // The Design tab traces both ways and follows the selection: requests → stages with nothing
+    // selected, a stage's parts → its nodes, a node → the request it exists for.
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-design'));
+    await page.locator(`${panel} .aw-design-row`).first().waitFor({timeout: 15000});
+    assert.match(await page.locator(`${panel} .aw-design-row`).first().textContent(), /^R1 · Show hello world1 · Greet, 2 · Showexample E1/);
+    await page.locator(`${panel} .aw-design-row`).first().click();  // its stages, selected on the canvas
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="aw-overview-content"] .aw-design-box').length === 2);
+    const parts = await page.locator(`${panel} .aw-design-parts`).first().locator('tr').allTextContents();
+    // Each part with the numbered nodes realizing it (titles vary with the node type's display name).
+    assert.deepEqual(parts.map(row => row.replace(/(\d\.\d) [^\d]*/g, '$1;')), ['does1.1;1.2;', 'gives text1.2;', 'verified byCheck · text — The greeting says hello world.']);
+    // A node inside a stage (selected without opening the stage: entering a subgraph re-lays its ports,
+    // which ComfyUI records as an undo step, and the undo checks below count steps).
+    await page.evaluate(comfy(app => { app.canvas.deselectAll(); const stage = app.graph.nodes.find(n => n.properties?.aws_stage === 'greet'); app.canvas.selectNode(stage.subgraph.nodes.find(n => n.properties?.aws_lld_key === 'cat')); }));
+    await page.locator(`${panel} .aw-design-path`).waitFor({timeout: 10000});
+    assert.match(await page.locator(`${panel} .aw-design-path`).textContent(), /^ServesR1 · Show hello worldIn stage1 · GreetThis node1\.2 .* · does · gives text$/);
+    await page.evaluate(comfy(app => app.canvas.deselectAll()));
+    await page.screenshot({path: path.join(artifacts, 'stages-top.png')});
     // Inside a stage: the nodes its LLD built.
     await page.evaluate(comfy(app => app.canvas.openSubgraph(app.graph.nodes.find(n => n.properties?.aws_stage === 'greet').subgraph)));
     await page.waitForTimeout(800);
@@ -106,18 +124,28 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.screenshot({path: path.join(artifacts, 'contract-tab.png')});
 
 
-    // The contract's example is an acceptance test through the API path; passing it allows publishing.
+    // The workflow's CI: publishing needs a green run of its checks on exactly this graph (design,
+    // stage Checks, the contract's example through the API path, no regression).
     const accepted = await page.evaluate(async () => {
-      const {runExamples, publishWorkflow} = await import('/extensions/agent_workflow_studio/publish.js');
+      const {runChecks, publishWorkflow, rollbackApi} = await import('/extensions/agent_workflow_studio/publish.js');
       const app = window.comfyAPI.app.app, api = window.comfyAPI.api.api;
-      const examples = await runExamples(app, api);
+      let refused;
+      try { await publishWorkflow(app, api, 'hello-e2e'); } catch (error) { refused = error.message; }
+      const checks = await runChecks(app, api), examples = checks.examples;
       const published = await publishWorkflow(app, api, 'hello-e2e');
       const call = await (await api.fetchApi('/agent-workflow-studio/api/hello-e2e/run', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})).json();
-      return {passed: examples.passed, total: examples.total, published: published.version, data: call.data};
+      const back = await rollbackApi(api, 'hello-e2e', '1.0.0');
+      let noSuch;
+      try { await rollbackApi(api, 'hello-e2e', '9.9.9'); } catch (error) { noSuch = error.message; }
+      return {refused, green: checks.green, passed: examples.passed, total: examples.total, published: published.version, semver: published.semver, notes: published.notes, data: call.data, back: back.semver, noSuch};
     });
+    assert.equal(accepted.refused, 'Run the checks on this exact workflow first; all must pass.');
+    assert.equal(accepted.green, true);
     assert.deepEqual({passed: accepted.passed, total: accepted.total}, {passed: 1, total: 1});
     assert.match(accepted.published, /^[0-9a-f]{8}$/);
+    assert.deepEqual([accepted.semver, accepted.notes], ['1.0.0', 'First release.']);
     assert.deepEqual(accepted.data, {text: 'hello world'});
+    assert.deepEqual([accepted.back, accepted.noSuch], ['1.0.0', 'hello-e2e has no version 9.9.9.']);
 
     // The agent's own view of the canvas must include the connections.
     const seen = await page.evaluate(async () => {
@@ -158,25 +186,29 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-versions'));
     const versions = page.locator('.aw-versions-item');
     const count = n => page.waitForFunction(n => document.querySelectorAll('.aw-versions-item').length === n, n, {timeout: 15000});
-    await count(8);
+    await count(10);
     const messages = await page.locator('.aw-versions-message').allTextContents();
     assert.match(messages[0], /^Save versions-e2e/);
+    assert.equal(messages[1], 'Roll back API hello-e2e to 1.0.0');  // a release event, in the history
+    messages.splice(1, 1);
     assert.equal(messages[1], 'Publish API hello-e2e');
-    assert.equal(messages[2], 'Acceptance · 1/1 examples passed');
-    assert.equal(messages[3], 'Agent canvas edit');
-    assert.equal(messages[4], 'Build show: preview');
-    assert.equal(messages[5], 'Build greet: source and concatenate');
+    // The workflow's CI run is a version too, like a CI run on a commit; publishing needed it green.
+    assert.equal(messages[2], 'Checks · ✓ design · ✓ stage Checks · ✓ examples · ✓ no regression');
+    assert.equal(messages[3], 'Acceptance · 1/1 examples passed');
+    assert.equal(messages[4], 'Agent canvas edit');
+    assert.equal(messages[5], 'Build show: preview');
+    assert.equal(messages[6], 'Build greet: source and concatenate');
     // One version per approval: the contract and its design live in the workflow.
-    assert.equal(messages[6], 'Design approved: 2 steps');
-    assert.equal(messages[7], 'Contract approved: Show the text hello world.');
-    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'You', 'Agent', 'Agent', 'Agent', 'Agent', 'You', 'You']);
+    assert.equal(messages[7], 'Design approved: 2 steps');
+    assert.equal(messages[8], 'Contract approved: Show the text hello world.');
+    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'You', 'You', 'You', 'Agent', 'Agent', 'Agent', 'Agent', 'You', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.
-    await versions.nth(4).locator('.aw-versions-toggle').click();
-    await versions.nth(4).getByText(/^\+1 node/).waitFor({timeout: 10000});
-    await versions.nth(4).getByRole('button', {name: 'Restore this version'}).click();
+    await versions.nth(6).locator('.aw-versions-toggle').click();
+    await versions.nth(6).getByText(/^\+1 node/).waitFor({timeout: 10000});
+    await versions.nth(6).getByRole('button', {name: 'Restore this version'}).click();
     await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).length >= 4, null, {timeout: 10000});
-    await count(9);
+    await count(11);
     assert.match(await page.locator('.aw-versions-message').first().textContent(), /^Restore [0-9a-f]{8}$/);
     await page.screenshot({path: path.join(artifacts, 'versions.png')});
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });
@@ -194,8 +226,10 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     await page.waitForFunction(() => document.querySelector('[data-testid="aw-overview-content"]')?.hidden === true);
     await page.locator('[data-testid="aw-tab-workflow-contract"]').click();
     await page.waitForFunction(() => document.querySelector('[data-testid="aw-overview-content"]')?.hidden === false);
-    await page.evaluate(comfy(app => app.canvas.selectNode(app.graph.nodes.find(n => n.properties?.aws_stage))));  // a node: its own view
-    await page.waitForFunction(() => document.querySelector('[data-testid="aw-overview-tabs"]')?.hidden !== false);
+    // A node selected: its own native view, with only the Design tab of ours beside it.
+    await page.evaluate(comfy(app => app.canvas.selectNode(app.graph.nodes.find(n => n.properties?.aws_stage))));
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-testid^="aw-tab-"]')].map(b => b.dataset.testid).join() === 'aw-tab-workflow-design');
+    assert.equal(await page.evaluate(() => document.querySelector('[data-testid="aw-overview-content"]').hidden), true, 'the native content stays');
     await page.evaluate(comfy(app => app.canvas.deselectAll()));  // nothing selected again: ours return, Contract remembered
     await page.locator(`${overview} [data-testid="aw-tab-workflow-contract"][data-state="active"]`).waitFor({timeout: 10000});
     await page.locator(`${overview} .aw-contract-summary`).waitFor({timeout: 10000});

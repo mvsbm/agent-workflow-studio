@@ -3,8 +3,8 @@
 // Double-click a card to open the stage: the tool, its settings, samples and decision tree.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {contractEvidence} from './pi_canvas.js';
-import {stageSummary} from './stage_summary.js';
+import {contractEvidence, quietly} from './pi_canvas.js';
+import {designLabels, stageSummary} from './stage_summary.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const KINDS = {data: ['#24496b', '#1a3550'], stage: ['#3d4a5c', '#2b3340'], decision: ['#5b3d7a', '#3a2a4f'], code: ['#7a5c14', '#4d3a0e']};
@@ -47,6 +47,16 @@ function ensureCard(node) {
   render(node);
 }
 
+// Design badges (native node badges): read at draw time from the stored tags (see designLabels).
+const BADGES = {request: '#24496b', part: '#2f5d3a', gate: '#3d4a5c', extra: '#7a5c14'};
+function designBadges(node) {
+  const root = app.rootGraph;
+  // shortcut: scans the top level per draw; cache per subgraph if workflows grow past ~100 stages.
+  const stage = node.graph && node.graph !== root ? root?.nodes.find(n => n.properties?.aws_stage && n.subgraph === node.graph) : null;
+  return designLabels(node, stage, root?.extra?.aws_contract?.requests);
+}
+const badge = label => new globalThis.LGraphBadge({text: label?.text ?? '', bgColor: BADGES[label?.kind] ?? BADGES.part, fgColor: '#fff'});
+
 /** Recompute every card from its inner nodes and, when there is a contract, its step's state. */
 async function refresh() {
   const graph = app.rootGraph ?? app.graph;
@@ -64,7 +74,8 @@ async function refresh() {
   } catch {
     // No contract or no project yet: cards still show their numbers.
   }
-  for (const node of stages) {
+  // The cards are derived display state: kept with the workflow, never an undo step of their own.
+  quietly(app, () => { for (const node of stages) {
     ensureCard(node);
     const step = steps[node.properties?.aws_stage];
     // A step waiting on the user's answer says so first.
@@ -74,7 +85,7 @@ async function refresh() {
     const stale = node.properties?.aws_stale ? ['⚠ Design changed — recheck this stage'] : [];
     node.properties = {...node.properties, aws_card: {purpose: step?.design ?? step?.purpose ?? '', lines: [...stale, ...waiting, ...stageSummary(node.subgraph?.nodes ?? [])], state: step?.state ?? ''}};
     render(node);
-  }
+  } });
   graph.setDirtyCanvas?.(true, true);
 }
 
@@ -96,6 +107,9 @@ app.registerExtension({
     this.refresh = later;
   },
   nodeCreated(node) {
+    // Read at draw time, so it follows the node's tags as they change.
+    // shortcut: up to three request badges per stage; a stage serving more shows the first three.
+    if (globalThis.LGraphBadge) for (const i of [0, 1, 2]) node.badges.push(() => badge(designBadges(node)[i]));
     // Subgraph nodes are created on load too; give them their card (filled from saved properties).
     queueMicrotask(() => ensureCard(node));
   },
