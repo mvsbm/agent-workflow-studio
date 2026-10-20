@@ -75,7 +75,13 @@ def bind_inputs(spec: dict, values: dict) -> dict:
         }[kind]
         if not ok:
             raise ValueError(f"Input {name} must be {kind or 'a plain value'}.")
-        if isinstance(item.get("choices"), list) and value not in item["choices"]:
+        # A data folder's choices are those listed when it was published; uploads come later
+        # (missing_data checks that the folder is there).
+        if (
+            isinstance(item.get("choices"), list)
+            and value not in item["choices"]
+            and name not in data_inputs(spec)
+        ):
             raise ValueError(
                 f"Input {name} must be one of: {', '.join(map(str, item['choices']))}."
             )
@@ -302,8 +308,19 @@ def _openapi_run(spec: dict, base: str = "") -> dict:
         promise = promised.get(item["name"], {})
         kind = data_kinds.get(item["name"])
         properties[item["name"]] = {
-            **({"type": JSON_TYPES[item["type"]]} if item.get("type") in JSON_TYPES else {}),
-            **({"enum": item["choices"]} if isinstance(item.get("choices"), list) else {}),
+            # A data folder is a name (uploaded first), not one of the folders there were at publish time.
+            **(
+                {"type": "string"}
+                if kind
+                else {"type": JSON_TYPES[item["type"]]}
+                if item.get("type") in JSON_TYPES
+                else {}
+            ),
+            **(
+                {"enum": item["choices"]}
+                if isinstance(item.get("choices"), list) and not kind
+                else {}
+            ),
             **({"default": item["default"]} if "default" in item else {}),
             **({"examples": [promise["example"]]} if "example" in promise else {}),
             **({"format": f"comfyui-input-{kind}"} if kind else {}),
@@ -873,6 +890,19 @@ def install_api_routes() -> None:
         message = (
             f"Watch {spec['name']} · {'passing' if ok else 'FAILING'} · checks {record['checks']}"
         )
+        # Tell anyone with the studio open (ComfyUI's own websocket): a failure, or the recovery.
+        if not ok or (spec["watch"].get("last") or {}).get("passing") is False:
+            PromptServer.instance.send_sync(
+                "aws.watch",
+                {
+                    "name": spec["name"],
+                    "semver": spec.get("semver"),
+                    "passing": ok,
+                    "checks": record["checks"],
+                    "failing": [str(c.get("node")) for c in failing][:5],
+                    "workflow_id": spec["workflow_id"],
+                },
+            )
         await asyncio.to_thread(repo.add_record, record, message, spec["workflow"])
         latest = json.loads(
             path.read_text(encoding="utf-8")

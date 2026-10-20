@@ -38,7 +38,11 @@ export function outputNode(graph, from) {
 export function signatureOf(graph, defs) {
   const linear = graph.extra?.linearData ?? {}, used = new Set();
   const unique = (name, fallback) => { const pick = used.has(name) ? fallback : name; used.add(pick); return pick; };
-  const inputs = (linear.inputs ?? []).map(([id, widget]) => {
+  const inputs = (linear.inputs ?? []).filter(([id, widget]) => {
+    // A widget that is only UI (the Data folder's Upload button) is App mode, not the API.
+    const node = graph.getNodeById(id);
+    return !node || node.widgets?.find(w => w.name === widget)?.type !== 'aws_upload';
+  }).map(([id, widget]) => {
     const top = graph.getNodeById(id);
     if (!top) throw Error(`App mode input ${id}/${widget} is not on the canvas any more; choose it again.`);
     // A widget promoted on a subgraph card belongs to the node inside it; the run names that "card:inner".
@@ -65,9 +69,14 @@ export function signatureOf(graph, defs) {
 /** Set the signature (what the agent's "signature" edit and App mode both write). */
 export function setSignature(graph, inputs, outputs) {
   graph.extra = {...graph.extra, linearData: {inputs: inputs.map(({node, widget}) => [node, widget]), outputs}};
-  // App mode reads its selection from the workflow when one loads: record the change and have its
-  // store re-read it, so the workflow runs as an App right away (no reload). The store is reached
-  // through the Vue app (no public API); the App-mode browser test fails first if that changes.
+  refreshApp();
+}
+
+/** App mode reads its selection from the workflow as ComfyUI last recorded it: record the change
+ *  and have its store re-read it, so the workflow runs as an App right away. Call it again once a
+ *  batch of changes is closed (inside one, ComfyUI records nothing yet). The store is reached through
+ *  the Vue app (no public API); the App-mode browser tests fail first if that changes. */
+export function refreshApp() {
   globalThis.comfyAPI?.app?.app?.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.();
   globalThis.document?.querySelector('#vue-app')?.__vue_app__?.config?.globalProperties?.$pinia?._s?.get('appMode')?.resetSelectedToWorkflow?.();
 }

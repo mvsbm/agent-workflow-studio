@@ -98,6 +98,14 @@ const promises = {...intent.promises, outputs: intent.promises.outputs};
     assert.ok(doc.paths['/upload/image'], 'the native upload is described');
     assert.equal(doc.paths['/agent-workflow-studio/api/orders-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.orders.format, 'comfyui-input-folder');
     assert.deepEqual(doc.paths['/agent-workflow-studio/api/orders-e2e/run'].post.responses['200'].content['application/json'].schema.properties.data.properties.totals.properties.columns.items.enum, ['order_id', 'region', 'amount']);
+    // As an App (Alt+M): the data input is a folder list with an Upload button; the button is UI, not the API.
+    await page.evaluate(() => window.comfyAPI.app.app.extensionManager.command.execute('Comfy.ToggleLinear'));
+    const tour = page.getByRole('button', {name: 'Skip'});  // ComfyUI's first-time App tour
+    if (await tour.isVisible({timeout: 3000}).catch(() => false)) await tour.click();
+    await page.getByRole('button', {name: 'Upload files…'}).first().waitFor({timeout: 15000});
+    assert.deepEqual(Object.keys(doc.paths['/agent-workflow-studio/api/orders-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties), ['orders']);
+    await page.screenshot({path: path.join(artifacts, 'data-api-app.png')});
+    await page.evaluate(() => window.comfyAPI.app.app.extensionManager.command.execute('Comfy.ToggleLinear'));
     await page.screenshot({path: path.join(artifacts, 'data-api.png')});
     assert.deepEqual(errors, []);
     console.log('PASS data_api');

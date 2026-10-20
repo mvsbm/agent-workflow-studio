@@ -74,6 +74,7 @@ class PiStructuredAgentTests(unittest.TestCase):
                 "AgentWorkflowProfileData",
                 "AgentWorkflowCheck",
                 "AgentWorkflowApiOutput",
+                "AgentWorkflowDataFolder",
                 *(
                     f"AgentWorkflow{name}"
                     for name in (

@@ -250,4 +250,54 @@ class ApiOutput(io.ComfyNode):
         )
 
 
-NODES = [Check, ApiOutput]
+def input_folders() -> list[str]:
+    """The folders in ComfyUI's input folder (where callers and the upload button put data)."""
+    import folder_paths
+
+    root = Path(folder_paths.get_input_directory())
+    found = (
+        sorted(p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
+        if root.is_dir()
+        else []
+    )
+    return found or [""]
+
+
+class DataFolder(io.ComfyNode):
+    """A promised data input: a folder of files in ComfyUI's input folder (claim check)."""
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="AgentWorkflowDataFolder",
+            display_name="Data folder",
+            category="agent_workflow_studio",
+            description="A folder of data files in ComfyUI's input folder, for the stages that read it. "
+            "Choose one, or upload files into a new one with the button (in App mode too); an API "
+            "call names the folder it uploaded with POST /upload/image.",
+            inputs=[
+                # Re-listed every time the schema is read (as ComfyUI's LoadImage lists images).
+                io.Combo.Input(
+                    "folder",
+                    options=input_folders(),
+                    display_name="Folder",
+                    tooltip="A folder inside ComfyUI's input folder.",
+                ),
+            ],
+            outputs=[io.String.Output(display_name="folder", tooltip="The folder's name.")],
+        )
+
+    @classmethod
+    def execute(cls, folder: str) -> io.NodeOutput:
+        import folder_paths
+
+        root = Path(folder_paths.get_input_directory()).resolve()
+        path = (root / folder).resolve()
+        if not folder or root not in path.parents or not path.is_dir():
+            raise ValueError(
+                "Choose a folder inside ComfyUI's input folder, or upload files first."
+            )
+        return io.NodeOutput(folder)
+
+
+NODES = [Check, ApiOutput, DataFolder]

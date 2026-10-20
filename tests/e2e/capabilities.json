@@ -143,6 +143,19 @@
    "fallback": "settings stay inside the stages (open a stage to change them)"
   },
   {
+   "id": "app_upload",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "offered": true,
+    "id": "1",
+    "button": true,
+    "linear": true
+   },
+   "assumes": "a node’s DOM widget (the upload button) and its combo render in App mode when chosen as inputs; ComfyUI’s upload takes any file into an input subfolder; refreshComboInNodes re-lists the folders",
+   "fallback": "App mode shows the folder list only; data is uploaded beforehand (curl or the API)"
+  },
+  {
    "id": "stage_skeleton",
    "mode": "vue",
    "ok": true,
@@ -278,6 +291,19 @@
    },
    "assumes": "a stage input wired to an inner widget shows that widget on the stage card; its value flows into the inner node in the prompt and survives save/reload",
    "fallback": "settings stay inside the stages (open a stage to change them)"
+  },
+  {
+   "id": "app_upload",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "offered": true,
+    "id": "1",
+    "button": true,
+    "linear": true
+   },
+   "assumes": "a node’s DOM widget (the upload button) and its combo render in App mode when chosen as inputs; ComfyUI’s upload takes any file into an input subfolder; refreshComboInNodes re-lists the folders",
+   "fallback": "App mode shows the folder list only; data is uploaded beforehand (curl or the API)"
   }
  ]
 }
