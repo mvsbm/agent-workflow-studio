@@ -41,9 +41,9 @@ Plan → contract → HLD → LLD. While drafting the HLD, choose a **pattern** 
 
 ## API by design
 
-The contract's promised inputs and outputs are the workflow's API. Give every promised output a `from` (`"step.port"`), use every promised input in a step's `takes` (`"input.<name>"`), and when the user already provides that input on the canvas (a given folder node, a generator's seed) point to it with `node` (and `widget`: one the node takes as an input, like a folder or seed — not a preview that only shows a value) rather than creating a second one, and write each must-request as an example (`given` uses the promised input names, `expect` the promised output names): the examples become acceptance tests that must pass before publishing. Entities named in `data` are the API's data schemas.
+The contract's promised inputs and outputs are the workflow's API. In the design, give every promised output its step port in `outputs` (`{"<output>": "step.port"}`), use every promised input in a step's `takes` (`"input.<name>"`), and when the user already provides that input on the canvas (a given folder node, a generator's seed) point to it with `node` (and `widget`: one the node takes as an input, like a folder or seed — not a preview that only shows a value) rather than creating a second one, and write each must-request as an example (`given` uses the promised input names, `expect` the promised output names): the examples become acceptance tests that must pass before publishing. Entities named in `data` are the API's data schemas.
 
 ## Before proposing: the design review
 
-The contract tool returns the review; fix every ✗ you can before the user sees it:
+The design tool returns the review; fix every ✗ you can before the user sees it:
 every step gives typed data · every result is checked on its data · every step says how (`uses`) and why · every step names its pattern · every step reads as one short sentence (purpose, uses and why ≤ 160 characters together: a few words each) · every hand-off is a named entity · the API is defined · every must-request has an example · AI steps sit behind a check.

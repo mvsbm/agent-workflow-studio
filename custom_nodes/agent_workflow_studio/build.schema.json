@@ -1,0 +1,80 @@
+{
+ "type": "object",
+ "properties": {
+  "step": {
+   "type": "string",
+   "pattern": "^[a-z][a-z0-9_]{0,31}$",
+   "description": "The step (stage) this LLD builds."
+  },
+  "nodes": {
+   "type": "object",
+   "maxProperties": 40,
+   "propertyNames": {
+    "pattern": "^[a-z][a-z0-9_]{0,31}$"
+   },
+   "description": "The stage's nodes by key.",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "type": {
+      "type": "string",
+      "description": "Node class from comfy_node_catalog."
+     },
+     "title": {
+      "type": "string",
+      "maxLength": 120
+     },
+     "set": {
+      "type": "object",
+      "description": "Widget name → value."
+     },
+     "realizes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+       "type": "string"
+      },
+      "description": "The HLD clauses it realizes: \"takes <port>\", \"does\", \"gives <port>\", \"why\", \"decision <id>\"."
+     }
+    },
+    "required": [
+     "type",
+     "realizes"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "wires": {
+   "type": "array",
+   "maxItems": 120,
+   "description": "Each {\"from\": \"input.<port>\" | \"<node>.<socket>\", \"to\": \"<node>.<socket>\" | \"output.<port>\"}.",
+   "items": {
+    "type": "object",
+    "properties": {
+     "from": {
+      "type": "string"
+     },
+     "to": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "from",
+     "to"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "summary": {
+   "type": "string",
+   "maxLength": 200,
+   "description": "One line: what this build does."
+  }
+ },
+ "required": [
+  "step",
+  "nodes",
+  "wires"
+ ],
+ "additionalProperties": false
+}

@@ -24,7 +24,8 @@ const artifacts = process.env.ARTIFACTS;
     await message.fill('make it loud with a tool');
     await page.getByRole('button', {name: 'Send'}).click();
 
-    await page.getByRole('group', {name: 'Approve this workflow contract?'}).getByRole('button', {name: 'Allow'}).click();
+    await page.getByRole('group', {name: 'Approve this contract?'}).getByRole('button', {name: 'Allow'}).click();
+    await page.getByRole('group', {name: 'Approve this design?'}).getByRole('button', {name: 'Allow'}).click();
     // The user sees the exact code before it can run.
     const approval = page.getByRole('group', {name: 'Approve tool shout?'});
     await approval.waitFor({timeout: 60000});

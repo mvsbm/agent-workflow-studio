@@ -19,7 +19,8 @@ from aiohttp import WSMsgType, web
 
 from . import loop as improve_loop
 from .agent_tools import NAME, approval_text, code_hash
-from .native_layers import layers, split
+from .lld import validate_lld
+from .native_layers import design_of, intent_of, layers, split
 from .pi_auth import (
     all_provider_api_key_env_names,
     provider_credential_environment,
@@ -31,15 +32,19 @@ from .project_repo import ProjectRepo
 from .workflow_contract import (
     blocking,
     hld,
+    join,
     render,
     report,
     review,
     validate_for_approval,
+    validate_intent,
     wiring,
 )
 
 PREFIX = "/agent-workflow-studio/pi-chat"
 ACTIONS = {
+    "intent",
+    "build",
     "read",
     "catalog",
     "edit",
@@ -59,6 +64,8 @@ ACTIONS = {
 STRUCTURAL = {"add", "remove", "connect", "disconnect"}
 CONTRACT_ACTIONS = {
     "contract_propose",
+    "design_propose",
+    "build_step",
     "contract_get",
     "contract_gates",
     "contract_status",
@@ -592,6 +599,19 @@ class PiChatSession:
         structural = action == "edit" and any(
             isinstance(op, dict) and op.get("op") in STRUCTURAL for op in operations or []
         )
+        if action == "edit" and any(
+            isinstance(op, dict) and op.get("op") in STRUCTURAL and op.get("stage") is not None
+            for op in operations or []
+        ):
+            # Inside a stage the nodes come from its low-level design, never from loose edits.
+            raise ValueError(
+                "Inside a stage, nodes and wires come from its LLD: build or change the stage with "
+                "comfy_build_step (its nodes, what each realizes, its wires). Settings (widget), titles "
+                "and positions inside a stage may still be edited."
+                if self.phase() == "build"
+                else "Nodes are built once the contract and its design are approved: comfy_ask_user, "
+                "comfy_propose_contract, then comfy_propose_design."
+            )
         if (
             action == "edit"
             and self.contract is None
@@ -664,7 +684,9 @@ class PiChatSession:
         if action == "contract_get":
             return {"contract": self.contract}
         if action != "contract_propose" and self.contract is None:
-            raise ValueError("This workflow has no approved contract yet.")
+            raise ValueError(
+                "This workflow has no approved contract yet: propose it first with comfy_propose_contract."
+            )
         if action == "contract_gates":
             # Gates come from the approved contract, never from the agent's arguments.
             gates = await self.canvas_action("gates", {})
@@ -723,32 +745,77 @@ class PiChatSession:
                 ],
                 "loop": loop,
             }
-        contract = validate_for_approval(
-            arguments.get("contract") if isinstance(arguments, dict) else None
-        )
+        if action == "design_propose":
+            return await self.propose_design(arguments if isinstance(arguments, dict) else {})
+        if action == "build_step":
+            return await self.build_step(arguments if isinstance(arguments, dict) else {})
+        return await self.propose_contract(arguments if isinstance(arguments, dict) else {})
+
+    def phase(self) -> str:
+        """Where the work stands, and so which tools apply: contract, then design (HLD), then build."""
+        if self.contract is None:
+            return "contract"
+        return "build" if self.contract["steps"] else "design"
+
+    async def approve(self, title: str, text: str) -> bool:
+        # Approval is the user's click in the browser, never the agent's own tool call.
+        answer = await self.canvas_action("contract_approve", {"title": title, "text": text})
+        return bool(answer.get("approved"))
+
+    async def commit(self, message: str) -> str:
+        """Commit the canvas (which now holds the approved layers natively) as the user's approval."""
+        workflow = (await self.canvas_action("contract_evidence", {}))["workflow"]
+        return await asyncio.to_thread(self.repo.commit_contract, workflow, message)
+
+    async def propose_contract(self, arguments: dict) -> dict:
+        """The contract: what the user wants (intent only). Its design comes next, approved on its own."""
+        intent = validate_intent(arguments.get("contract"))
+        design = design_of(self.contract) if self.contract else None
+        if design and design["steps"]:
+            # An amended contract must still fit the approved design (else amend the design too).
+            validate_for_approval(join(intent, design))
+        if not await self.approve("Approve this contract?", render(join(intent, {"steps": []}))):
+            return {
+                "approved": False,
+                "message": "The user did not approve the contract; ask what to change.",
+            }
+        await self.canvas_action("intent", {"intent": intent})
+        sha = await self.commit(f"Contract approved: {intent['purpose']}")
+        self.contract = join(intent, design or {"steps": []})
+        return {
+            "approved": True,
+            "version": sha[:8],
+            "next": "Design it: find the nodes (comfy_node_catalog), then propose the high-level design "
+            "with comfy_propose_design (steps with typed ports, gates, data entities, and which step "
+            "gives each promised output).",
+        }
+
+    async def propose_design(self, arguments: dict) -> dict:
+        """The high-level design (HLD): the abstracted workflow. On approval it becomes the stages."""
+        design = arguments.get("design")
+        if not isinstance(design, dict):
+            raise ValueError("Give the design: {steps, data, decisions, loop, outputs}.")
+        contract = validate_for_approval(join(intent_of(self.contract), design))
         if failing := blocking(contract):
             # The design standard is checked before the user is asked: fix these, then propose again.
             raise ValueError(
                 "Design review: fix before proposing — "
                 + "; ".join(failing)
                 + ". Name each port that hands data to another step after its entity in `data`; give every "
-                "promised output a `from` and use every promised input; keep purpose, uses and why short."
+                "promised output its step in `outputs` and use every promised input; keep purpose, uses and why short."
             )
-        # Approval is the user's click in the browser, never the agent's own tool call.
-        answer = await self.canvas_action(
-            "contract_approve",
-            {"title": "Approve this workflow contract?", "text": render(contract)},
-        )
-        if not answer.get("approved"):
+        # The user approved the contract already: the card leads with the design, not the same text again.
+        text = render(contract)
+        text = f"FOR: {contract['purpose']}\n\n{text[text.index('DESIGN (') :]}"
+        if not await self.approve("Approve this design?", text):
             return {
                 "approved": False,
-                "message": "The user did not approve the contract; ask what to change.",
+                "message": "The user did not approve the design; ask what to change.",
             }
         self.contract = contract
-        # The approved design becomes the canvas skeleton: a typed, wired stage per step, the API's
-        # inputs as top-level nodes and its signature; titles and sentences come from the HLD. The
-        # contract is stored natively in the workflow: intent in extra, each step on its stage.
-        intent, design, _ = split(contract)
+        # The approved design becomes the canvas: a typed, wired stage per step, the API's inputs and
+        # outputs at the top level (the App), each step stored on its stage.
+        intent, meta, _ = split(contract)
         skeleton = await self.canvas_action(
             "skeleton",
             {
@@ -756,18 +823,41 @@ class PiChatSession:
                 "promises": contract["promises"],
                 "design": hld(contract),
                 "intent": intent,
-                "meta": design,
+                "meta": meta,
             },
         )
-        workflow = (await self.canvas_action("contract_evidence", {}))["workflow"]
-        sha = await asyncio.to_thread(self.repo.commit_contract, workflow, contract["purpose"])
+        sha = await self.commit(f"Design approved: {len(contract['steps'])} steps")
         return {
             "approved": True,
             "version": sha[:8],
             "design_review": [f"{'✓' if ok else '✗'} {item}" for ok, item in review(contract)],
             "skeleton": skeleton,
-            "next": 'Build each stage: edit with "stage": "<step id>", replacing its Stub.',
+            "next": "Build each stage from its low-level design with comfy_build_step: its nodes, "
+            "what each realizes, and its wires.",
         }
+
+    async def build_step(self, arguments: dict) -> dict:
+        """The low-level design (LLD) of one step, checked against its HLD and compiled into its stage."""
+        if self.phase() != "build":
+            raise ValueError(
+                "Build stages once the design is approved: comfy_propose_contract, then comfy_propose_design."
+            )
+        step = next((s for s in self.contract["steps"] if s["id"] == arguments.get("step")), None)
+        if step is None:
+            ids = ", ".join(s["id"] for s in self.contract["steps"])
+            raise ValueError(f"No step {arguments.get('step')!r} in the design (steps: {ids}).")
+        agreed = [d["id"] for d in self.contract["decisions"] if d.get("by") != "user"]
+        spec = validate_lld(step, arguments, agreed)
+        result = await self.canvas_action(
+            "build",
+            {
+                **spec,
+                "summary": str(arguments.get("summary") or f"Build {step['id']} from its LLD")[
+                    :200
+                ],
+            },
+        )
+        return {**result, "graph_check": await self.check_graph()}
 
     def live(self, evidence: dict) -> dict:
         """The contract the canvas holds now (native layers), else the one approved in this chat."""

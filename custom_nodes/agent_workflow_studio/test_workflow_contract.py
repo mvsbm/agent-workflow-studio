@@ -134,6 +134,29 @@ class ContractTests(unittest.TestCase):
                 changed(lambda c: c["open_questions"].append({"question": "?", "step": "nope"}))
             )
 
+    def test_the_agents_schemas_are_derived_from_the_contract_schema(self) -> None:
+        from .workflow_contract import SCHEMA_PATH, agent_schemas
+
+        for name, schema in agent_schemas().items():
+            with self.subTest(name):
+                saved = json.loads(SCHEMA_PATH.with_name(f"{name}.schema.json").read_text())
+                self.assertEqual(
+                    saved, schema, "run write_agent_schemas() after changing the contract schema"
+                )
+
+    def test_the_contract_is_intent_and_the_design_joins_it(self) -> None:
+        from .workflow_contract import join, validate_intent
+
+        intent = {k: copy.deepcopy(v) for k, v in CONTRACT.items() if k != "steps"}
+        source = intent["promises"]["outputs"][0].pop("from")
+        self.assertIs(validate_intent(intent), intent)
+        with self.assertRaisesRegex(ValueError, "steps belong to the design"):
+            validate_intent({**intent, "steps": CONTRACT["steps"]})
+        with self.assertRaisesRegex(ValueError, "Which step delivers a promised output is design"):
+            validate_intent(changed(lambda c: c.pop("steps")))
+        joined = join(intent, {"steps": CONTRACT["steps"], "outputs": {"label": source}})
+        self.assertEqual(validate_contract(joined), CONTRACT)
+
     def test_converts_plans_approved_before_contracts(self) -> None:
         plan = {
             "goal": "Show the text hello world.",

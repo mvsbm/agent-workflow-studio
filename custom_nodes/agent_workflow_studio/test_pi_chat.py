@@ -376,13 +376,15 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("outside_loop", moved)  # layout is not a change to what runs
 
     async def test_plan_approval_comes_from_the_browser_and_is_versioned(self):
-        from .native_layers import embed
+        from .native_layers import design_of, embed, intent_of
+        from .test_lld import SPEC
         from .test_native_layers import workflow
 
         answers = {
             "contract_approve": {"approved": True},
+            "intent": {"stored": True},
             "skeleton": {"created": ["classify", "tidy"], "notes": []},
-            "edit": {"ok": True},
+            "build": {"built": "classify", "nodes": {"llm": 7, "pick": 8}},
             "analyze": {"summary": "ok", "problems": [], "will_not_run": []},
             # The skeleton stored the contract natively: the canvas's workflow now holds it.
             "contract_evidence": {
@@ -396,11 +398,29 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             "canvas_action",
             AsyncMock(side_effect=lambda action, _args: answers[action]),
         ) as canvas:
-            result = await self.session.agent_action("contract_propose", {"contract": CONTRACT})
+            # Nothing is built before the contract and its design are approved, in that order.
+            with self.assertRaisesRegex(ValueError, "no approved contract"):
+                await self.session.agent_action("design_propose", {"design": design_of(CONTRACT)})
+            with self.assertRaisesRegex(ValueError, "steps belong to the design"):
+                await self.session.agent_action("contract_propose", {"contract": CONTRACT})
+            result = await self.session.agent_action(
+                "contract_propose", {"contract": intent_of(CONTRACT)}
+            )
             self.assertTrue(result["approved"])
             approval = canvas.await_args_list[0].args
             self.assertEqual(approval[0], "contract_approve")
             self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
+            self.assertEqual(canvas.await_args_list[1].args[0], "intent")
+            with self.assertRaisesRegex(ValueError, "once the design is approved"):
+                await self.session.agent_action("build_step", {"step": "classify", **SPEC})
+            canvas.reset_mock()
+            result = await self.session.agent_action(
+                "design_propose", {"design": design_of(CONTRACT)}
+            )
+            self.assertTrue(result["approved"])
+            card = canvas.await_args_list[0].args[1]
+            self.assertEqual(card["title"], "Approve this design?")
+            self.assertTrue(card["text"].startswith(f"FOR: {CONTRACT['purpose']}\n\nDESIGN ("))
             # Approval builds the skeleton: the approved steps become the stages.
             skeleton = canvas.await_args_list[1].args
             self.assertEqual(skeleton[0], "skeleton")
@@ -413,13 +433,34 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(any(line.startswith("✗") for line in result["design_review"]))
             self.assertEqual(result["skeleton"]["created"], ["classify", "tidy"])
-            await self.session.agent_action(
-                "edit", {"operations": [{"op": "add", "key": "a", "class_type": "X"}]}
-            )
+            # Inside a stage, nodes come only from its LLD, checked against the step before compiling.
+            with self.assertRaisesRegex(ValueError, "comfy_build_step"):
+                await self.session.agent_action(
+                    "edit",
+                    {
+                        "operations": [
+                            {"op": "add", "stage": "classify", "key": "a", "class_type": "X"}
+                        ]
+                    },
+                )
+            with self.assertRaisesRegex(ValueError, "No node realizes gives label"):
+                broken = {
+                    **SPEC,
+                    "nodes": {**SPEC["nodes"], "pick": {"type": "X", "realizes": ["why"]}},
+                }
+                await self.session.agent_action("build_step", {"step": "classify", **broken})
+            built = await self.session.agent_action("build_step", {"step": "classify", **SPEC})
+            self.assertEqual(built["built"], "classify")
+            self.assertIn("graph_check", built)
+            compiled = next(c.args[1] for c in canvas.await_args_list if c.args[0] == "build")
+            self.assertEqual(compiled["nodes"]["llm"]["realizes"], ["takes review", "does"])
         log = self.session.repo.log()
         self.assertEqual(
-            (log[0]["author"], log[0]["message"]),
-            ("user", f"Contract approved: {CONTRACT['purpose']}"),
+            [(e["author"], e["message"]) for e in log[:2]],
+            [
+                ("user", "Design approved: 2 steps"),
+                ("user", f"Contract approved: {CONTRACT['purpose']}"),
+            ],
         )
         self.assertEqual(
             await self.session.agent_action("contract_get", {}), {"contract": CONTRACT}
@@ -452,10 +493,14 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(later.contract, CONTRACT)
 
     async def test_denied_plans_and_open_questions_are_not_approved(self):
+        from .native_layers import intent_of
+
         with patch.object(
             self.session, "canvas_action", AsyncMock(return_value={"approved": False})
         ):
-            result = await self.session.agent_action("contract_propose", {"contract": CONTRACT})
+            result = await self.session.agent_action(
+                "contract_propose", {"contract": intent_of(CONTRACT)}
+            )
         self.assertFalse(result["approved"])
         self.assertIsNone(self.session.contract)
         with (
@@ -464,7 +509,7 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         ):
             await self.session.agent_action(
                 "contract_propose",
-                {"contract": {**CONTRACT, "open_questions": ["Which language?"]}},
+                {"contract": {**intent_of(CONTRACT), "open_questions": ["Which language?"]}},
             )
         canvas.assert_not_awaited()
 

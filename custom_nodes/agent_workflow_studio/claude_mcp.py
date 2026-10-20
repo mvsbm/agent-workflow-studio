@@ -12,6 +12,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import sys
 import threading
 import urllib.error
@@ -84,8 +85,15 @@ def tool_list() -> list[dict]:
     contract = json.dumps(contract_schema())
     tools = []
     for tool in [*shared, *FILE_TOOLS]:
-        schema = json.dumps(tool["parameters"]).replace(
-            '{"$ref": "contract.schema.json"}', contract
+        # The agent schemas (intent, design, build) are generated already inlined by workflow_contract.
+        schema = re.sub(
+            r'\{"\$ref": "(\w+)\.schema\.json"\}',
+            lambda m: (
+                contract
+                if m[1] == "contract"
+                else (HERE / f"{m[1]}.schema.json").read_text(encoding="utf-8")
+            ),
+            json.dumps(tool["parameters"]),
         )
         tools.append(
             {

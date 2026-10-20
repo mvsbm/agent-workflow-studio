@@ -42,6 +42,24 @@ def split(contract: dict) -> tuple[dict, dict, dict[str, dict]]:
     return intent, design, {s["id"]: copy.deepcopy(s) for s in contract["steps"]}
 
 
+def intent_of(contract: dict) -> dict:
+    """The contract alone (what the user approved first): no steps, no step behind each output."""
+    intent, _, _ = split(contract)
+    outputs = [{k: v for k, v in o.items() if k != "from"} for o in intent["promises"]["outputs"]]
+    return {**intent, "promises": {**intent["promises"], "outputs": outputs}}
+
+
+def design_of(contract: dict) -> dict:
+    """The design (HLD) part: steps, data, the agent's decisions, the loop and each output's step."""
+    _, design, _ = split(contract)
+    design.pop("order")
+    return {
+        **design,
+        "steps": copy.deepcopy(contract["steps"]),
+        "outputs": {o["name"]: o["from"] for o in contract["promises"]["outputs"] if o.get("from")},
+    }
+
+
 def stage_nodes(workflow: dict) -> dict[str, dict]:
     """Step id → its top-level stage node."""
     return {

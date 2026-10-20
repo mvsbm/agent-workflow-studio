@@ -75,7 +75,9 @@ export default async function (pi: ExtensionAPI) {
     ctx.ui.notify(args==="--check"?JSON.stringify(tools):`Connected Pi tools: ${tools.active.join(", ")}`,"info");
   }});
   for (const tool of TOOLS) {
-    const parameters = Type.Unsafe(JSON.parse(JSON.stringify(tool.parameters).replaceAll('{"$ref":"contract.schema.json"}', JSON.stringify(contractSchema))));
+    // The agent schemas (intent, design, build) are generated already inlined by workflow_contract.py.
+    const parameters = Type.Unsafe(JSON.parse(JSON.stringify(tool.parameters).replace(/\{"\$ref":"(\w+)\.schema\.json"\}/g, (_, name) =>
+      name === "contract" ? JSON.stringify(contractSchema) : readFileSync(fileURLToPath(new URL(`./${name}.schema.json`, import.meta.url)), "utf8"))));
     pi.registerTool(defineTool({
       name:tool.name, label:tool.label, description:tool.description, parameters,
       execute:async (_id,args:any,signal,_update,ctx) => {

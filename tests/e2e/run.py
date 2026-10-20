@@ -10,7 +10,7 @@ from pathlib import Path
 from fixture import REPO, ComfyFixture
 
 HERE = Path(__file__).resolve().parent
-TESTS = [
+TESTS = os.environ.get("E2E_ONLY", "").split() or [
     "build_and_run.cjs",
     "llm_record.cjs",
     "fuzzy_node.cjs",

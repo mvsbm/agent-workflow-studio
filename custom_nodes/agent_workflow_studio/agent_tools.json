@@ -41,7 +41,7 @@
  {
   "name": "comfy_edit_workflow",
   "label": "Edit native canvas",
-  "description": "Apply up to 32 native canvas edits atomically with native undo support, including move/title layout edits that preserve node identity and links. Nodes live inside stages (one per contract step): give \"stage\" for every operation inside one; inside, \"input\"/\"output\" are the stage's ports by name; build a whole stage per batch: its nodes wired from its input ports to its output ports (the Stub disappears and the Check follows by itself; stages are already wired to each other). Without \"stage\", operations work at the top level, which holds only stages (named by step id) and the user's given nodes. New-node keys stay valid for the rest of this chat, so later batches can reference earlier nodes by key. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
+  "description": "Apply up to 32 native canvas edits atomically with native undo support. Inside a stage (give \"stage\": the step id), only settings (widget), titles and positions may be edited: its nodes and wires come from its LLD (comfy_build_step). Without \"stage\", operations work at the top level, which holds only stages (named by step id), promised inputs/outputs and the user's given nodes; the API signature is set there. New-node keys stay valid for the rest of this chat. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
   "parameters": {
    "type": "object",
    "properties": {
@@ -496,12 +496,12 @@
  {
   "name": "comfy_propose_contract",
   "label": "Propose contract",
-  "description": "Propose the workflow contract and wait for the user's approval in the chat. Required before adding nodes, and again to amend it. Purpose, requests (the user's words + your restatement + priority), examples, promised inputs/outputs, steps, decisions, not-now, open questions (must be empty). It is the design (HLD): each step is a stage with typed ports (takes: an earlier step's output 'step.port', a promised input 'input.<name>' or a type; gives: port -> type), uses (how), why (because), pattern, and a gate whose check names one of its outputs; data names the entities passed between steps; promised outputs say which step gives them (from), which makes the workflow an API; examples become acceptance tests. On approval the canvas gets the skeleton: one wired stage per step, the API's input nodes and signature, a Stub, a Check per gate and an API output per promised output. The result includes the design review.",
+  "description": "Propose the workflow contract and wait for the user's approval in the chat. Required first, and again to amend it. Intent only: purpose, requests (the user's words + your restatement + priority), examples (they become acceptance tests), promised inputs/outputs (the workflow's API), the user's decisions, not-now, open questions (must be empty). How it is done (steps, data, the loop) is the design, proposed next with comfy_propose_design.",
   "parameters": {
    "type": "object",
    "properties": {
     "contract": {
-     "$ref": "contract.schema.json"
+     "$ref": "intent.schema.json"
     }
    },
    "required": [
@@ -509,6 +509,32 @@
    ]
   },
   "action": "contract_propose"
+ },
+ {
+  "name": "comfy_propose_design",
+  "label": "Propose design (HLD)",
+  "description": "After the contract is approved: propose its high-level design for the user to approve. Steps (each takes/gives typed ports, does, why, for: the requests it serves, gate: how its output is checked), the data they work on, your design decisions, the improve loop, and which step port delivers each promised output. On approval the canvas gets one stage per step, wired as designed, each waiting for its LLD (comfy_build_step). Proposing again amends the design (the user approves again).",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "design": {
+     "$ref": "design.schema.json"
+    }
+   },
+   "required": [
+    "design"
+   ]
+  },
+  "action": "design_propose"
+ },
+ {
+  "name": "comfy_build_step",
+  "label": "Build a stage (LLD)",
+  "description": "After the design is approved: build one step's stage from its low-level design. Give the nodes (key → native node type from comfy_node_catalog, widget settings, and which HLD clauses it realizes: \"takes <port>\", \"does\", \"gives <port>\", \"why\", \"decision <id>\") and the wires (\"input.<port>\" → \"<node>.<socket>\" → \"output.<port>\"). The studio checks that every clause is realized and every port wired, then compiles it into the stage, replacing its previous build, in one undo step. Use it again to change a stage's nodes or wiring.",
+  "parameters": {
+   "$ref": "build.schema.json"
+  },
+  "action": "build_step"
  },
  {
   "name": "comfy_check_gates",

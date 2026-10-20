@@ -127,7 +127,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
         // The work lives inside stages: node types include what is inside them.
         node_types: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.type) : [n.type])), node_ids: app.rootGraph.nodes.flatMap(n => (n.properties?.aws_stage ? n.subgraph.nodes.map(i => i.id) : [n.id])),
         stages: app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(n => n.title),
-        loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !n.properties?.aws_input && !/Note$/.test(n.type)).map(n => n.title),
+        loose: app.rootGraph.nodes.filter(n => !n.properties?.aws_stage && !n.properties?.aws_given && !n.properties?.aws_input && !n.properties?.aws_output && !/Note$/.test(n.type)).map(n => n.title),
         texts: outputs.flatMap(o => o.text ?? []).map(String), images: outputs.flatMap(o => o.images ?? []).length,
         run_statuses: statuses, versions: (log.commits ?? []).map(c => `${c.author}: ${c.message}`),
         chat: document.querySelector('.aw-pi-host')?.innerText.slice(-8000) ?? '',

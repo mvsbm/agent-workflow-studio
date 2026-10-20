@@ -217,12 +217,15 @@ def process(r: dict) -> dict[str, bool]:
     """Did the agent follow the studio's procedure? Reported beside the outcome score."""
     versions = r.get("versions", [])  # newest first
     approved = [i for i, v in enumerate(versions) if v.startswith("user: Contract approved")]
+    designed = [i for i, v in enumerate(versions) if v.startswith("user: Design approved")]
     agent_work = [i for i, v in enumerate(versions) if v.startswith("agent:")]
     tools = [t.split(" · ", 1)[1] for t in r.get("tools", []) if t.startswith("Done · ")]
     built = bool(r.get("node_ids")) or any(t in ("write", "edit") for t in tools)
     checks = {
         "contract": bool(approved) or not built,
-        "plan_first": not agent_work or (bool(approved) and max(agent_work) < max(approved)),
+        # Contract, then design, then the agent's builds (newest first: smaller index is later).
+        "plan_first": not agent_work
+        or (bool(approved) and bool(designed) and max(agent_work) < max(designed) < max(approved)),
         "in_stages": not r.get("loose"),
         "aligned": (r.get("contract") or {}).get("aligned", not built),
         "ran": "success" in r.get("run_statuses", []),

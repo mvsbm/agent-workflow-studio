@@ -43,9 +43,13 @@ class ClaudeToolsTests(unittest.TestCase):
         self.assertEqual(
             [t["name"] for t in tools], [t["name"] for t in shared] + ["read", "edit", "write"]
         )
-        self.assertNotIn("$ref", json.dumps(tools))  # the contract schema is inlined
-        contract = next(t for t in tools if t["name"] == "comfy_propose_contract")
-        self.assertIn("steps", contract["inputSchema"]["properties"]["contract"]["properties"])
+        self.assertNotIn("$ref", json.dumps(tools))  # the agent schemas are inlined
+        schema = {t["name"]: t["inputSchema"] for t in tools}
+        self.assertIn(
+            "requests", schema["comfy_propose_contract"]["properties"]["contract"]["properties"]
+        )
+        self.assertIn("steps", schema["comfy_propose_design"]["properties"]["design"]["properties"])
+        self.assertIn("wires", schema["comfy_build_step"]["properties"])
 
     def test_edit_needs_a_fresh_read_and_write_asks_before_replacing(self) -> None:
         fake = FakeWorkspace()

@@ -4,11 +4,11 @@ description: Keep the canvas readable — work inside each step's stage, short t
 ---
 # ComfyUI node organization
 
-The user reads the canvas to understand the work. Most of its order is structural: each contract step is a **stage** (a subgraph card on the top level, its nodes inside), created when the contract is approved, wired by its typed ports, laid out automatically left to right. Nodes cannot go outside a stage. What is left to you:
+The user reads the canvas to understand the work. Most of its order is structural: each contract step is a **stage** (a subgraph card on the top level, its nodes inside), created when the design is approved, wired by its typed ports, laid out automatically left to right. Nodes cannot go outside a stage. What is left to you:
 
 **Titles.** Every node gets a short title saying what it does in the user's terms: `Find candidate pairs`, not `AgentWorkflowFindCandidates`. Stage titles come from the step ids.
 
-**Replace the Stub.** A planned stage holds a Stub that passes its input on. Build the real nodes and wire them from the stage's input ports to its output ports, in one batch; the Stub disappears and the stage's Check follows whatever feeds its output by itself.
+**Replace the Stub.** A planned stage holds a Stub that passes its input on. Build it with `comfy_build_step` (its LLD: nodes, their `realizes` tags, wires from the input ports to the output ports); the Stub disappears and the stage's Check follows whatever feeds its output by itself. Give each LLD node a `title`.
 
 **Show each thing once.** Table nodes and Agent Tools already show rows in → out, before → after and samples; wires show what flows along them. Do not add Preview nodes or notes that repeat that.
 

@@ -102,7 +102,7 @@ class ProjectRepoTests(unittest.TestCase):
         from .test_workflow_contract import CONTRACT
 
         approved = embed(CONTRACT, workflow())
-        sha = self.repo.commit_contract(approved, CONTRACT["purpose"])
+        sha = self.repo.commit_contract(approved, f"Contract approved: {CONTRACT['purpose']}")
         top = self.repo.log()[0]
         self.assertEqual(
             (top["author"], top["message"]), ("user", f"Contract approved: {CONTRACT['purpose']}")
@@ -164,7 +164,7 @@ class ProjectRepoTests(unittest.TestCase):
         from .test_native_layers import workflow
         from .test_workflow_contract import CONTRACT
 
-        old.commit_contract(embed(CONTRACT, workflow()), CONTRACT["purpose"])
+        old.commit_contract(embed(CONTRACT, workflow()), "Contract approved")
         self.assertFalse(
             (old.tree / "spec.json").exists(), "the old plan is replaced, not kept beside it"
         )

@@ -157,8 +157,8 @@ class ProjectRepo:
             self._git("commit", "--quiet", "-m", " ".join(message.split())[:500], author=author)
             return self._git("rev-parse", "HEAD").strip()
 
-    def commit_contract(self, workflow: dict, purpose: str) -> str:
-        """Commit the workflow holding a just-approved contract natively, as the user's approval."""
+    def commit_contract(self, workflow: dict, message: str) -> str:
+        """Commit the workflow holding a just-approved contract or design natively, as the user's."""
         with self.lock:
             self._ensure()
             (self.tree / "workflow.json").write_text(_snapshot(workflow))
@@ -167,7 +167,7 @@ class ProjectRepo:
                 self.tree / "spec.json"
             ).exists():  # a pre-contract plan is replaced by the contract
                 self._git("rm", "--quiet", "spec.json")
-            message = " ".join(f"Contract approved: {purpose}".split())[:500]
+            message = " ".join(message.split())[:500]
             self._git("commit", "--quiet", "--allow-empty", "-m", message, author="user")
             return self._git("rev-parse", "HEAD").strip()
 

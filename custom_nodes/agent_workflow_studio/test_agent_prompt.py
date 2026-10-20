@@ -16,10 +16,20 @@ EXTENSION = (HERE / "pi_chat_extension.ts").read_text()
 class AgentPromptTests(unittest.TestCase):
     def test_every_registered_comfy_tool_is_documented(self) -> None:
         registered = {tool["name"] for tool in TOOLS}
-        self.assertEqual(len(registered), 17)
+        self.assertEqual(len(registered), 19)
         for tool in registered:
             with self.subTest(tool=tool):
                 self.assertIn(f"`{tool}`", PROMPT)
+
+    def test_every_skill_header_parses(self) -> None:
+        # Pi refuses to start if a bundled skill's YAML header does not parse (e.g. an unquoted ": ").
+        import yaml
+
+        for skill in sorted((HERE / "skills").glob("*/SKILL.md")):
+            with self.subTest(skill=skill.parent.name):
+                header = yaml.safe_load(skill.read_text().split("---")[1])
+                self.assertEqual(header["name"], skill.parent.name)
+                self.assertIsInstance(header["description"], str)
 
     def test_documented_edit_operations_match_the_schema(self) -> None:
         edit = next(t for t in TOOLS if t["name"] == "comfy_edit_workflow")

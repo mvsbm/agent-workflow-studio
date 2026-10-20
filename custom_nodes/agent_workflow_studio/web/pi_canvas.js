@@ -551,8 +551,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (!declared.includes(source)) throw Error(`Not in the approved design: ${source ?? from.title} → ${to.title} (${port}). The design wires ${declared.join(', ') || 'nothing'} there. To change the design, propose an amended contract.`);
   }
 
-  async function edit(operations, design) {
-    if (!Array.isArray(operations) || !operations.length || operations.length > 32) throw Error('Use 1–32 edit operations.');
+  async function edit(operations, design, {limit = 32} = {}) {
+    if (!Array.isArray(operations) || !operations.length || operations.length > limit) throw Error(`Use 1–${limit} edit operations.`);
     const graph = app.graph;
     const defs = await catalog();
     if (app.graph !== graph) throw Error('The active workflow changed; inspect it and retry.');
@@ -565,8 +565,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         return !scaffoldLink(where, to, slot);
       } catch { return false; }
     };
-    // Removing a Stub is replacing scaffolding, not the user's work: no confirmation.
-    const scaffold = op => { try { return resolve(op.node, op, {})?.type === 'AgentWorkflowStub'; } catch { return false; } };
+    // Removing a Stub, or a node a stage's previous LLD built, is replacing the agent's own work: no confirmation.
+    const scaffold = op => { try { const node = resolve(op.node, op, {}); return node?.type === 'AgentWorkflowStub' || !!node?.properties?.aws_lld_key; } catch { return false; } };
     const destructive = operations.some(op => (op?.op === 'remove' && !scaffold(op)) || op?.op === 'disconnect' || (op?.op === 'connect' && occupied(op)));
     const beforeApproval = JSON.stringify(app.graph.serialize());
     if (destructive) {
@@ -593,6 +593,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           const position = op.position ?? [right+80,80];
           if (!Array.isArray(position) || position.length !== 2 || !position.every(Number.isFinite)) throw Error('Invalid node position.');
           node.pos = position;
+          // Built from a step's LLD: which LLD node it is, and which HLD clauses it realizes.
+          if (op.lld) node.properties = {...node.properties, aws_lld_key: op.lld.key, aws_realizes: op.lld.realizes};
           where.add(node);
           added[op.key] = {stage: op.stage, id: node.id};
         } else if (op.op === 'move' || op.op === 'title') {
@@ -686,6 +688,30 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     }
   }
 
+  /** Compile a step's LLD (checked by the server against its HLD) into its stage: the stage's nodes
+   *  are replaced by the spec's, in one undo step, through the same checked operations as edits. */
+  async function build({step, nodes: spec, wires}) {
+    const stage = stageNode(app.graph, step);
+    if (!stage) throw Error(`No stage for step ${step}; the design's stages come from comfy_propose_design.`);
+    const stamp = Date.now().toString(36), keyOf = key => `${step}~${key}~${stamp}`;
+    const socket = name => (/^\d+$/.test(name) ? Number(name) : name);
+    const operations = [
+      // The previous build goes; hand-made nodes go only after the user confirms (edit asks).
+      ...nodes(stage.subgraph).filter(n => !SCAFFOLD.has(n.type)).map(n => ({op: 'remove', stage: step, node: n.id})),
+      ...Object.entries(spec).map(([key, node]) => ({op: 'add', stage: step, key: keyOf(key), class_type: node.type, ...(node.title ? {title: node.title} : {}), lld: {key, realizes: node.realizes}})),
+      ...Object.entries(spec).flatMap(([key, node]) => Object.entries(node.set ?? {}).map(([name, value]) => ({op: 'widget', stage: step, node: keyOf(key), name, value}))),
+      ...wires.map(({from, to}) => {
+        const [a, out] = from.split('.'), [b, into] = to.split('.');
+        if (a === 'input') return {op: 'connect', stage: step, from: 'input', output: out, to: keyOf(b), input: into};
+        if (b === 'output') return {op: 'connect', stage: step, from: keyOf(a), output: socket(out), to: 'output', input: into};
+        return {op: 'connect', stage: step, from: keyOf(a), output: socket(out), to: keyOf(b), input: into};
+      }),
+    ];
+    if (operations.length > 160) throw Error('This LLD is too large for one stage; split the step in the design.');
+    const done = await edit(operations, null, {limit: 160});
+    return {built: step, nodes: Object.fromEntries(Object.entries(done.added).map(([key, id]) => [key.split('~')[1], id])), message: `Built ${stage.title} from its LLD.`};
+  }
+
   // One node as the agent reads it; a stage also lists its ports and the nodes and wires inside.
   const describe = node => ({id:node.id,class_type:node.type,title:node.title,mode:node.mode,
     ...(node.properties?.aws_given ? {given:true} : {}),
@@ -719,6 +745,13 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       return search(args.query, 60);
     }
     if (action === 'edit') return edit(args.operations, args.design);
+    if (action === 'build') return build(args);
+    if (action === 'intent') {
+      // The approved contract (intent) is stored in the workflow itself.
+      app.graph.extra = {...app.graph.extra, aws_contract: args.intent};
+      app.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.();
+      return {stored: true};
+    }
     if (action === 'examples') {
       const {runExamples} = await import('./publish.js');
       return runExamples(app, api);

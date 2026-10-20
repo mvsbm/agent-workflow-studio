@@ -17,6 +17,7 @@ from jsonschema import Draft202012Validator
 SCHEMA_PATH = Path(__file__).with_name("contract.schema.json")
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 _validator = Draft202012Validator(SCHEMA)
+_intent_validator = None
 
 # Step lifecycle: state x event -> next state. Unlisted events leave the state unchanged.
 TRANSITIONS = {
@@ -35,9 +36,16 @@ NEXT_ACTIONS = {
 }
 
 
-def validate_contract(contract: object) -> dict:
-    """Raise ValueError unless the contract matches the schema and is internally consistent."""
-    errors = sorted(_validator.iter_errors(contract), key=lambda e: list(e.absolute_path))
+def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
+    """Raise ValueError unless the contract matches the schema and is internally consistent.
+    intent_only: the contract before its design (no steps yet), so nothing covers its requests yet."""
+    validator = _validator
+    if intent_only:  # checked against the intent schema (no steps); the steps list stays empty here
+        global _intent_validator
+        _intent_validator = _intent_validator or Draft202012Validator(agent_schemas()["intent"])
+        validator = _intent_validator
+    shown = {k: v for k, v in contract.items() if k != "steps"} if intent_only else contract
+    errors = sorted(validator.iter_errors(shown), key=lambda e: list(e.absolute_path))
     if errors:
         where = "/".join(str(p) for p in errors[0].absolute_path) or "contract"
         raise ValueError(f"Invalid contract at {where}: {errors[0].message[:200]}")
@@ -52,6 +60,8 @@ def validate_contract(contract: object) -> dict:
             raise ValueError(
                 f"{item['id']} covers unknown request(s): {', '.join(sorted(unknown))}"
             )
+    if intent_only:
+        return contract
     covered = {r for step in contract["steps"] for r in step["covers"]}
     missing = [
         r["id"] for r in contract["requests"] if r["priority"] != "could" and r["id"] not in covered
@@ -99,6 +109,157 @@ def validate_contract(contract: object) -> dict:
         if isinstance(q, dict) and q["step"] not in gives:
             raise ValueError(f"Open question “{q['question']}” waits on unknown step {q['step']}.")
     return contract
+
+
+DESIGN_KEYS = ("steps", "data", "loop")
+
+
+def validate_intent(intent: object) -> dict:
+    """The contract alone: what the user wants (purpose, requests, examples, promises, not-now,
+    their decisions). Steps, data and where each promised output comes from belong to the design."""
+    if not isinstance(intent, dict):
+        raise ValueError("The contract must be an object.")
+    if found := [k for k in DESIGN_KEYS if k in intent]:
+        raise ValueError(
+            f"The contract is intent only; {', '.join(found)} belong to the design: propose them with "
+            "comfy_propose_design once the contract is approved."
+        )
+    if any("from" in o for o in (intent.get("promises") or {}).get("outputs", [])):
+        raise ValueError(
+            "Which step delivers a promised output is design: give it in comfy_propose_design (outputs)."
+        )
+    if str(intent.get("contract")) == "2":
+        intent["contract"] = 2  # some models send the marker as text
+    validate_contract({**intent, "steps": []}, intent_only=True)
+    if blocking := [q for q in intent["open_questions"] if isinstance(q, str)]:
+        raise ValueError(
+            "Resolve the open questions with the user (comfy_ask_user) before asking for approval: "
+            + "; ".join(blocking)
+        )
+    return intent
+
+
+STEP_PORT = "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$"
+
+
+def agent_schemas() -> dict[str, dict]:
+    """The agent tools' schemas (intent, design, build), derived from contract.schema.json, the one
+    source; saved as <name>.schema.json for both agents' tool loaders (test_workflow_contract checks)."""
+    import copy
+
+    base = copy.deepcopy(SCHEMA)
+    defs = base.pop("$defs", {})
+    for key in ("$schema", "$id", "title"):
+        base.pop(key, None)
+    full = json.loads(
+        json.dumps(base).replace('{"$ref": "#/$defs/port"}', json.dumps(defs["port"]))
+    )
+    full["properties"]["contract"] = {"enum": [2, "2"]}  # some models send the marker as text
+    intent = copy.deepcopy(full)
+    intent["description"] = (
+        "The contract: what the user wants (purpose, requests, examples, promised inputs and outputs, "
+        "their decisions). How it is done (steps, data, the loop) is the design: comfy_propose_design."
+    )
+    for key in DESIGN_KEYS:
+        intent["properties"].pop(key, None)
+    intent["required"] = [r for r in intent["required"] if r not in DESIGN_KEYS]
+    intent["properties"]["promises"]["properties"]["outputs"]["items"]["properties"].pop(
+        "from", None
+    )
+    design = {
+        "type": "object",
+        "properties": {
+            **{k: full["properties"][k] for k in ("steps", "data", "decisions", "loop")},
+            "outputs": {
+                "type": "object",
+                "description": 'Which step port delivers each promised output: {"<output name>": "<step>.<port>"}.',
+                "additionalProperties": {"type": "string", "pattern": STEP_PORT},
+            },
+        },
+        "required": ["steps", "outputs"],
+        "additionalProperties": False,
+    }
+    key = "^[a-z][a-z0-9_]{0,31}$"
+    build = {
+        "type": "object",
+        "properties": {
+            "step": {
+                "type": "string",
+                "pattern": key,
+                "description": "The step (stage) this LLD builds.",
+            },
+            "nodes": {
+                "type": "object",
+                "maxProperties": 40,
+                "propertyNames": {"pattern": key},
+                "description": "The stage's nodes by key.",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "description": "Node class from comfy_node_catalog.",
+                        },
+                        "title": {"type": "string", "maxLength": 120},
+                        "set": {"type": "object", "description": "Widget name → value."},
+                        "realizes": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "string"},
+                            "description": 'The HLD clauses it realizes: "takes <port>", "does", "gives <port>", "why", "decision <id>".',
+                        },
+                    },
+                    "required": ["type", "realizes"],
+                    "additionalProperties": False,
+                },
+            },
+            "wires": {
+                "type": "array",
+                "maxItems": 120,
+                "description": 'Each {"from": "input.<port>" | "<node>.<socket>", "to": "<node>.<socket>" | "output.<port>"}.',
+                "items": {
+                    "type": "object",
+                    "properties": {"from": {"type": "string"}, "to": {"type": "string"}},
+                    "required": ["from", "to"],
+                    "additionalProperties": False,
+                },
+            },
+            "summary": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "One line: what this build does.",
+            },
+        },
+        "required": ["step", "nodes", "wires"],
+        "additionalProperties": False,
+    }
+    return {"intent": intent, "design": design, "build": build}
+
+
+def write_agent_schemas() -> None:
+    for name, schema in agent_schemas().items():
+        SCHEMA_PATH.with_name(f"{name}.schema.json").write_text(
+            json.dumps(schema, indent=1, ensure_ascii=False) + "\n"
+        )
+
+
+def join(intent: dict, design: dict) -> dict:
+    """Contract + design (HLD) as one: the shape the review, the skeleton and the views work on."""
+    sources = design.get("outputs") or {}
+    promises = {
+        **intent["promises"],
+        "outputs": [
+            {**o, **({"from": sources[o["name"]]} if o["name"] in sources else {})}
+            for o in intent["promises"]["outputs"]
+        ],
+    }
+    return {
+        **intent,
+        "promises": promises,
+        "steps": design.get("steps") or [],
+        "decisions": [*intent.get("decisions", []), *design.get("decisions", [])],
+        **{k: design[k] for k in ("data", "loop") if k in design},
+    }
 
 
 def validate_for_approval(contract: object) -> dict:
@@ -555,6 +716,8 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
                 + (f", e.g. {p['example']}" if "example" in p else "")
                 for p in ports
             ]
+    if not contract["steps"]:  # the contract alone: intent, before its design
+        return "\n".join(lines + _closing(contract))
     lines += ["", "DESIGN (one sentence per step; each step becomes a stage on the canvas):"]
     designs = {d["id"]: d for d in hld(contract)}
     for step in contract["steps"]:
@@ -588,6 +751,12 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
     lines += ["", "DESIGN REVIEW:"] + [
         f"  {'✓' if ok else '✗'} {item}" for ok, item in review(contract)
     ]
+    return "\n".join(lines + _closing(contract))
+
+
+def _closing(contract: dict) -> list[str]:
+    """Decisions, not-now and open questions: the end of every rendering."""
+    lines = []
     for label, items in (
         (
             "DECISIONS",
@@ -616,7 +785,7 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
     ]
     if technical:
         lines += ["", "Technical details (for reference):"] + technical
-    return "\n".join(lines)
+    return lines
 
 
 __all__ = [
@@ -633,7 +802,9 @@ __all__ = [
     "review",
     "stage_numbers",
     "report",
+    "join",
     "present",
+    "validate_intent",
     "validate_contract",
     "validate_for_approval",
 ]

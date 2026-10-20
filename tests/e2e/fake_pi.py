@@ -140,6 +140,22 @@ CONTRACT = {
 }
 
 
+def propose(contract):
+    """The contract (intent) first, then its design (HLD): two approvals, as a real agent does it."""
+    design = {
+        "steps": contract["steps"],
+        "outputs": {o["name"]: o["from"] for o in contract["promises"]["outputs"]},
+    }
+    outputs = [{k: v for k, v in o.items() if k != "from"} for o in contract["promises"]["outputs"]]
+    intent = {
+        **{k: v for k, v in contract.items() if k != "steps"},
+        "promises": {**contract["promises"], "outputs": outputs},
+    }
+    return tool("contract_propose", {"contract": intent}).get("approved") and tool(
+        "design_propose", {"design": design}
+    ).get("approved")
+
+
 def ask(question, options):
     """A select dialog, exactly as Pi's ctx.ui.select emits it; waits for the user's answer."""
     request_id = "fake-ask-" + str(time.monotonic_ns())
@@ -159,38 +175,26 @@ def ask(question, options):
     raise SystemExit("stdin closed while waiting for an answer")
 
 
-# Built inside the stages the approval created: greet (no input, starts empty), show (a Stub).
-BUILD = [
-    {"op": "add", "stage": "greet", "key": "src", "class_type": "PrimitiveString"},
-    {"op": "widget", "stage": "greet", "node": "src", "name": "value", "value": "hello"},
-    {"op": "add", "stage": "greet", "key": "cat", "class_type": "StringConcatenate"},
-    {"op": "widget", "stage": "greet", "node": "cat", "name": "string_b", "value": " world"},
-    {
-        "op": "connect",
-        "stage": "greet",
-        "from": "src",
-        "output": 0,
-        "to": "cat",
-        "input": "string_a",
+# Each stage's LLD: its nodes, what each realizes of the step, and its wires.
+GREET = {
+    "step": "greet",
+    "summary": "Build greet: source and concatenate",
+    "nodes": {
+        "src": {"type": "PrimitiveString", "set": {"value": "hello"}, "realizes": ["does"]},
+        "cat": {
+            "type": "StringConcatenate",
+            "set": {"string_b": " world"},
+            "realizes": ["does", "gives text"],
+        },
     },
-    {
-        "op": "connect",
-        "stage": "greet",
-        "from": "cat",
-        "output": 0,
-        "to": "output",
-        "input": "text",
-    },
-    {"op": "add", "stage": "show", "key": "out", "class_type": "PreviewAny", "title": "Result"},
-    {
-        "op": "connect",
-        "stage": "show",
-        "from": "input",
-        "output": "text",
-        "to": "out",
-        "input": "source",
-    },
-]
+    "wires": [{"from": "src.0", "to": "cat.string_a"}, {"from": "cat.0", "to": "output.text"}],
+}
+SHOW = {
+    "step": "show",
+    "summary": "Build show: preview",
+    "nodes": {"out": {"type": "PreviewAny", "title": "Result", "realizes": ["takes text", "does"]}},
+    "wires": [{"from": "input.text", "to": "out.source"}],
+}
 
 
 def build_and_run():
@@ -201,19 +205,19 @@ def build_and_run():
         != "hello world"
     ):
         raise SystemExit("unexpected answer")
-    if not tool("contract_propose", {"contract": CONTRACT}).get("approved"):
+    if not propose(CONTRACT):
         say("FAKE PI · contract not approved.")
         return
-    tool(
-        "edit", {"operations": BUILD, "summary": "Build hello world: source, concatenate, preview"}
-    )
-    # Keys from an earlier batch stay valid for the whole chat.
+    tool("build_step", GREET)
+    built = tool("build_step", SHOW)
+    # A node built from an LLD is addressed by the id the build returned; layout edits stay allowed.
+    out = (built.get("nodes") or {}).get("out")
     moved = tool(
         "edit",
-        {"operations": [{"op": "move", "stage": "show", "node": "out", "position": [760, 100]}]},
+        {"operations": [{"op": "move", "stage": "show", "node": out, "position": [760, 100]}]},
     )
     if "error" in moved:
-        raise SystemExit("key from an earlier batch did not resolve: " + moved["error"])
+        raise SystemExit("built node did not resolve: " + moved["error"])
     run = tool("run", {"reason": "build and verify"})
     if not run.get("prompt_id"):
         raise SystemExit("run returned no prompt_id")
@@ -310,7 +314,7 @@ SHOUT = "def run(inputs):\n    return {'text': inputs['text'].upper() + '!'}\n"
 
 
 def tool_workflow():
-    if not tool("contract_propose", {"contract": TOOL_CONTRACT}).get("approved"):
+    if not propose(TOOL_CONTRACT):
         return say("FAKE PI · contract not approved.")
     import base64
 
@@ -335,39 +339,18 @@ def tool_workflow():
     if not approved.get("approved"):
         return say("FAKE PI · tool not approved.")
     tool(
-        "edit",
+        "build_step",
         {
-            "summary": "Agent tool shout feeding a preview",
-            "operations": [
-                {
-                    "op": "add",
-                    "stage": "shout",
-                    "key": "shout",
-                    "class_type": "AgentWorkflowAgentTool",
-                },
-                {
-                    "op": "widget",
-                    "stage": "shout",
-                    "node": "shout",
-                    "name": "tool",
-                    "value": "shout",
-                },
-                {
-                    "op": "widget",
-                    "stage": "shout",
-                    "node": "shout",
-                    "name": "text",
-                    "value": "hello",
-                },
-                {
-                    "op": "connect",
-                    "stage": "shout",
-                    "from": "shout",
-                    "output": 1,
-                    "to": "output",
-                    "input": "text",
-                },
-            ],
+            "step": "shout",
+            "summary": "Agent tool shout",
+            "nodes": {
+                "shout": {
+                    "type": "AgentWorkflowAgentTool",
+                    "set": {"tool": "shout", "text": "hello"},
+                    "realizes": ["does", "gives text"],
+                }
+            },
+            "wires": [{"from": "shout.1", "to": "output.text"}],
         },
     )
     tool("run", {"reason": "run the tool"})
