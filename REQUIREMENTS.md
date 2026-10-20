@@ -106,7 +106,10 @@ ids stay the same across runs, and each run says what changed since the last. �
 ## 4. Use
 
 **R16 · A workflow is an API.** A finished workflow is published at a fixed version and called with
-data in and data out; its signature is App mode's inputs/outputs. ✅ (local callers; tokens for remote ones later)
+data in and data out; its signature is App mode's inputs/outputs. Data comes in through ComfyUI's own
+upload (the caller uploads files, then passes the folder name); long calls are ComfyUI's native jobs.
+APIs serve this machine by design (customer data stays here); remote callers go through a reverse
+proxy with authentication in front of ComfyUI. ✅
 
 **R17 · Logic is easy to configure and monitor.** Rules are added, removed or skipped in plain
 text (or by asking the agent); each rule's counts, change since the last run and agreement with
@@ -160,6 +163,12 @@ its version moved; an API can be rolled back to an earlier release. ✅
 
 **R36 · The studio is traced like its workflows.** Every requirement here is verified by a test CI
 runs, or says how it is verified; the studio's own CI fails otherwise. ✅
+
+**R38 · APIs follow a design standard the tools enforce.** Names say what they hold, every input
+and output is described and exercised by an example, records come in as data (uploaded, never one
+text value), no credential is an input, every table output names its fields; the contract and design
+tools refuse a proposal that breaks a rule, the workflow's CI lints the generated OpenAPI, and the
+version follows what changed for callers (a breaking change is major, with the breaks listed). ✅
 
 **R37 · The agent works in the studio's scope.** Data and text work: the agent finds and adds only
 the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes

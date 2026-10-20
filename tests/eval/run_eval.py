@@ -72,6 +72,8 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
     for label, pattern in task.get("expect_chat", []):  # what the agent says it knows
         if not re.search(pattern, r.get("chat", ""), re.IGNORECASE):
             failures.append(f"does not explain: {label}")
+    if task.get("expect_data_input") and not (r.get("contract") or {}).get("data_inputs"):
+        failures.append("the API takes its data as text, not as an uploaded folder or file")
     if task.get("expect_no_nodes") and r.get("node_ids"):
         failures.append("changed the canvas when asked not to")
     if not task.get("no_run") and "success" not in r.get("run_statuses", []):
@@ -235,6 +237,10 @@ def process(r: dict) -> dict[str, bool]:
         "api": bool((r.get("contract") or {}).get("api")),
         "accepted": any(
             v.startswith("agent: Acceptance") and "examples passed" in v for v in versions
+        ),
+        # The workflow's CI ran fully green (design incl. the API standard, Checks, examples).
+        "checks_green": any(
+            v.startswith("agent: Checks · ") and "✗" not in v and "○" not in v for v in versions
         ),
         # Loop engineering: improvements as measured, journaled iterations.
         "looped": any(v.startswith("agent: Loop ") for v in versions),

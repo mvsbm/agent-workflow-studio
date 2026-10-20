@@ -10,6 +10,15 @@
   "expect_text": "alpha-beta"
  },
  {
+  "id": "orders_api",
+  "prompt": "Make this an API for our sales team: callers send a folder of order exports (orders.csv, columns order_id, region, amount) and get back the total amount per region. Sample exports are in the input folder orders/. Build it, run it, and run its checks.",
+  "input_files": {
+   "orders/orders.csv": "order_id,region,amount\n1,north,10\n2,south,20\n3,north,5\n4,east,7\n"
+  },
+  "expect_text_ci": "north",
+  "expect_data_input": true
+ },
+ {
   "id": "edit_existing",
   "prompt": "Change this workflow so the preview shows its text in uppercase. Keep the existing nodes. Run it.",
   "setup": "good_morning",

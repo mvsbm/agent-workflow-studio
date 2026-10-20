@@ -116,7 +116,8 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
           const steps = current.steps ?? [];
           contract = {aligned: status.aligned, drift: status.drift, progress: status.progress, freshness: status.freshness, todo: status.todo,
             designed: steps.length > 0 && steps.every(s => s.uses && s.why && s.pattern), entities: Object.keys(current.data ?? {}),
-            api: (current.promises?.outputs ?? []).some(o => o.from), examples: (current.examples ?? []).length};
+            api: (current.promises?.outputs ?? []).some(o => o.from), examples: (current.examples ?? []).length,
+            data_inputs: (current.promises?.inputs ?? []).filter(i => ['folder', 'file'].includes(String(i.kind).toLowerCase())).map(i => i.name)};
         }
       } catch (error) { contract = {error: String(error)}; }
       const tools = [...document.querySelectorAll('.aw-pi-host summary, .aw-pi-host details > summary')].map(s => s.textContent.trim()).filter(t => /^(Done|Failed) · /.test(t));

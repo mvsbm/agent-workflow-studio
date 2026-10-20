@@ -100,7 +100,13 @@ CONTRACT = {
     "promises": {
         "inputs": [],
         "outputs": [
-            {"name": "text", "kind": "text", "example": "hello world", "from": "greet.text"}
+            {
+                "name": "text",
+                "kind": "text",
+                "description": "The greeting.",
+                "example": "hello world",
+                "from": "greet.text",
+            }
         ],
     },
     "steps": [
@@ -292,7 +298,14 @@ TOOL_CONTRACT = {
     ],
     "promises": {
         "inputs": [],
-        "outputs": [{"name": "text", "kind": "text", "from": "shout.text"}],
+        "outputs": [
+            {
+                "name": "text",
+                "kind": "text",
+                "description": "The shouted text.",
+                "from": "shout.text",
+            }
+        ],
     },
     "steps": [
         {
@@ -377,6 +390,7 @@ def comfy_tools_notice():
                 "comfyui-workflow-debugging",
                 "comfyui-workflow-contracts",
                 "comfyui-design-patterns",
+                "comfyui-api-design",
             ],
             "default_loaded": True,
         },

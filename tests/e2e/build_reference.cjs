@@ -52,13 +52,14 @@ const CONTRACT = {
     {id: 'R2', title: 'You check uncertain pairs', you_said: 'a person checks what the machine is unsure of', we_understood: 'When a pair is uncertain, the workflow sends it to you in the Review tab instead of guessing.', priority: 'should'},
     {id: 'R3', title: 'Own cleaning lane per system', you_said: 'each system is dirty in its own way', we_understood: 'When records are cleaned, each system gets its own cleaning lane.', priority: 'should'},
   ],
-  examples: [{id: 'E1', covers: ['R1'], given: {seed: 7}, expect: {customer_file: 'nayose_result.csv'}, note: 'The default data: the run publishes one customer id per mention.'}],
+  examples: [{id: 'E1', covers: ['R1'], given: {exports: 'nayose_bench'}, expect: {customer_file: 'nayose_result.csv'}, note: 'The benchmark exports (Studio - Nayose benchmark writes them to input/nayose_bench): one customer id per mention.'}],
   promises: {
-    inputs: [{name: 'seed', kind: 'integer', example: 7, widget: 'seed'}],  // node: the given Synthetic data (set in the page)
-    outputs: [{name: 'customer_file', kind: 'file', from: 'publish.path'}],
+    // Claim check: the caller uploads the three exports into input/<folder>/ and passes the folder.
+    inputs: [{name: 'exports', kind: 'folder', description: 'The folder holding the three legacy exports: policy_master.csv, claims.csv and koza_furikae.csv.', example: 'nayose_bench'}],
+    outputs: [{name: 'customer_file', kind: 'file', description: 'The published CSV: one customer id per person mention.', from: 'publish.path'}],
   },
   steps: [
-    {id: 'profile_data', purpose: 'Look at the three exports before cleaning.', approach: 'fixed', covers: ['R3'], takes: {folder: 'STRING'}, gives: {folder: 'STRING'}, uses: 'Profile data (EDA)', why: 'each column’s dirt decides its cleaning', pattern: 'Profile before transform', gate: {says: 'The synthetic exports were profiled.', check: at('folder', 'contains', 'nayose_bench')}},
+    {id: 'profile_data', purpose: 'Look at the three exports before cleaning.', approach: 'fixed', covers: ['R3'], takes: {folder: 'input.exports'}, gives: {folder: 'STRING'}, uses: 'Profile data (EDA)', why: 'each column’s dirt decides its cleaning', pattern: 'Profile before transform', gate: {says: 'The synthetic exports were profiled.', check: at('folder', 'contains', 'nayose_bench')}},
     {id: 'clean_policies', purpose: 'Clean the policy system’s mentions in its own lane.', approach: 'fixed', covers: ['R3'], takes: {folder: 'profile_data.folder'}, gives: {table: 'TABLE'}, uses: 'Read table, Stack roles, Normalize text, Parse dates', why: 'it stores three roles side by side', pattern: 'Pipes and filters', gate: {says: 'At least 4,500 policy mentions come out (5,480 on the default data).', check: at('table', 'rows_at_least', 4500)}},
     {id: 'clean_claims', purpose: 'Clean the claims system’s mentions in its own lane.', approach: 'fixed', covers: ['R3'], takes: {folder: 'profile_data.folder'}, gives: {table: 'TABLE'}, uses: 'Read table, Stack roles, Normalize text, Parse dates', why: 'clerks type variant kanji', pattern: 'Pipes and filters', gate: {says: 'At least 2,200 claim mentions come out (2,699 on the default data).', check: at('table', 'rows_at_least', 2200)}},
     {id: 'clean_payments', purpose: 'Clean the payment system’s mentions in its own lane.', approach: 'fixed', covers: ['R3'], takes: {folder: 'profile_data.folder'}, gives: {table: 'TABLE'}, uses: 'Read table, Stack roles, Normalize text', why: 'it holds only bank kana', pattern: 'Pipes and filters', gate: {says: 'At least 4,500 payment mentions come out (5,396 on the default data).', check: at('table', 'rows_at_least', 4500)}},
@@ -75,7 +76,7 @@ const CONTRACT = {
     {id: 'D1', decision: 'No code: every step is a visible node.', why: 'you can read and audit each step', instead_of: 'one matching script', by: 'agent', principle: 'transparency'},
     {id: 'D2', decision: 'Uncertain pairs go to you, not to a model.', why: 'a wrong merge costs more than a question', instead_of: 'auto-deciding with a reranker', by: 'agent', pattern: 'Human in the loop'},
   ],
-  not_now: ['Real customer exports (this reference runs on synthetic data)', 'A neural reranker or embeddings deciding pairs'],
+  not_now: ['A neural reranker or embeddings deciding pairs'],
   open_questions: [],
   data: {
     table: {description: 'One row per person mention, cleaned', key: ['system', 'record_id', 'role'], fields: ['system', 'record_id', 'role', 'name', 'kana']},
@@ -85,6 +86,7 @@ const CONTRACT = {
     different: {description: 'Pairs decided to be different people (they are never merged)'},
     unsettled: {description: 'Pairs a stage could not decide, passed on to the next'},
     customers: {description: 'Customers: groups of mentions, and the merges that were refused'},
+    customer_file: {description: 'One customer id per person mention', key: ['system', 'record_id', 'role'], fields: ['system', 'record_id', 'role', 'customer_id']},
   },
 };
 
@@ -290,9 +292,23 @@ decide: {match: 4, review: 2}
       if (step.gate.check) addCheck(stage.subgraph, step.gate.check, step.gate.says);
     }
     arrangeGraph(app.graph);
-    // Its API: a seed for the synthetic data in, the published customer ids out.
+    // What the first run scored (the answer key belongs to the synthetic data, not to the API).
+    const scored = app.graph.nodes.find(n => n.type === 'AgentWorkflowNayoseScore').properties.aws_tables?.[0]?.rows ?? [];
+    // Its API: the caller's exports folder in (uploaded first), the published customer ids out. The
+    // synthetic generator and its scorer leave: they stay in Studio - Nayose benchmark, as test data.
     const {setSignature} = await import('/extensions/agent_workflow_studio/publish.js');
     const synthetic = app.graph.nodes.find(n => n.isSubgraphNode?.() && !n.properties?.aws_stage);
+    const exports = window.LiteGraph.createNode('PrimitiveString');
+    app.graph.add(exports);
+    exports.title = 'Input · exports';
+    exports.properties = {...exports.properties, aws_input: 'exports'};
+    exports.widgets.find(w => w.name === 'value').value = 'nayose_bench';
+    const profileStage = app.graph.nodes.find(n => n.properties?.aws_stage === 'profile_data');
+    const into = profileStage.inputs.findIndex(i => i.name === 'folder');
+    profileStage.disconnectInput(into);
+    exports.connect(0, profileStage, into);
+    const fedBySynthetic = app.graph.nodes.filter(n => n !== profileStage && n.inputs?.some(i => i.link != null && (app.graph.links.get?.(i.link) ?? app.graph.links[i.link])?.origin_id === synthetic.id));
+    for (const node of [synthetic, ...fedBySynthetic, ...app.graph.nodes.filter(n => n.type === 'AgentWorkflowNayoseScore')]) app.graph.remove(node);
     const published = app.graph.nodes.find(n => n.properties?.aws_stage === 'publish');
     // The promised output's top-level output node, wired from the stage that delivers it: App mode shows it.
     const answer = window.LiteGraph.createNode('AgentWorkflowApiOutput');
@@ -301,12 +317,20 @@ decide: {match: 4, review: 2}
     answer.properties = {...answer.properties, aws_output: 'customer_file', aws_output_from: 'publish.path'};
     answer.widgets.find(w => w.name === 'name').value = 'customer_file';
     published.connect(0, answer, 0);
-    setSignature(app.graph, [{node: synthetic.id, widget: 'seed'}], [answer.id]);
+    setSignature(app.graph, [{node: exports.id, widget: 'value'}], [answer.id]);
+    // The note says how to use this workflow as it now is: an API for your exports.
+    const note = app.graph.nodes.find(n => n.type === 'MarkdownNote');
+    if (note) note.widgets[0].value = [
+      '# Nayose reference: customer ids for your exports',
+      '',
+      "1. Put the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv) in one folder under ComfyUI's input folder, or upload each: `curl -F image=@policy_master.csv -F type=input -F subfolder=my_exports http://127.0.0.1:8188/upload/image`.",
+      '2. Set **Input · exports** to that folder and press **Run** (or open it as an App: Alt+M). Published, it is an API: the Contract tab shows the call.',
+      '3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench.',
+    ].join('\n');
+    arrangeGraph(app.graph);
     // Shipped with the workflow: on first open it becomes the workflow's approved contract.
-    contract.promises.inputs[0].node = synthetic.id;
     app.graph.extra = {...app.graph.extra, aws_contract: contract};
-    const score = app.graph.nodes.find(n => n.type === 'AgentWorkflowNayoseScore');
-    return score.properties.aws_tables?.[0]?.rows ?? [];
+    return scored;
   }, {steps: STEPS, contract: CONTRACT});
   const second = await run(); // fill the stage cards from a run of the packed graph
   await page.waitForTimeout(3000);

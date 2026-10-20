@@ -125,13 +125,20 @@ function apiSection() {
     result.textContent = 'Running the checks…';
     try {
       const done = await runChecks(app, api);
-      result.textContent = `Checks: ${done.summary}` + done.stages.filter(s => s.status !== 'passed').map(s => ` · ${s.label}: ${s.detail.slice(0, 3).join('; ')}`).join('');
+      // What publishing this version would change for callers of the last release.
+      const change = done.compatibility, breaking = change?.breaking ?? [], additive = change?.additive ?? [];
+      const forCallers = breaking.length ? ` · breaking for callers (next release is major): ${breaking.join('; ')}` : additive.length ? ` · for callers: ${additive.join('; ')}` : '';
+      result.textContent = `Checks: ${done.summary}` + done.stages.filter(s => s.status !== 'passed').map(s => ` · ${s.label}: ${s.detail.slice(0, 3).join('; ')}`).join('') + forCallers;
     } catch (error) {
       result.textContent = error.message;
     }
   });
   const show = item => {
-    const call = `curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": …`).join(', ')}}}'`;
+    // Data inputs are uploaded first with ComfyUI's own upload (claim check), then named in the call.
+    const data = item.data_inputs ?? {};
+    const uploads = Object.keys(data).map(name => `curl -F image=@your_file.csv -F type=input -F subfolder=${name}_1 ${location.origin}/upload/image\n`).join('');
+    const value = name => (data[name] ? `"${name}_1"` : '…');
+    const call = `${uploads}curl -X POST ${location.origin}/agent-workflow-studio/api/${item.name}/run -H 'Content-Type: application/json' -d '{"inputs": {${item.inputs.map(i => `"${i}": ${value(i)}`).join(', ')}}}'`;
     // Earlier releases can be returned to (callers pinned to name@x.y.z keep theirs).
     const earlier = (item.versions ?? []).filter(v => v !== item.semver);
     back.hidden = !earlier.length;

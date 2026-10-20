@@ -81,7 +81,7 @@ const wiring = {links: [['greet', 'greeting', 'shout', 'greeting']], inputs: [['
     assert.deepEqual(result.stale, {greet: true, shout: false});
     assert.match(result.notes.join(' '), /1 · Greet: its design changed/);
     assert.match(result.published, /^[0-9a-f]{8}$/);
-    assert.equal(result.ran, 'success', result.output);
+    assert.equal(result.ran, 'completed', result.output);
     assert.deepEqual(result.data, {loud: 'hi world!'}, 'API-native: the promised output comes back by name, without a hand-made signature');
     await page.screenshot({path: path.join(artifacts, 'design.png')});
 

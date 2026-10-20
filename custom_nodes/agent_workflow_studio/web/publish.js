@@ -105,9 +105,12 @@ export async function runChecks(app, api, author = 'user') {
   const graph = app.rootGraph ?? app.graph;
   const examples = graph.extra?.aws_contract?.examples?.length ? await runExamples(app, api) : null;
   const {contractEvidence} = await import('./pi_canvas.js');
+  // The interface as App mode has it now: the CI lints its OpenAPI and compares it with the last release.
+  let signature = null;
+  try { signature = signatureOf(graph, await api.getNodeDefs()); } catch { /* no App selection yet: the design checks name it */ }
   const response = await api.fetchApi(`/agent-workflow-studio/projects/${encodeURIComponent(graph.id)}/pipeline`, {
     method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({...await contractEvidence(app, api), author}),
+    body: JSON.stringify({...await contractEvidence(app, api), author, signature}),
   });
   const body = await response.json();
   if (!response.ok) throw Error(body.error ?? 'The checks could not run.');

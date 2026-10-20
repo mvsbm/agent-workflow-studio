@@ -115,5 +115,34 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(result["stages"][3]["detail"], ["classify's Checks passed in 1.0.0"])
 
 
+class PipelineApiTests(unittest.TestCase):
+    SIGNATURE = {
+        "inputs": [
+            {"name": "review", "node": 6, "widget": "value", "type": "STRING", "default": ""}
+        ],
+        "outputs": [{"name": "label", "node": 7}],
+    }
+
+    def test_the_interface_is_linted_and_compared_with_the_last_release(self) -> None:
+        with_signature = {**evidence({"classify": "passed"}), "signature": self.SIGNATURE}
+        result = run(CONTRACT, with_signature, [accepted(True)], None)
+        self.assertEqual(statuses(result)["static"], "passed")
+        # A promise without a description leaves callers guessing: the design level fails.
+        undescribed = copy.deepcopy(with_signature)
+        promises = undescribed["workflow"]["extra"]["aws_contract"]["promises"]
+        promises["inputs"][0].pop("description")
+        failed = run(CONTRACT, undescribed, [accepted(True)], None)
+        self.assertIn("API: input review: no description", failed["stages"][0]["detail"])
+        # What this version changes for callers of the last release decides its version.
+        before = {
+            "semver": "1.0.0",
+            "signature": {**self.SIGNATURE, "outputs": [{"name": "score", "node": 8}]},
+        }
+        change = run(CONTRACT, with_signature, [accepted(True)], before)["compatibility"]
+        self.assertEqual(
+            change, {"breaking": ["output score removed"], "additive": ["output label added"]}
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

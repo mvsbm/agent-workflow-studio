@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+from .api_review import compatibility
+
 NAME = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
 JSON_TYPES = {"STRING": "string", "INT": "integer", "FLOAT": "number", "BOOLEAN": "boolean"}
 
@@ -82,6 +84,43 @@ def bind_inputs(spec: dict, values: dict) -> dict:
     return prompt
 
 
+class NotFound(ValueError):
+    """No such API or version (HTTP 404)."""
+
+
+def data_inputs(spec: dict) -> dict[str, str]:
+    """The published inputs that are data (claim check): name → "folder" or "file"."""
+    promised = ((spec.get("workflow") or {}).get("extra") or {}).get("aws_contract") or {}
+    return {
+        i["name"]: str(i["kind"]).lower()
+        for i in (promised.get("promises") or {}).get("inputs") or []
+        if str(i.get("kind", "")).lower() in ("folder", "file")
+    }
+
+
+def missing_data(spec: dict, values: dict, input_dir: Path) -> list[str]:
+    """Data inputs whose folder or file is not in ComfyUI's input folder (each says how to fix it)."""
+    base, defaults = (
+        input_dir.resolve(),
+        {i["name"]: i.get("default") for i in spec["signature"].get("inputs") or []},
+    )
+    missing = []
+    for name, kind in data_inputs(spec).items():
+        value = str(values.get(name, defaults.get(name)) or "").strip()
+        path = (base / value).resolve()
+        found = (
+            value
+            and path.is_relative_to(base)
+            and (path.is_dir() if kind == "folder" else path.is_file())
+        )
+        if not found:
+            missing.append(
+                f"{name}: no {kind} {value!r} in ComfyUI's input folder; upload it first with "
+                f"POST /upload/image (multipart: image=<file>, type=input, subfolder=<{name} folder>)"
+            )
+    return missing
+
+
 def collect_outputs(spec: dict, outputs: dict) -> dict:
     """Each signature output: the results of the output nodes inside it, by node path."""
     result = {}
@@ -133,33 +172,31 @@ def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
     return misses
 
 
-def signature_key(signature: dict) -> tuple:
-    """What callers depend on: input names and types, output names."""
-    return (
-        sorted((i["name"], str(i.get("type"))) for i in signature.get("inputs", [])),
-        sorted(o["name"] for o in signature.get("outputs", [])),
-    )
-
-
 def next_version(previous: dict | None, signature: dict, design: str) -> str:
-    """Semantic version from what changed: the API (inputs/outputs) → major, the design (HLD) →
-    minor, anything else (inside a stage) → patch."""
-    if not previous or "semver" not in previous:
+    """Semantic version from what changed for callers (api_review.compatibility): a breaking
+    change → major; an addition or a design (HLD) change → minor; inside a stage only → patch."""
+    if not previous:
         return "1.0.0"
-    major, minor, patch = (int(x) for x in previous["semver"].split("."))
-    if signature_key(previous["signature"]) != signature_key(signature):
+    # A release from before version numbers counts as 1.0.0.
+    major, minor, patch = (int(x) for x in (previous.get("semver") or "1.0.0").split("."))
+    change = compatibility(previous["signature"], signature)
+    if change["breaking"]:
         return f"{major + 1}.0.0"
-    if previous.get("design") != design:
+    if change["additive"] or previous.get("design") != design:
         return f"{major}.{minor + 1}.0"
     return f"{major}.{minor}.{patch + 1}"
 
 
 def release_notes(previous: dict | None, signature: dict, design: str) -> str:
     """Why this version number, in the words of next_version: what changed for callers."""
-    if not previous or "semver" not in previous:
+    if not previous:
         return "First release."
-    if signature_key(previous["signature"]) != signature_key(signature):
-        return "Major: the API changed (its inputs or outputs); callers must update."
+    change = compatibility(previous["signature"], signature)
+    if change["breaking"]:
+        added = f" Added: {'; '.join(change['additive'])}." if change["additive"] else ""
+        return "Major: breaking for callers — " + "; ".join(change["breaking"]) + "." + added
+    if change["additive"]:
+        return "Minor: " + "; ".join(change["additive"]) + "; existing calls keep working."
     if previous.get("design") != design:
         return "Minor: the design changed (its stages or their wiring); the API is the same."
     return "Patch: only inside stages (nodes or settings); the design and the API are the same."
@@ -200,20 +237,127 @@ def prompt_hash(prompt: dict) -> str:
     return hashlib.sha256(json.dumps(prompt, sort_keys=True).encode()).hexdigest()[:16]
 
 
+JSON_KINDS = {"text": "string", "string": "string", "number": "number", "float": "number"}
+JSON_KINDS |= {"integer": "integer", "int": "integer", "boolean": "boolean", "bool": "boolean"}
+JSON_KINDS |= {"file": "string", "folder": "string"}
+PROBLEM = {
+    "description": "RFC 9457 Problem Details: what was wrong and how to fix it.",
+    "content": {
+        "application/problem+json": {
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "title": {"type": "string"},
+                    "status": {"type": "integer"},
+                    "detail": {"type": "string"},
+                },
+            }
+        }
+    },
+}
+
+
+def _design(spec: dict) -> dict:
+    """The contract and design the published workflow holds (empty when it has none)."""
+    from .native_layers import layers
+
+    return layers(spec.get("workflow")) or {}
+
+
+def _output_schema(name: str, contract: dict) -> dict:
+    """An output's schema: a table's columns from its design entity, else its promised kind."""
+    promised = {o["name"]: o for o in (contract.get("promises") or {}).get("outputs") or []}
+    item = promised.get(name, {})
+    port = (item.get("from") or ".").split(".")[1]
+    data = contract.get("data") or {}
+    entity = data.get(name) or data.get(port) or {}
+    about = item.get("description") or entity.get("description") or ""
+    if entity.get("fields"):
+        return {
+            "type": "object",
+            "description": about,
+            "properties": {
+                "columns": {"type": "array", "items": {"enum": entity["fields"]}},
+                "rows": {
+                    "type": "array",
+                    "items": {"type": "array"},
+                    "description": "Up to 10,000 rows inline; the whole table is the file in files.",
+                },
+                "total_rows": {"type": "integer"},
+            },
+            **({"x-key": entity["key"]} if entity.get("key") else {}),
+        }
+    kind = JSON_KINDS.get(str(item.get("kind", "")).lower())
+    return {**({"type": kind} if kind else {}), "description": about}
+
+
 def _openapi_run(spec: dict, base: str = "") -> dict:
-    """An OpenAPI description of the call, generated from the signature."""
-    properties = {
-        item["name"]: {
+    """An OpenAPI description of the call, generated from the signature and the workflow's contract."""
+    contract = _design(spec)
+    promised = {i["name"]: i for i in (contract.get("promises") or {}).get("inputs") or []}
+    data_kinds = data_inputs(spec)
+    properties = {}
+    for item in spec["signature"].get("inputs", []):
+        promise = promised.get(item["name"], {})
+        kind = data_kinds.get(item["name"])
+        properties[item["name"]] = {
             **({"type": JSON_TYPES[item["type"]]} if item.get("type") in JSON_TYPES else {}),
             **({"enum": item["choices"]} if isinstance(item.get("choices"), list) else {}),
             **({"default": item["default"]} if "default" in item else {}),
-            "description": item.get("description") or f"{item.get('title', '')} · {item['widget']}",
+            **({"examples": [promise["example"]]} if "example" in promise else {}),
+            **({"format": f"comfyui-input-{kind}"} if kind else {}),
+            # A contract's promise says what it holds; never invent that (the API lint asks for it).
+            "description": (
+                promise.get("description", "")
+                if contract
+                else f"{item.get('title', '')} · {item['widget']}"
+            )
+            + (
+                f" A {kind} name inside ComfyUI's input folder: upload it first (POST /upload/image)."
+                if kind and promise.get("description")
+                else ""
+            ),
         }
-        for item in spec["signature"].get("inputs", [])
+    body = {
+        "type": "object",
+        "properties": {
+            "inputs": {"type": "object", "properties": properties, "additionalProperties": False},
+            "timeout": {
+                "type": "number",
+                "description": "Seconds to wait (default 600, at most 3600).",
+            },
+        },
     }
-    outputs = {
-        item["name"]: {"type": "object", "description": item.get("title", "")}
-        for item in spec["signature"]["outputs"]
+    examples = {
+        e["id"]: {"summary": e.get("note") or e["id"], "value": {"inputs": e.get("given") or {}}}
+        for e in contract.get("examples") or []
+    }
+    data = {o["name"]: _output_schema(o["name"], contract) for o in spec["signature"]["outputs"]}
+    result = {
+        "type": "object",
+        "properties": {
+            "status": {"enum": ["completed", "failed", "in_progress"]},
+            "semver": {"type": "string"},
+            "version": {"type": "string"},
+            "prompt_id": {"type": "string", "description": "The native ComfyUI job id."},
+            "data": {"type": "object", "properties": data},
+            "files": {
+                "type": "array",
+                "description": "Files the run wrote, with their native /view download address.",
+                "items": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}, "url": {"type": "string"}},
+                },
+            },
+            "checks": {
+                "type": "array",
+                "description": "Every Check that ran: the workflow verifying itself.",
+            },
+            "execution_error": {"type": "object"},
+            "poll": {"type": "string"},
+            "cancel": {"type": "string"},
+        },
     }
     return {
         "openapi": "3.1.0",
@@ -226,40 +370,23 @@ def _openapi_run(spec: dict, base: str = "") -> dict:
         "paths": {
             f"/agent-workflow-studio/api/{spec['name']}/run": {
                 "post": {
-                    "summary": f"Run {spec['name']} at version {spec.get('version', '')[:8]}",
+                    "operationId": f"run_{spec['name']}",
+                    "summary": f"Run {spec['name']} and wait for its result",
                     "requestBody": {
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "inputs": {
-                                            "type": "object",
-                                            "properties": properties,
-                                            "additionalProperties": False,
-                                        }
-                                    },
-                                }
+                                "schema": body,
+                                **({"examples": examples} if examples else {}),
                             }
                         }
                     },
                     "responses": {
                         "200": {
-                            "description": "The run finished.",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "status": {"enum": ["success", "error"]},
-                                            "version": {"type": "string"},
-                                            "prompt_id": {"type": "string"},
-                                            "outputs": {"type": "object", "properties": outputs},
-                                        },
-                                    }
-                                }
-                            },
-                        }
+                            "description": "The run finished (completed or failed), or is still in progress.",
+                            "content": {"application/json": {"schema": result}},
+                        },
+                        "400": PROBLEM,
+                        "404": PROBLEM,
                     },
                 }
             }
@@ -268,26 +395,79 @@ def _openapi_run(spec: dict, base: str = "") -> dict:
 
 
 def openapi(spec: dict, base: str = "") -> dict:
-    """An OpenAPI description of the call (run, or start a job and poll it), from the signature."""
+    """An OpenAPI description of the call (run, or start a native job and poll it), plus the native
+    upload a data input needs first (claim check)."""
     doc = _openapi_run(spec, base)
     doc["info"]["version"] = spec.get("semver") or doc["info"]["version"]
     run = doc["paths"][f"/agent-workflow-studio/api/{spec['name']}/run"]["post"]
     doc["paths"][f"/agent-workflow-studio/api/{spec['name']}/jobs"] = {
         "post": {
-            "summary": "Start the same call as a job (for long runs); poll it at the returned address",
+            "operationId": f"start_{spec['name']}_job",
+            "summary": "Start the same call as a native ComfyUI job; poll or cancel it at the returned addresses",
             "requestBody": run["requestBody"],
-            "responses": {"200": {"description": "The job started: {job, status, poll}."}},
+            "responses": {
+                "200": {"description": "Queued: {job, status: pending, poll, cancel}."},
+                "400": PROBLEM,
+                "404": PROBLEM,
+            },
         }
     }
-    doc["paths"]["/agent-workflow-studio/api/jobs/{job}"] = {
+    doc["paths"]["/api/jobs/{job}"] = {
         "get": {
-            "summary": "A job's status, and when done the same result as run",
+            "operationId": "get_job",
+            "summary": "ComfyUI's native job: status (pending, in_progress, completed, failed, cancelled) "
+            "and, when done, every node's outputs (the API outputs under aws_output, files under files)",
             "parameters": [
                 {"name": "job", "in": "path", "required": True, "schema": {"type": "string"}}
             ],
-            "responses": run["responses"],
+            "responses": {"200": {"description": "The job."}, "404": PROBLEM},
         }
     }
+    doc["paths"]["/api/jobs/{job}/cancel"] = {
+        "post": {
+            "operationId": "cancel_job",
+            "summary": "Cancel a pending or running native job",
+            "parameters": [
+                {"name": "job", "in": "path", "required": True, "schema": {"type": "string"}}
+            ],
+            "responses": {
+                "200": {"description": "Cancelled (or already finished)."},
+                "404": PROBLEM,
+            },
+        }
+    }
+    if data_inputs(spec):
+        doc["paths"]["/upload/image"] = {
+            "post": {
+                "operationId": "upload_input",
+                "summary": "ComfyUI's native upload, for any data file: put each file into "
+                "input/<folder>/, then pass that folder (or file) name as the data input",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "image": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "The file (any type).",
+                                    },
+                                    "type": {"enum": ["input"]},
+                                    "subfolder": {
+                                        "type": "string",
+                                        "description": "The folder name to pass as the input.",
+                                    },
+                                    "overwrite": {"enum": ["true", "false"]},
+                                },
+                                "required": ["image"],
+                            }
+                        }
+                    }
+                },
+                "responses": {"200": {"description": "{name, subfolder, type}"}, "400": PROBLEM},
+            }
+        }
     return doc
 
 
@@ -296,6 +476,7 @@ def install_api_routes() -> None:
     import time
 
     import aiohttp
+    import folder_paths
     from aiohttp import web
     from server import PromptServer
 
@@ -312,7 +493,7 @@ def install_api_routes() -> None:
         name, _, wanted = name.partition("@")
         path = published_dir(root) / f"{name}.json"
         if not NAME.fullmatch(name) or not path.is_file():
-            raise ValueError(f"No published API named {name!r}.")
+            raise NotFound(f"No published API named {name!r}.")
         if not wanted:
             return json.loads(path.read_text(encoding="utf-8"))
         versions = sorted(
@@ -324,16 +505,25 @@ def install_api_routes() -> None:
             key=lambda p: tuple(int(x) for x in p.stem.split(".")),
         )
         if not versions:
-            raise ValueError(f"{name} has no published version {wanted}.")
+            raise NotFound(f"{name} has no published version {wanted}.")
         return json.loads(versions[-1].read_text(encoding="utf-8"))
+
+    def problem(status: int, title: str, detail: str):
+        """An error as RFC 9457 Problem Details (`error` kept for the studio's own panels)."""
+        body = {"type": "about:blank", "title": title, "status": status, "detail": detail}
+        return web.json_response(
+            {**body, "error": detail}, status=status, content_type="application/problem+json"
+        )
 
     async def guarded(request, handler):
         if not _is_local_request(request):
-            return web.json_response({"error": "local access only"}, status=403)
+            return problem(403, "Forbidden", "Local access only: these APIs serve this machine.")
         try:
             return web.json_response(await handler())
+        except NotFound as error:
+            return problem(404, "Not found", str(error))
         except (ValueError, json.JSONDecodeError) as error:
-            return web.json_response({"error": str(error)}, status=400)
+            return problem(400, "Bad request", str(error))
 
     @routes.post("/agent-workflow-studio/projects/{workflow_id}/publish")
     async def publish(request):
@@ -441,7 +631,7 @@ def install_api_routes() -> None:
                 raise ValueError("Give the API name and a version such as 1.2.0.")
             path = published_dir(root) / name / f"{semver}.json"
             if not path.is_file():
-                raise ValueError(f"{name} has no version {semver}.")
+                raise NotFound(f"{name} has no version {semver}.")
             spec = json.loads(path.read_text(encoding="utf-8"))
             (published_dir(root) / f"{name}.json").write_text(
                 json.dumps(spec, ensure_ascii=False), encoding="utf-8"
@@ -467,7 +657,9 @@ def install_api_routes() -> None:
         async def handler():
             spec = await request.json()
             repo = ProjectRepo(root, request.match_info["workflow_id"])
-            examples = (repo.load_contract() or {}).get("examples") or []
+            # The examples of the workflow as it is now (the canvas), else of its last version.
+            contract = layers(spec.get("workflow")) or repo.load_contract() or {}
+            examples = contract.get("examples") or []
             if not examples:
                 raise ValueError("The contract has no examples to run.")
             check_spec({**spec, "name": "acceptance"})
@@ -537,6 +729,7 @@ def install_api_routes() -> None:
                             key=lambda v: tuple(int(x) for x in v.split(".")),
                         ),
                         "inputs": [i["name"] for i in spec["signature"].get("inputs", [])],
+                        "data_inputs": data_inputs(spec),
                         "outputs": [o["name"] for o in spec["signature"]["outputs"]],
                     }
                 )
@@ -551,19 +744,25 @@ def install_api_routes() -> None:
 
         return await guarded(request, handler)
 
-    async def run_prompt(prompt: dict, workflow: dict, timeout: float) -> tuple[str, dict | None]:
-        """Queue a prompt on ComfyUI's own queue and wait: (prompt id, history, or None if still running)."""
+    async def queue_prompt(prompt: dict, workflow: dict) -> str:
+        """Queue a prompt on ComfyUI's own queue: its id is a native job (/api/jobs/{id})."""
         base = f"http://127.0.0.1:{PromptServer.instance.port}"
         async with aiohttp.ClientSession() as session:
             # The workflow rides along as ComfyUI's own run metadata: nodes find their project by it.
             payload = {"prompt": prompt, "extra_data": {"extra_pnginfo": {"workflow": workflow}}}
             async with session.post(f"{base}/prompt", json=payload) as response:
                 queued = await response.json()
-            if response.status != 200:
-                raise ValueError(
-                    f"ComfyUI refused the run: {json.dumps(queued.get('error') or queued)[:500]}"
-                )
-            prompt_id, waited = queued["prompt_id"], 0.0
+        if response.status != 200:
+            raise ValueError(
+                f"ComfyUI refused the run: {json.dumps(queued.get('error') or queued)[:500]}"
+            )
+        return queued["prompt_id"]
+
+    async def run_prompt(prompt: dict, workflow: dict, timeout: float) -> tuple[str, dict | None]:
+        """Queue a prompt and wait: (prompt id, history, or None if still running)."""
+        base = f"http://127.0.0.1:{PromptServer.instance.port}"
+        prompt_id, waited = await queue_prompt(prompt, workflow), 0.0
+        async with aiohttp.ClientSession() as session:
             while waited < timeout:
                 async with session.get(f"{base}/history/{prompt_id}") as response:
                     history = (await response.json()).get(prompt_id)
@@ -573,17 +772,34 @@ def install_api_routes() -> None:
                 waited += 0.5
         return prompt_id, None
 
-    async def execute(spec: dict, inputs: dict, timeout: float) -> dict:
-        """One call: fill the inputs, run, return the promised outputs, files and the version that ran."""
+    def bound(spec: dict, inputs: dict) -> dict:
+        """The prompt for one call, or 400 naming every input to fix (data uploaded first)."""
         prompt = bind_inputs(spec, inputs)
+        if missing := missing_data(spec, inputs, Path(folder_paths.get_input_directory())):
+            raise ValueError("; ".join(missing))
+        return prompt
+
+    def job_links(prompt_id: str) -> dict:
+        return {"poll": f"/api/jobs/{prompt_id}", "cancel": f"/api/jobs/{prompt_id}/cancel"}
+
+    async def execute(spec: dict, inputs: dict, timeout: float) -> dict:
+        """One call: fill the inputs, run, return the promised outputs, files and the version that ran.
+        Its status speaks ComfyUI's job vocabulary (completed, failed; in_progress with the native
+        job's address when it outlasts the wait)."""
+        prompt = bound(spec, inputs)
         version = {"semver": spec.get("semver"), "version": spec["version"][:8]}
         prompt_id, history = await run_prompt(prompt, spec["workflow"], timeout)
         if history is None:
-            return {"status": "running", "prompt_id": prompt_id, **version}
+            return {
+                "status": "in_progress",
+                "prompt_id": prompt_id,
+                **version,
+                **job_links(prompt_id),
+            }
         status, outputs = history["status"], history.get("outputs") or {}
-        errors = [m[1] for m in status.get("messages", []) if m[0] == "execution_error"]
+        error = next((m[1] for m in status.get("messages", []) if m[0] == "execution_error"), None)
         return {
-            "status": "success" if status.get("status_str") == "success" else "error",
+            "status": "completed" if status.get("status_str") == "success" else "failed",
             **version,
             "prompt_id": prompt_id,
             "data": collect_data(outputs),
@@ -591,12 +807,8 @@ def install_api_routes() -> None:
             "checks": collect_checks(outputs),
             "outputs": collect_outputs(spec, outputs),
             **(
-                {
-                    "errors": [
-                        {k: e.get(k) for k in ("node_type", "exception_message")} for e in errors
-                    ]
-                }
-                if errors
+                {"execution_error": {k: error.get(k) for k in ("node_type", "exception_message")}}
+                if error
                 else {}
             ),
         }
@@ -631,7 +843,7 @@ def install_api_routes() -> None:
             body = (await request.json()) or {}
             every = float(body.get("every_minutes", 0))
             inputs = body.get("inputs") or {}
-            bind_inputs(spec, inputs)  # refuse bad inputs now
+            bound(spec, inputs)  # refuse bad inputs (and missing data) now
             if every and every < 0.05:
                 raise ValueError("Watch at most every 3 seconds (every_minutes ≥ 0.05).")
             spec["watch"] = {"every_minutes": every, "inputs": inputs} if every else None
@@ -645,7 +857,7 @@ def install_api_routes() -> None:
     async def watch_once(path: Path, spec: dict) -> None:
         result = await execute(spec, spec["watch"]["inputs"], 3600)
         checks = result.get("checks") or []
-        ok = result["status"] == "success" and all(c["passed"] for c in checks)
+        ok = result["status"] == "completed" and all(c["passed"] for c in checks)
         failing = [c for c in checks if not c["passed"]]
         record = {
             "kind": "watch",
@@ -695,48 +907,20 @@ def install_api_routes() -> None:
 
     PromptServer.instance.app.on_startup.append(start_watcher)
 
-    # Long runs as jobs: start, then poll. Kept in memory: a restart forgets unfinished jobs.
-    jobs: dict[str, dict] = {}
-
+    # Long runs as native ComfyUI jobs: queued like any run; poll or cancel them at /api/jobs/{id}.
     @routes.post("/agent-workflow-studio/api/{name}/jobs")
     async def start_job(request):
         async def handler():
-            import uuid
-
             spec = load(request.match_info["name"])
-            inputs, timeout = await call_body(request)
-            bind_inputs(spec, inputs)  # refuse bad inputs now, not later
-            job = uuid.uuid4().hex[:16]
-            jobs[job] = {
-                "status": "running",
+            inputs, _ = await call_body(request)
+            prompt_id = await queue_prompt(bound(spec, inputs), spec["workflow"])
+            return {
+                "job": prompt_id,
+                "status": "pending",
                 "semver": spec.get("semver"),
                 "version": spec["version"][:8],
+                **job_links(prompt_id),
             }
-
-            async def work():
-                try:
-                    jobs[job] = await execute(spec, inputs, max(timeout, 3600))
-                except Exception as error:  # noqa: BLE001 — a job reports its failure instead of vanishing
-                    jobs[job] = {
-                        "status": "error",
-                        "errors": [{"exception_message": str(error)[:500]}],
-                    }
-
-            asyncio.get_running_loop().create_task(work())
-            return {
-                "job": job,
-                "status": "running",
-                "poll": f"/agent-workflow-studio/api/jobs/{job}",
-            }
-
-        return await guarded(request, handler)
-
-    @routes.get("/agent-workflow-studio/api/jobs/{job}")
-    async def job_status(request):
-        async def handler():
-            if request.match_info["job"] not in jobs:
-                raise ValueError("No such job (jobs are kept until the studio restarts).")
-            return {"job": request.match_info["job"], **jobs[request.match_info["job"]]}
 
         return await guarded(request, handler)
 

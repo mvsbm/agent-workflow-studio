@@ -20,6 +20,7 @@ TESTS = os.environ.get("E2E_ONLY", "").split() or [
     "matching_cascade.cjs",
     "api.cjs",
     "design.cjs",
+    "data_api.cjs",
 ]
 
 

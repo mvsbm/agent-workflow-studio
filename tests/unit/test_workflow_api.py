@@ -126,7 +126,10 @@ class WorkflowApiTests(unittest.TestCase):
         # Each release says why its number moved.
         from custom_nodes.agent_workflow_studio.workflow_api import release_notes
 
-        self.assertTrue(release_notes(first, renamed, "d1").startswith("Major: the API changed"))
+        self.assertEqual(
+            release_notes(first, renamed, "d1"),
+            "Major: breaking for callers — input text removed. Added: input greeting added.",
+        )
         self.assertTrue(release_notes(first, sig, "d2").startswith("Minor: the design changed"))
         self.assertTrue(release_notes(first, sig, "d1").startswith("Patch: only inside stages"))
         self.assertEqual(release_notes(None, sig, "d1"), "First release.")

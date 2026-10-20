@@ -43,7 +43,7 @@ export default async function (pi: ExtensionAPI) {
   // Only bundled, trusted skills: never discover instructions in editable workspaces.
   const skillDirectory=fileURLToPath(new URL("./skills/",import.meta.url));
   const loaded=loadSkillsFromDir({dir:skillDirectory,source:"comfyui-chat"});
-  if(loaded.diagnostics.length||loaded.skills.length!==6) throw new Error("Bundled ComfyUI skills could not be verified.");
+  if(loaded.diagnostics.length||loaded.skills.length!==7) throw new Error("Bundled ComfyUI skills could not be verified.");
   const skills={names:loaded.skills.map(skill=>skill.name).sort(),default_loaded:true};
   // The environment/tool guide lives in prompts/ so it can be read and reviewed as Markdown.
   const agentPrompt=readFileSync(fileURLToPath(new URL("./prompts/comfyui_agent.md",import.meta.url)),"utf8");

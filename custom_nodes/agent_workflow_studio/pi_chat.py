@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 from aiohttp import WSMsgType, web
 
+from . import api_review
 from . import loop as improve_loop
 from .agent_tools import NAME, approval_text, code_hash
 from .lld import validate_lld
@@ -81,6 +82,7 @@ REQUIRED_SKILLS = {
     "comfyui-node-organization",
     "comfyui-workflow-contracts",
     "comfyui-design-patterns",
+    "comfyui-api-design",
 }
 MAX_MESSAGE = 1_048_576
 # Above this a tool is doing several stages at once (counted without blank lines).
@@ -770,6 +772,9 @@ class PiChatSession:
     async def propose_contract(self, arguments: dict) -> dict:
         """The contract: what the user wants (intent only). Its design comes next, approved on its own."""
         intent = validate_intent(arguments.get("contract"))
+        if failing := [item for ok, item in api_review.contract_rules(intent) if not ok]:
+            # The API design standard is checked before the user is asked: fix these, then propose again.
+            raise ValueError("API review: fix before proposing — " + "; ".join(failing) + ".")
         design = design_of(self.contract) if self.contract else None
         if design and design["steps"]:
             # An amended contract must still fit the approved design (else amend the design too).
@@ -792,7 +797,8 @@ class PiChatSession:
 
     async def propose_design(self, arguments: dict) -> dict:
         """The high-level design (HLD): the abstracted workflow. On approval it becomes the stages."""
-        design = arguments.get("design")
+        # The design, or its fields sent without the wrapper (a common slip; the fields are the same).
+        design = arguments.get("design", arguments if "steps" in arguments else None)
         if not isinstance(design, dict):
             raise ValueError("Give the design: {steps, data, decisions, loop, outputs}.")
         contract = validate_for_approval(join(intent_of(self.contract), design))

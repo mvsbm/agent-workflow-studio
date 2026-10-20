@@ -47,8 +47,22 @@ CONTRACT = {
         }
     ],
     "promises": {
-        "inputs": [{"name": "review", "kind": "text", "example": "Great value"}],
-        "outputs": [{"name": "label", "kind": "text", "from": "tidy.label"}],
+        "inputs": [
+            {
+                "name": "review",
+                "kind": "text",
+                "description": "One customer review, as written.",
+                "example": "Great value",
+            }
+        ],
+        "outputs": [
+            {
+                "name": "label",
+                "kind": "text",
+                "description": "positive or negative.",
+                "from": "tidy.label",
+            }
+        ],
     },
     "steps": [
         {
@@ -194,6 +208,12 @@ class ContractTests(unittest.TestCase):
             all(target in TRANSITIONS for row in TRANSITIONS.values() for target in row.values())
         )
 
+    def test_a_duplicate_id_is_named(self) -> None:
+        twice = copy.deepcopy(CONTRACT)
+        twice["decisions"].append({**twice["decisions"][0], "by": "agent"})
+        with self.assertRaisesRegex(ValueError, "D1 used twice .*share one numbering"):
+            validate_contract(twice)
+
     def test_a_request_is_named_by_its_title_never_its_id_alone(self) -> None:
         from custom_nodes.agent_workflow_studio.native_layers import intent_of
         from custom_nodes.agent_workflow_studio.workflow_contract import title_of, validate_intent
@@ -322,8 +342,15 @@ class ContractTests(unittest.TestCase):
         design = changed(
             lambda c: (
                 c["promises"].update(
-                    inputs=[{"name": "review", "kind": "text"}],
-                    outputs=[{"name": "label", "kind": "text", "from": "tidy.label"}],
+                    inputs=[{"name": "review", "kind": "text", "description": "One review."}],
+                    outputs=[
+                        {
+                            "name": "label",
+                            "kind": "text",
+                            "description": "Its label.",
+                            "from": "tidy.label",
+                        }
+                    ],
                 ),
                 c["steps"][0].update(
                     takes={"review": "input.review"},

@@ -13,10 +13,11 @@ versioned with it. Pure: the route in workflow_api.py stores each run as a versi
 
 from __future__ import annotations
 
+from .api_review import compatibility, openapi_lint
 from .architecture import COMPLETENESS, check
 from .lld import lld_gaps
 from .progress import app_gaps
-from .workflow_api import prompt_hash
+from .workflow_api import openapi, prompt_hash
 from .workflow_contract import report
 
 LABELS = {
@@ -32,6 +33,14 @@ def stage(name: str, status: str, detail: list[str]) -> dict:
     return {"stage": name, "label": LABELS[name], "status": status, "detail": detail}
 
 
+def api_lint(signature: dict | None, workflow: dict) -> list[str]:
+    """What the generated OpenAPI would leave a caller without (nothing to lint before App mode has
+    outputs: the design checks already name that)."""
+    if not signature or not signature.get("outputs"):
+        return []
+    return openapi_lint(openapi({"name": "preview", "signature": signature, "workflow": workflow}))
+
+
 def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict | None) -> dict:
     """One CI run of the workflow in `evidence` (the browser's: its graph, prompt and latest run)."""
     workflow, current = evidence.get("workflow") or {}, prompt_hash(evidence.get("prompt") or {})
@@ -42,6 +51,8 @@ def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict 
         *lld_gaps(workflow),
         *(f"{v['where']}: {v['problem']}" for v in check(workflow) if v["kind"] != COMPLETENESS),
         *app_gaps(contract, workflow),
+        # The interface as App mode has it now, described as callers will read it (the API standard).
+        *(f"API: {p}" for p in api_lint(evidence.get("signature"), workflow)),
     ]
     stages = [stage("static", "failed" if problems else "passed", list(dict.fromkeys(problems)))]
 
@@ -95,7 +106,12 @@ def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict 
         ]
         stages.append(stage("regression", "failed" if lost else "passed", lost))
 
+    signature = evidence.get("signature")
     return {
+        # What this version changes for callers of the last release (decides its version number).
+        "compatibility": compatibility((published or {}).get("signature"), signature)
+        if signature
+        else None,
         "prompt_hash": current,
         "stages": stages,
         "green": all(s["status"] == "passed" for s in stages),

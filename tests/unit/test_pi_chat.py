@@ -418,9 +418,8 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(ValueError, "once the design is approved"):
                 await self.session.agent_action("build_step", {"step": "classify", **SPEC})
             canvas.reset_mock()
-            result = await self.session.agent_action(
-                "design_propose", {"design": design_of(CONTRACT)}
-            )
+            # Sent without the "design" wrapper (a common slip): accepted, the fields are the same.
+            result = await self.session.agent_action("design_propose", design_of(CONTRACT))
             self.assertTrue(result["approved"])
             card = canvas.await_args_list[0].args[1]
             self.assertEqual(card["title"], "Approve this design?")

@@ -15,6 +15,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from . import api_review
+
 SCHEMA_PATH = Path(__file__).with_name("contract.schema.json")
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 _validator = Draft202012Validator(SCHEMA)
@@ -69,8 +71,16 @@ def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
         raise ValueError(f"Invalid contract at {where}: {errors[0].message[:200]}")
     for section in ("requests", "examples", "steps", "decisions"):
         ids = [item["id"] for item in contract[section]]
-        if len(ids) != len(set(ids)):
-            raise ValueError(f"Each entry in {section} needs a unique id.")
+        if twice := sorted({i for i in ids if ids.count(i) > 1}):
+            shared = (
+                " (the contract's decisions and the design's share one numbering: continue after the "
+                "contract's)"
+                if section == "decisions"
+                else ""
+            )
+            raise ValueError(
+                f"Each entry in {section} needs a unique id: {', '.join(twice)} used twice{shared}."
+            )
     requests = {r["id"]: r for r in contract["requests"]}
     for item in contract["examples"] + contract["steps"]:
         unknown = set(item["covers"]) - requests.keys()
@@ -576,6 +586,7 @@ def black_box(step: dict, contract: dict, takes: list[str]) -> str:
 # Review items a design must pass before the user sees it: they keep the graph, the data model
 # and the API consistent (the rest are advice the user weighs).
 BLOCKING = (
+    "API:",  # the API design standard (api_review): every rule blocks
     "Every step's check tests that its data is right",
     "Every step names its design pattern",
     "Every hand-off between steps is a named data entity",
@@ -674,6 +685,8 @@ def review(contract: dict) -> list[tuple[bool, str]]:
             all(s["gate"].get("check") for s in steps if s["approach"] != "fixed"),
             "AI steps sit behind a check",
         ),
+        *api_review.contract_rules(contract),
+        *api_review.design_rules(contract),
     ]
 
 
