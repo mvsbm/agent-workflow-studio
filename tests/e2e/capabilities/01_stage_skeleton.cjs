@@ -1,5 +1,6 @@
 // A planned step is an empty stage subgraph with typed ports, made from code, wired from its
 // ports, nested, surviving save/reload, and runnable end to end once a stub sits inside.
+// Verifies: R10, R15
 module.exports = {
   id: 'stage_skeleton',
   assumes: 'An empty subgraph with typed ports can be created and wired from code, nests, survives save/reload, and runs with a stub inside',

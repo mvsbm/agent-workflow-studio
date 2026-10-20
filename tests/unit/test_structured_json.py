@@ -1,3 +1,4 @@
+# Verifies: R21, R39
 import unittest
 
 from custom_nodes.agent_workflow_studio.structured_json import (

@@ -1,6 +1,8 @@
 """Old run outputs: only what is past the kept days goes, the newest of each kind always stays, a dry
 run removes nothing, answer keys are never touched, and tool runs never share a folder."""
 
+# Verifies: R16
+
 import os
 import tempfile
 import time

@@ -63,7 +63,9 @@ questions are to-dos, not errors. ✅
 of exactly the current graph. ✅
 
 **R15 · Platform assumptions are tested.** Every ComfyUI behaviour the design relies on has a
-capability test with its fallback, run before everything else. ✅
+capability test with its fallback, run before everything else. ✅ (CI runs the browser tests with and
+without add-ons reported by a scripted Pi; the real Ponytail add-on needs your own Pi profile, so its
+startup check runs locally.)
 
 ## 3b. From plan to running design
 
@@ -109,7 +111,8 @@ ids stay the same across runs, and each run says what changed since the last. �
 data in and data out; its signature is App mode's inputs/outputs. Data comes in through ComfyUI's own
 upload (the caller uploads files, then passes the folder name); long calls are ComfyUI's native jobs.
 APIs serve this machine by design (customer data stays here); remote callers go through a reverse
-proxy with authentication in front of ComfyUI. ✅
+proxy with authentication in front of ComfyUI. Every call's result file stays its own; old run outputs
+are cleaned after the days you keep them (never before you have confirmed a clean-up once). ✅
 
 **R17 · Logic is easy to configure and monitor.** Rules are added, removed or skipped in plain
 text (or by asking the agent); each rule's counts, change since the last run and agreement with
@@ -117,7 +120,8 @@ your reviews are shown. ✅
 
 **R18 · Standalone.** Someone else can install it and have the agent build a transparent workflow
 for their own problem, not only record matching. ✅ (10/10 evals incl. sales report, feedback triage,
-invoice extraction, data quality; installer brings the Pi CLI) — open: a second model, a license
+invoice extraction, data quality; installer brings the Pi CLI). Two chat agents are verified on the
+same tools: Pi (DeepSeek) and Claude Code (Haiku). License: proprietary for now (decision 2026-10-21).
 *Verified by:* the real-agent evals (`tests/eval`, domain scenarios) and CI installing from scratch.
 
 ## 5. The record-matching (名寄せ) benchmark
@@ -169,6 +173,10 @@ and output is described and exercised by an example, records come in as data (up
 text value), no credential is an input, every table output names its fields; the contract and design
 tools refuse a proposal that breaks a rule, the workflow's CI lints the generated OpenAPI, and the
 version follows what changed for callers (a breaking change is major, with the breaks listed). ✅
+
+**R39 · The chat agent and its models are configurable and checked.** You choose the chat agent
+(Pi or Claude Code) and its model from the local and provider catalogs; a model configuration is
+validated before it is used, and typed model answers are checked without echoing their values. ✅
 
 **R37 · The agent works in the studio's scope.** Data and text work: the agent finds and adds only
 the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes

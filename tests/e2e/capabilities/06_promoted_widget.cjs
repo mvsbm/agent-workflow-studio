@@ -1,5 +1,6 @@
 // A stage's key setting shown on its card (a promoted widget): set on the card, it reaches the node
 // inside the stage in the run's prompt, and it survives save and reload.
+// Verifies: R9, R15
 module.exports = {
   id: 'promoted_widget',
   assumes: 'a stage input wired to an inner widget shows that widget on the stage card; its value flows into the inner node in the prompt and survives save/reload',
