@@ -51,6 +51,17 @@ def title_of(request: dict) -> str:
     return text if len(text) <= 40 else text[:39].rstrip() + "…"
 
 
+def raise_all(problems: list[str]) -> None:
+    """One ValueError naming every problem: one as it is, several numbered."""
+    if len(problems) == 1:
+        raise ValueError(problems[0])
+    if problems:
+        raise ValueError(
+            f"{len(problems)} problems to fix together: "
+            + " ".join(f"{i}) {p}" for i, p in enumerate(problems, 1))
+        )
+
+
 def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
     """Raise ValueError unless the contract matches the schema and is internally consistent.
     intent_only: the contract before its design (no steps yet), so nothing covers its requests yet."""
@@ -67,8 +78,14 @@ def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
     shown = {k: v for k, v in contract.items() if k != "steps"} if intent_only else contract
     errors = sorted(validator.iter_errors(shown), key=lambda e: list(e.absolute_path))
     if errors:
-        where = "/".join(str(p) for p in errors[0].absolute_path) or "contract"
-        raise ValueError(f"Invalid contract at {where}: {errors[0].message[:200]}")
+        # Every shape problem at once (not one per attempt), each with where it is.
+        raise_all(
+            [
+                f"Invalid contract at {'/'.join(str(p) for p in e.absolute_path) or 'contract'}: {e.message[:200]}"
+                for e in errors[:10]
+            ]
+        )
+    problems: list[str] = []
     for section in ("requests", "examples", "steps", "decisions"):
         ids = [item["id"] for item in contract[section]]
         if twice := sorted({i for i in ids if ids.count(i) > 1}):
@@ -78,46 +95,45 @@ def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
                 if section == "decisions"
                 else ""
             )
-            raise ValueError(
+            problems.append(
                 f"Each entry in {section} needs a unique id: {', '.join(twice)} used twice{shared}."
             )
     requests = {r["id"]: r for r in contract["requests"]}
     for item in contract["examples"] + contract["steps"]:
         unknown = set(item["covers"]) - requests.keys()
         if unknown:
-            raise ValueError(
-                f"{item['id']} covers unknown request(s): {', '.join(sorted(unknown))}"
-            )
+            problems.append(f"{item['id']} covers unknown request(s): {', '.join(sorted(unknown))}")
     if intent_only:
+        raise_all(problems)
         return contract
     covered = {r for step in contract["steps"] for r in step["covers"]}
     missing = [
         r["id"] for r in contract["requests"] if r["priority"] != "could" and r["id"] not in covered
     ]
     if missing:
-        raise ValueError(
+        problems.append(
             f"No step covers request(s) {', '.join(missing)}; add a step or move them to not_now."
         )
     gives = {}
     for step in contract["steps"]:
         check = step["gate"].get("check")
         if check and check["kind"] != "non_empty" and "value" not in check:
-            raise ValueError(f"Step {step['id']}: a {check['kind']} check needs a value.")
+            problems.append(f"Step {step['id']}: a {check['kind']} check needs a value.")
         if check and "output" in check and check["output"] not in step.get("gives", {}):
-            raise ValueError(
+            problems.append(
                 f"Step {step['id']}: the check is on {check['output']}, which the step does not give."
             )
         # Stages are wired from earlier steps only, so the skeleton is a graph that can run.
         for port, source in step.get("takes", {}).items():
             if source.startswith("input."):
                 if source[6:] not in {i["name"] for i in contract["promises"]["inputs"]}:
-                    raise ValueError(
+                    problems.append(
                         f"Step {step['id']} takes {port} from {source}, which is not a promised input."
                     )
             elif "." in source:
                 src, out = source.split(".")
                 if out not in gives.get(src, {}):
-                    raise ValueError(
+                    problems.append(
                         f"Step {step['id']} takes {port} from {source}, which no earlier step gives."
                     )
         gives[step["id"]] = step.get("gives", {})
@@ -125,17 +141,18 @@ def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
         if "from" in out:
             src, port = out["from"].split(".")
             if port not in gives.get(src, {}):
-                raise ValueError(
+                problems.append(
                     f"Promised output {out['name']} comes from {out['from']}, which no step gives."
                 )
     entities = contract.get("data") or {}
     for name, entity in entities.items():
         for field, target in (entity.get("refs") or {}).items():
             if target not in entities:
-                raise ValueError(f"Entity {name}: {field} refers to unknown entity {target}.")
+                problems.append(f"Entity {name}: {field} refers to unknown entity {target}.")
     for q in contract["open_questions"]:
         if isinstance(q, dict) and q["step"] not in gives:
-            raise ValueError(f"Open question “{q['question']}” waits on unknown step {q['step']}.")
+            problems.append(f"Open question “{q['question']}” waits on unknown step {q['step']}.")
+    raise_all(problems)
     return contract
 
 
@@ -147,29 +164,45 @@ def validate_intent(intent: object) -> dict:
     their decisions). Steps, data and where each promised output comes from belong to the design."""
     if not isinstance(intent, dict):
         raise ValueError("The contract must be an object.")
+    problems = []  # every problem at once: a proposal is fixed in one retry, not one per problem
     if found := [k for k in DESIGN_KEYS if k in intent]:
-        raise ValueError(
+        problems.append(
             f"The contract is intent only; {', '.join(found)} belong to the design: propose them with "
             "comfy_propose_design once the contract is approved."
         )
-    if any("from" in o for o in (intent.get("promises") or {}).get("outputs", [])):
-        raise ValueError(
+    outputs = (intent.get("promises") or {}).get("outputs", [])
+    if any(isinstance(o, dict) and "from" in o for o in outputs):
+        problems.append(
             "Which step delivers a promised output is design: give it in comfy_propose_design (outputs)."
         )
     if str(intent.get("contract")) == "2":
         intent["contract"] = 2  # some models send the marker as text
     if untitled := [
-        str(r.get("id")) for r in intent.get("requests") or [] if not (r or {}).get("title")
+        str((r or {}).get("id"))
+        for r in intent.get("requests") or []
+        if not isinstance(r, dict) or not r.get("title")
     ]:
-        raise ValueError(
+        problems.append(
             f"Give each request a short title (a few words the user will see on the canvas): {', '.join(untitled)}."
         )
-    validate_contract({**intent, "steps": []}, intent_only=True)
-    if blocking := [q for q in intent["open_questions"] if isinstance(q, str)]:
-        raise ValueError(
+    # The rest checked as if those were fixed, so their problems come in the same answer.
+    shown = {k: v for k, v in intent.items() if k not in DESIGN_KEYS}
+    if isinstance(intent.get("promises"), dict) and isinstance(outputs, list):
+        bare = [
+            {k: v for k, v in o.items() if k != "from"} if isinstance(o, dict) else o
+            for o in outputs
+        ]
+        shown["promises"] = {**intent["promises"], "outputs": bare}
+    try:
+        validate_contract({**shown, "steps": []}, intent_only=True)
+    except ValueError as error:
+        problems.append(str(error))
+    if blocking := [q for q in intent.get("open_questions") or [] if isinstance(q, str)]:
+        problems.append(
             "Resolve the open questions with the user (comfy_ask_user) before asking for approval: "
             + "; ".join(blocking)
         )
+    raise_all(problems)
     return intent
 
 

@@ -415,11 +415,26 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(approval[0], "contract_approve")
             self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
             self.assertEqual(canvas.await_args_list[1].args[0], "intent")
+            # A malformed design gets every problem and a correct example in one answer.
+            with self.assertRaisesRegex(
+                ValueError, r"Invalid contract at .*Expected shape, e\.g\. \{\"design\""
+            ):
+                await self.session.agent_action(
+                    "design_propose", {"design": {"steps": [{"id": 3}]}}
+                )
             with self.assertRaisesRegex(ValueError, "once the design is approved"):
                 await self.session.agent_action("build_step", {"step": "classify", **SPEC})
             canvas.reset_mock()
-            # Sent without the "design" wrapper (a common slip): accepted, the fields are the same.
-            result = await self.session.agent_action("design_propose", design_of(CONTRACT))
+            # Sent without the "design" wrapper, as JSON text, reusing the contract's decision id
+            # (common slips): accepted; the design's own decision is renumbered after the contract's.
+            design = design_of(CONTRACT)
+            design["decisions"] = [
+                {"id": "D1", "decision": "Rules first", "why": "cheap", "by": "agent"}
+            ]
+            result = await self.session.agent_action(
+                "design_propose", {"design": json.dumps(design)}
+            )
+            self.assertEqual([d["id"] for d in self.session.contract["decisions"]], ["D1", "D2"])
             self.assertTrue(result["approved"])
             card = canvas.await_args_list[0].args[1]
             self.assertEqual(card["title"], "Approve this design?")
@@ -465,8 +480,10 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
                 ("user", f"Contract approved: {CONTRACT['purpose']}"),
             ],
         )
+        agents = {"id": "D2", "decision": "Rules first", "why": "cheap", "by": "agent"}
         self.assertEqual(
-            await self.session.agent_action("contract_get", {}), {"contract": CONTRACT}
+            await self.session.agent_action("contract_get", {}),
+            {"contract": {**CONTRACT, "decisions": [*CONTRACT["decisions"], agents]}},
         )
         evidence = {"nodes": [], "analysis": {"problems": []}, "workflow": {}}
         with patch.object(
@@ -494,6 +511,13 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             workspace_root=Path(self.workspace_temp.name) / "workspaces",
         )
         self.assertEqual(later.contract, CONTRACT)
+
+    def test_arguments_are_read_as_meant(self):
+        sent = '{"steps": [{"id": "a", "pattern": null, "takes": {"x": "input.x"}}], "data": null}'
+        self.assertEqual(
+            pi_chat.as_object(sent), {"steps": [{"id": "a", "takes": {"x": "input.x"}}]}
+        )
+        self.assertEqual(pi_chat.as_object("plain text"), "plain text")
 
     async def test_denied_plans_and_open_questions_are_not_approved(self):
         from custom_nodes.agent_workflow_studio.native_layers import intent_of

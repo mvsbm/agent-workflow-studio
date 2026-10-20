@@ -219,6 +219,26 @@ def publish(comfy: ComfyFixture, task: dict, result: dict) -> list[str]:
     return notes
 
 
+RETRIED = ("comfy_propose_contract", "comfy_propose_design", "comfy_build_step")
+
+
+def retries(r: dict) -> dict[str, int]:
+    """Failed calls before the first success, per proposal tool: how well the agent's first try
+    meets the standard (each failure costs the user a turn and the agent tokens)."""
+    failed: dict[str, int] = {}
+    succeeded: set[str] = set()
+    for line in r.get("tools", []):
+        state, _, tool = line.partition(" · ")
+        if tool not in RETRIED or tool in succeeded:
+            continue
+        failed.setdefault(tool, 0)
+        if state == "Failed":
+            failed[tool] += 1
+        else:
+            succeeded.add(tool)
+    return {t.replace("comfy_", ""): n for t, n in failed.items()}
+
+
 def process(r: dict) -> dict[str, bool]:
     """Did the agent follow the studio's procedure? Reported beside the outcome score."""
     versions = r.get("versions", [])  # newest first
@@ -368,6 +388,15 @@ def main() -> int:
         contract = result.get("contract") or {}
         marks = " · ".join(f"{name} {'✓' if ok else '✗'}" for name, ok in steps.items())
         print(f"     process: {marks} · {contract.get('progress', 'no contract')}", flush=True)
+        tries = retries(result)
+        results[-1]["retries"] = tries
+        if tries:
+            first = "✓" if not any(tries.values()) else "✗"
+            print(
+                f"     retries: first_try {first} · "
+                + " · ".join(f"{t} {n}" for t, n in tries.items()),
+                flush=True,
+            )
         for drift in contract.get("drift") or []:
             print(f"     drift: {drift}", flush=True)
         if result.get("nayose"):
