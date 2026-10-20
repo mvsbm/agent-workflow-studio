@@ -1,0 +1,296 @@
+{
+ "type": "object",
+ "properties": {
+  "steps": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 12,
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}$"
+     },
+     "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "description": "What the step does, in plain words."
+     },
+     "approach": {
+      "enum": [
+       "fixed",
+       "ai_planned",
+       "ai_judgment"
+      ],
+      "description": "fixed: deterministic nodes; ai_planned: a Fuzzy node plans it; ai_judgment: an LLM node decides."
+     },
+     "covers": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "pattern": "^R[0-9]{1,2}$"
+      },
+      "minItems": 1
+     },
+     "gate": {
+      "type": "object",
+      "properties": {
+       "says": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300,
+        "description": "How we know the step worked, in plain words."
+       },
+       "check": {
+        "type": "object",
+        "properties": {
+         "output": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "The output (in gives) whose data proves the gate; a Check node on it decides."
+         },
+         "kind": {
+          "enum": [
+           "non_empty",
+           "rows_at_least",
+           "at_least",
+           "contains",
+           "equals",
+           "regex",
+           "image_count_at_least"
+          ]
+         },
+         "value": {
+          "type": [
+           "string",
+           "integer"
+          ]
+         },
+         "node": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Legacy (node title); ignored."
+         }
+        },
+        "required": [
+         "kind"
+        ],
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "says"
+      ],
+      "additionalProperties": false
+     },
+     "nodes": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+       "type": "string",
+       "maxLength": 200
+      },
+      "description": "Technical: node class types expected for this step."
+     },
+     "gives": {
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": {
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "additionalProperties": {
+       "type": "string",
+       "pattern": "^(\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
+      },
+      "description": "The stage's typed outputs: port name -> socket type (TABLE, PAIRS, DECISIONS, CUSTOMERS, STRING, IMAGE, ..., or * while unknown)."
+     },
+     "takes": {
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": {
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "additionalProperties": {
+       "type": "string",
+       "pattern": "^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
+      },
+      "description": "The stage's inputs: port name -> an earlier step's output (\"step.port\"), a promised input (\"input.<name>\"), or a socket type for data entering."
+     },
+     "adopts": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+       "type": [
+        "integer",
+        "string"
+       ]
+      },
+      "description": "Ids of existing top-level nodes (the user's own work from before the contract) that this step's stage takes over, wiring kept."
+     },
+     "uses": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "HLD: how, in plain words (e.g. table nodes, rules + learned points, an LLM)."
+     },
+     "why": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "description": "HLD: because … (the reason this step exists or is shaped this way)."
+     },
+     "pattern": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60,
+      "description": "The design pattern the step follows (e.g. pipes and filters, content-based router, review queue)."
+     },
+     "person": {
+      "type": "boolean",
+      "description": "A step a person does (you decide, e.g. in the Review tab): proven when the work reaches them, not by a data check."
+     }
+    },
+    "required": [
+     "id",
+     "purpose",
+     "approach",
+     "covers",
+     "gate"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "data": {
+   "type": "object",
+   "maxProperties": 16,
+   "propertyNames": {
+    "pattern": "^[a-z][a-z0-9_]{0,31}$"
+   },
+   "description": "The data entities (ERD): what flows between steps. A port named like an entity carries it.",
+   "additionalProperties": {
+    "type": "object",
+    "properties": {
+     "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+     },
+     "key": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+       "type": "string",
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      }
+     },
+     "fields": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+       "type": "string",
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      }
+     },
+     "refs": {
+      "type": "object",
+      "propertyNames": {
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "additionalProperties": {
+       "type": "string",
+       "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "description": "field -> the entity it points to."
+     }
+    },
+    "required": [
+     "description"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "decisions": {
+   "type": "array",
+   "maxItems": 32,
+   "items": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^D[0-9]{1,2}$"
+     },
+     "decision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+     },
+     "why": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+     },
+     "instead_of": {
+      "type": "string",
+      "maxLength": 300
+     },
+     "by": {
+      "enum": [
+       "user",
+       "agent"
+      ],
+      "description": "user only for answers the user actually gave."
+     },
+     "pattern": {
+      "type": "string",
+      "maxLength": 60,
+      "description": "The design pattern this decision applies, if any."
+     },
+     "principle": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "The engineering principle behind it (e.g. single responsibility, determinism)."
+     }
+    },
+    "required": [
+     "id",
+     "decision",
+     "why",
+     "by"
+    ],
+    "additionalProperties": false
+   }
+  },
+  "loop": {
+   "type": "object",
+   "additionalProperties": false,
+   "description": "The improve loop's budget: how many iterations, and after how many without progress to ask the user.",
+   "properties": {
+    "iterations": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 20
+    },
+    "stall": {
+     "type": "integer",
+     "minimum": 1,
+     "maximum": 5
+    }
+   }
+  },
+  "outputs": {
+   "type": "object",
+   "description": "Which step port delivers each promised output: {\"<output name>\": \"<step>.<port>\"}.",
+   "additionalProperties": {
+    "type": "string",
+    "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$"
+   }
+  }
+ },
+ "required": [
+  "steps",
+  "outputs"
+ ],
+ "additionalProperties": false
+}

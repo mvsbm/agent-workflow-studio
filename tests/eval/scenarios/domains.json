@@ -1,0 +1,179 @@
+[
+ {
+  "id": "sales_report",
+  "prompt": "In the input folder sales/ there is orders.csv, an export from our shop system. It is a bit dirty: prices sometimes have a ¥ sign and thousands commas, dates come as 2026-01-05 or 2026/1/5, region names sometimes have stray spaces or lowercase, a blank quantity means 1, and some orders appear twice (order_id is unique, so a repeated order is an export error). Build a workflow that cleans it and reports total revenue (quantity × unit price, in yen) per region and month. Write it as revenue_by_region_month.csv with exactly the columns region, month (YYYY-MM), revenue, and show it on the canvas. Run it.",
+  "input_files": {
+   "sales/orders.csv": "order_id,date,region,product,quantity,unit_price\nA0001,2026-02-28,North,Kettle,4,5800\nA0002,2026/3/26, east ,Tea set,4,3200\nA0003,2026/3/21,East,Cups (6),4,1200\nA0004,2026-01-02,East,Tea set,2,\"¥3,200\"\nA0005,2026/1/17,East,Cups (6),3,1200\nA0006,2026/2/14,North,Tea set,3,3200\nA0006,2026/2/14,North,Tea set,3,3200\nA0007,2026/3/25, east ,Kettle,,\"¥5,800\"\nA0008,2026/1/7, east ,Kettle,4,\"¥5,800\"\nA0009,2026/3/9,West,Tea set,3,3200\nA0010,2026-01-05,East,Cups (6),,1200\nA0011,2026/1/15, north ,Tea set,2,\"¥3,200\"\nA0012,2026-01-01,West,Cups (6),3,1200\nA0013,2026-03-21, north ,Tea set,,3200\nA0014,2026-02-13,East,Tea set,,3200\nA0015,2026/1/19,West,Cups (6),2,1200\nA0016,2026-01-27,North,Tea set,2,3200\nA0017,2026-02-20,East,Kettle,,5800\nA0018,2026/3/13,West,Kettle,5,\"¥5,800\"\nA0019,2026-01-05,East,Kettle,5,\"¥5,800\"\nA0020,2026/3/1, east ,Kettle,4,5800\nA0021,2026/2/17,North,Tea set,1,3200\nA0022,2026-03-17,North,Tea set,5,3200\nA0023,2026/2/2,East,Cups (6),1,1200\nA0024,2026-01-15,North,Kettle,,\"¥5,800\"\nA0025,2026-02-26,East,Kettle,5,\"¥5,800\"\nA0025,2026-02-26,East,Kettle,5,\"¥5,800\"\nA0026,2026/1/3,East,Cups (6),1,\"¥1,200\"\nA0027,2026-03-15,West,Kettle,5,5800\nA0027,2026-03-15,West,Kettle,5,5800\nA0028,2026/1/8,North,Tea set,4,\"¥3,200\"\nA0029,2026-01-22,North,Tea set,5,\"¥3,200\"\nA0030,2026-01-11,West,Cups (6),3,\"¥1,200\"\nA0031,2026/1/7, west ,Tea set,5,3200\nA0032,2026-01-23,East,Kettle,2,\"¥5,800\"\nA0033,2026/2/13,North,Cups (6),4,\"¥1,200\"\nA0034,2026/2/28,North,Tea set,3,\"¥3,200\"\nA0035,2026-03-05,West,Kettle,2,\"¥5,800\"\nA0036,2026/1/21,East,Kettle,1,5800\nA0037,2026-01-23,East,Kettle,5,5800\nA0038,2026-03-23,North,Cups (6),5,\"¥1,200\"\nA0039,2026-01-03,West,Cups (6),4,\"¥1,200\"\nA0040,2026/1/13,North,Cups (6),5,\"¥1,200\"\nA0041,2026-01-24,North,Cups (6),1,1200\nA0042,2026/3/26,West,Kettle,,5800\nA0043,2026/2/16,East,Tea set,,3200\nA0044,2026/1/16,East,Cups (6),5,\"¥1,200\"\nA0045,2026-01-15,North,Cups (6),3,\"¥1,200\"\nA0046,2026/3/7,West,Tea set,5,\"¥3,200\"\nA0047,2026-03-01,North,Kettle,,\"¥5,800\"\nA0048,2026/1/23,East,Tea set,5,\"¥3,200\"\nA0049,2026-02-09,East,Kettle,4,\"¥5,800\"\nA0050,2026/2/17,West,Tea set,2,3200\nA0051,2026-01-02,East,Tea set,2,\"¥3,200\"\nA0052,2026-03-16,East,Kettle,5,\"¥5,800\"\nA0053,2026-02-01,West,Cups (6),4,1200\nA0054,2026-01-17,East,Cups (6),5,1200\nA0055,2026-02-06,West,Cups (6),3,1200\nA0056,2026/1/5,East,Tea set,,\"¥3,200\"\nA0057,2026-03-05,East,Kettle,,5800\nA0058,2026-02-04,North,Cups (6),3,1200\nA0058,2026-02-04,North,Cups (6),3,1200\nA0059,2026-03-20,North,Cups (6),4,1200\nA0060,2026-01-10,North,Tea set,5,3200\n"
+  },
+  "expect_file": {
+   "name": "revenue_by_region_month.csv",
+   "rows": [
+    {
+     "region": "East",
+     "month": "2026-01",
+     "revenue": 148600
+    },
+    {
+     "region": "East",
+     "month": "2026-02",
+     "revenue": 65600
+    },
+    {
+     "region": "East",
+     "month": "2026-03",
+     "revenue": 81400
+    },
+    {
+     "region": "North",
+     "month": "2026-01",
+     "revenue": 74200
+    },
+    {
+     "region": "North",
+     "month": "2026-02",
+     "revenue": 54000
+    },
+    {
+     "region": "North",
+     "month": "2026-03",
+     "revenue": 35800
+    },
+    {
+     "region": "West",
+     "month": "2026-01",
+     "revenue": 30400
+    },
+    {
+     "region": "West",
+     "month": "2026-02",
+     "revenue": 14800
+    },
+    {
+     "region": "West",
+     "month": "2026-03",
+     "revenue": 101000
+    }
+   ]
+  },
+  "timeout_minutes": 15
+ },
+ {
+  "id": "feedback_triage",
+  "prompt": "Our support inbox export is in the input folder feedback/messages.csv (columns id, message; Japanese and English). Build a workflow that sorts each message into exactly one category: bug, billing, praise or feature_request, so the right team gets it. Write triage.csv with the columns id, category and show the result on the canvas. Run it.",
+  "input_files": {
+   "feedback/messages.csv": "id,message\nF01,The app crashes every time I open the camera screen.\nF02,請求額が二重に引き落とされています。返金してください。\nF03,\"Love the new design, it is so much faster now!\"\nF04,Could you add a dark mode? My eyes hurt at night.\nF05,ログインボタンを押しても何も起きません。\nF06,I was charged for the premium plan after I cancelled it.\nF07,サポートの方がとても親切でした。ありがとうございます！\nF08,Please let us export reports as PDF.\nF09,Sync stopped working since yesterday's update; my notes are gone.\nF10,領収書の宛名を変更したいのですが、請求書はどこで見られますか？\nF11,カレンダーと連携できるようにしてほしいです。\nF12,\"Best budgeting app I have used, thank you team.\"\n"
+  },
+  "expect_file": {
+   "name": "triage.csv",
+   "rows": [
+    {
+     "id": "F01",
+     "category": "bug"
+    },
+    {
+     "id": "F02",
+     "category": "billing"
+    },
+    {
+     "id": "F03",
+     "category": "praise"
+    },
+    {
+     "id": "F04",
+     "category": "feature_request"
+    },
+    {
+     "id": "F05",
+     "category": "bug"
+    },
+    {
+     "id": "F06",
+     "category": "billing"
+    },
+    {
+     "id": "F07",
+     "category": "praise"
+    },
+    {
+     "id": "F08",
+     "category": "feature_request"
+    },
+    {
+     "id": "F09",
+     "category": "bug"
+    },
+    {
+     "id": "F10",
+     "category": "billing"
+    },
+    {
+     "id": "F11",
+     "category": "feature_request"
+    },
+    {
+     "id": "F12",
+     "category": "praise"
+    }
+   ],
+   "min_match": 11
+  },
+  "timeout_minutes": 15
+ },
+ {
+  "id": "invoice_extract",
+  "prompt": "The input folder invoices/ holds four supplier invoices as text files, each in a different layout (English and Japanese). Build a workflow that reads them and extracts, for each, the vendor (the company that issued it), the invoice date as YYYY-MM-DD and the total to pay in yen as a whole number. Write invoices.csv with the columns file, vendor, date, total and show it on the canvas. Run it.",
+  "input_files": {
+   "invoices/inv_001.txt": "INVOICE\nVendor: Sakura Office Supply Co.\nInvoice date: 2026-02-03\n\nItems\n  Paper A4 x10   4,500\n  Toner x2      18,000\nSubtotal 22,500\nTax (10%) 2,250\nTOTAL DUE: ¥24,750\n",
+   "invoices/inv_002.txt": "請求書\nお客様: 当社 御中\n発行元: 株式会社みどり物流\n発行日 2026年2月14日\n配送料 一式 120,000円\n消費税 12,000円\nご請求金額合計 132,000円\n",
+   "invoices/inv_003.txt": "From: Blue Harbor Consulting LLC\nTo: our company\nDate: 03/01/2026 (MM/DD/YYYY)\nWorkshop (2 days)  $0 -- billed in JPY: 300,000\nTravel 41,800\nTotal (JPY) 341,800\n",
+   "invoices/inv_004.txt": "Rechnung / Invoice\nKitchen Parts Japan K.K.\n2026.03.20\n\nReplacement valve 3 pcs @ 6,600 = 19,800\nShipping 1,100\nGrand total JPY 20,900 (tax included)\n"
+  },
+  "expect_file": {
+   "name": "invoices.csv",
+   "rows": [
+    {
+     "date": "2026-02-03",
+     "total": "24750"
+    },
+    {
+     "date": "2026-02-14",
+     "total": "132000"
+    },
+    {
+     "date": "2026-03-01",
+     "total": "341800"
+    },
+    {
+     "date": "2026-03-20",
+     "total": "20900"
+    }
+   ]
+  },
+  "timeout_minutes": 15
+ },
+ {
+  "id": "data_quality",
+  "prompt": "Check the customer master in the input folder quality/customers.csv before we migrate it. Count three problems: invalid_email (not exactly one @ with text before it and a domain with a dot after it, or containing spaces), duplicate_id (customer_id values that appear more than once; count each such id once) and missing_phone (empty phone). Write quality_report.csv with exactly the columns check, count (one row per problem, named as above) and show it on the canvas. Run it.",
+  "input_files": {
+   "quality/customers.csv": "customer_id,name,email,phone\nC001,Customer 1,user1@example.com,03-5185-6874\nC002,Customer 2,user2@example.com,03-9684-1475\nC003,Customer 3,user3@,03-8628-5080\nC004,Customer 4,user4@example.com,03-1849-3569\nC005,Customer 5,user5@example.com,\nC006,Customer 6,user6@example.com,03-8685-5039\nC007,Customer 7,user7@example.com,03-7238-9908\nC008,Customer 8,user8@example.com,03-2670-5085\nC009,Customer 9,user 9@example.com,03-1214-4550\nC010,Customer 10,user10@example.com,03-7687-5579\nC011,Customer 11,user11@example.com,\nC012,Customer 12,user12@example.com,03-3614-2178\nC013,Customer 13,user13@example.com,03-3273-8288\nC014,Customer 14,user 14@example.com,03-3075-3166\nC015,Customer 15,user15@example.com,03-1029-1087\nC016,Customer 16,user16@example.com,03-4431-4530\nC017,Customer 17,user17@example.com,03-3717-3727\nC018,Customer 18,user18@example.com,03-5739-6138\nC019,Customer 19,user19@example.com,\nC020,Customer 20,user20@example.com,03-4355-3976\nC021,Customer 21,user21@example.com,03-4225-7278\nC022,Customer 22,user22@,03-5895-1353\nC023,Customer 23,user23@example.com,03-6917-7797\nC024,Customer 24,user24@example.com,03-3719-3387\nC025,Customer 25,user25@example.com,\nC026,Customer 26,user26@example.com,03-6437-5937\nC027,Customer 27,user27example.com,03-1055-6536\nC028,Customer 28,user28@example.com,03-2081-6078\nC029,Customer 29,user29@example.com,03-6822-6014\nC030,Customer 30,user30@example.com,03-8876-6173\nC007,Duplicate of C007,dup7@example.com,03-0000-0000\nC016,Duplicate of C016,dup16@example.com,03-0000-0000\nC028,Duplicate of C028,dup28@example.com,03-0000-0000\n"
+  },
+  "expect_file": {
+   "name": "quality_report.csv",
+   "rows": [
+    {
+     "check": "invalid_email",
+     "count": "5"
+    },
+    {
+     "check": "duplicate_id",
+     "count": "3"
+    },
+    {
+     "check": "missing_phone",
+     "count": "4"
+    }
+   ]
+  },
+  "timeout_minutes": 12
+ }
+]

@@ -1,0 +1,528 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workflow-studio.local/contract.schema.json",
+  "title": "Agent Workflow Studio contract",
+  "description": "One per workflow. Intent only: purpose, requests, examples, promises, steps, decisions. Step status and technical details are derived from the canvas and runs, never written here.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "const": 2
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "description": "1-3 sentences: who it is for, what it solves, what good looks like."
+    },
+    "requests": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R[0-9]{1,2}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "description": "A few words naming the request, shown wherever it is referenced (badges, the Design tab): e.g. 'Own cleaning lane per system'."
+          },
+          "you_said": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "The user's own words, quoted as said."
+          },
+          "we_understood": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Plain restatement, ideally 'When <situation>, the workflow <does what>.'"
+          },
+          "priority": {
+            "enum": [
+              "must",
+              "should",
+              "could"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "you_said",
+          "we_understood",
+          "priority"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "examples": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "Concrete input -> expected output pairs that show what the requests mean.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^E[0-9]{1,2}$"
+          },
+          "covers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^R[0-9]{1,2}$"
+            },
+            "minItems": 1
+          },
+          "given": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "expect": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            }
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "covers",
+          "given",
+          "expect"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "promises": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      },
+      "required": [
+        "inputs",
+        "outputs"
+      ],
+      "additionalProperties": false
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "What the step does, in plain words."
+          },
+          "approach": {
+            "enum": [
+              "fixed",
+              "ai_planned",
+              "ai_judgment"
+            ],
+            "description": "fixed: deterministic nodes; ai_planned: a Fuzzy node plans it; ai_judgment: an LLM node decides."
+          },
+          "covers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^R[0-9]{1,2}$"
+            },
+            "minItems": 1
+          },
+          "gate": {
+            "type": "object",
+            "properties": {
+              "says": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300,
+                "description": "How we know the step worked, in plain words."
+              },
+              "check": {
+                "type": "object",
+                "properties": {
+                  "output": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                    "description": "The output (in gives) whose data proves the gate; a Check node on it decides."
+                  },
+                  "kind": {
+                    "enum": [
+                      "non_empty",
+                      "rows_at_least",
+                      "at_least",
+                      "contains",
+                      "equals",
+                      "regex",
+                      "image_count_at_least"
+                    ]
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "integer"
+                    ]
+                  },
+                  "node": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Legacy (node title); ignored."
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "says"
+            ],
+            "additionalProperties": false
+          },
+          "nodes": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "Technical: node class types expected for this step."
+          },
+          "gives": {
+            "type": "object",
+            "maxProperties": 8,
+            "propertyNames": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
+            },
+            "description": "The stage's typed outputs: port name -> socket type (TABLE, PAIRS, DECISIONS, CUSTOMERS, STRING, IMAGE, ..., or * while unknown)."
+          },
+          "takes": {
+            "type": "object",
+            "maxProperties": 8,
+            "propertyNames": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
+            },
+            "description": "The stage's inputs: port name -> an earlier step's output (\"step.port\"), a promised input (\"input.<name>\"), or a socket type for data entering."
+          },
+          "adopts": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "description": "Ids of existing top-level nodes (the user's own work from before the contract) that this step's stage takes over, wiring kept."
+          },
+          "uses": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "HLD: how, in plain words (e.g. table nodes, rules + learned points, an LLM)."
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160,
+            "description": "HLD: because … (the reason this step exists or is shaped this way)."
+          },
+          "pattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "The design pattern the step follows (e.g. pipes and filters, content-based router, review queue)."
+          },
+          "person": {
+            "type": "boolean",
+            "description": "A step a person does (you decide, e.g. in the Review tab): proven when the work reaches them, not by a data check."
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "approach",
+          "covers",
+          "gate"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^D[0-9]{1,2}$"
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "instead_of": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "by": {
+            "enum": [
+              "user",
+              "agent"
+            ],
+            "description": "user only for answers the user actually gave."
+          },
+          "pattern": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "The design pattern this decision applies, if any."
+          },
+          "principle": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The engineering principle behind it (e.g. single responsibility, determinism)."
+          }
+        },
+        "required": [
+          "id",
+          "decision",
+          "why",
+          "by"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "not_now": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "step": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]{0,31}$",
+                "description": "The step that waits for the answer; the rest can be built."
+              }
+            },
+            "required": [
+              "question",
+              "step"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "description": "A plain question must be answered before approval. A question tied to one step ({question, step}) may stay open: that step is built around it and cannot be verified until it is answered (by amending the contract)."
+    },
+    "data": {
+      "type": "object",
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "description": "The data entities (ERD): what flows between steps. A port named like an entity carries it.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "key": {
+            "type": "array",
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            }
+          },
+          "refs": {
+            "type": "object",
+            "propertyNames": {
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,31}$"
+            },
+            "description": "field -> the entity it points to."
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The improve loop's budget: how many iterations, and after how many without progress to ask the user.",
+      "properties": {
+        "iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "stall": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    }
+  },
+  "required": [
+    "contract",
+    "purpose",
+    "requests",
+    "examples",
+    "promises",
+    "steps",
+    "decisions",
+    "not_now",
+    "open_questions"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "What it holds: text, number, boolean, folder (a folder of data files the caller uploads to ComfyUI's input folder), file (one such file), image, ..."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "One line a caller reads in the API description: what this input or output holds."
+        },
+        "example": {
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$",
+          "description": "Outputs: the step output that delivers it (\"step.port\"); makes it part of the API."
+        },
+        "node": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Inputs: an existing top-level node (e.g. the user's given data folder) that is this input, instead of a new input node."
+        },
+        "widget": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Inputs: the widget on that node the API sets (for a subgraph card, its promoted widget)."
+        }
+      },
+      "required": [
+        "name",
+        "kind"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

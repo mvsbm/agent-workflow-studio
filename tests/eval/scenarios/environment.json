@@ -1,0 +1,27 @@
+[
+ {
+  "id": "environment",
+  "prompt": "Before we build anything, explain how you work in this studio, in short bullets: (1) the tools you use to see, change and run the canvas, by name; (2) what must happen before you add nodes; (3) how each step proves it works; (4) where you may write files, and what you cannot do; (5) which skills you follow, by name; (6) how you improve a workflow that is already built. Do not build or change anything.",
+  "no_run": true,
+  "expect_no_nodes": true,
+  "timeout_minutes": 4,
+  "expect_chat": [
+   ["reads the canvas", "comfy_read_workflow"],
+   ["edits the canvas", "comfy_edit_workflow"],
+   ["runs natively", "comfy_run_workflow"],
+   ["finds real nodes", "comfy_node_catalog"],
+   ["asks to settle requirements", "comfy_ask_user"],
+   ["a contract approved before adding nodes", "comfy_propose_contract"],
+   ["work lives in stages", "stage"],
+   ["Check nodes / gates prove a step", "comfy_check_gates|\\bgate"],
+   ["acceptance examples", "comfy_run_examples|example"],
+   ["writes only in the workflow workspace", "workspace"],
+   ["scratch files in tmp/ before a contract", "tmp/"],
+   ["no shell", "shell"],
+   ["the contracts skill", "workflow-contracts"],
+   ["the design-patterns skill", "design-patterns"],
+   ["improve loop with a hypothesis", "comfy_loop_step"],
+   ["agent tools need approval", "comfy_propose_tool|approv"]
+  ]
+ }
+]

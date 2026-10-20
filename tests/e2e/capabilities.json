@@ -1,0 +1,249 @@
+{
+ "versions": {
+  "comfyui": "0.38.0",
+  "frontend": "1.54.12",
+  "python": "3.12.12"
+ },
+ "results": [
+  {
+   "id": "stage_skeleton",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "built": {
+     "ports": [
+      [
+       "pairs:PAIRS"
+      ],
+      [
+       "matched:PAIRS"
+      ]
+     ],
+     "nestedPorts": [
+      "pairs:PAIRS"
+     ],
+     "wiredIn": true,
+     "wiredOut": true,
+     "wrongTypeRefused": true,
+     "stubLinks": 2
+    },
+    "run": "success",
+    "report": "rows 1",
+    "reloaded": {
+     "ports": [
+      [
+       "pairs:PAIRS"
+      ],
+      [
+       "matched:PAIRS"
+      ]
+     ],
+     "nested": true,
+     "definitions": 2
+    }
+   },
+   "assumes": "An empty subgraph with typed ports can be created and wired from code, nests, survives save/reload, and runs with a stub inside",
+   "fallback": "step list stays in the contract; stages are packed when built (today)"
+  },
+  {
+   "id": "generic_sockets",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "followed": [
+     "PAIRS",
+     "PAIRS"
+    ],
+    "refused": true,
+    "unionAccepts": true,
+    "toReport": true,
+    "run": "success",
+    "report": "rows 1"
+   },
+   "assumes": "MatchType with our types: the output follows the input through a chain, wrong types are refused, unions accept each member, and the backend runs it",
+   "fallback": "one node per type, no generic stubs"
+  },
+  {
+   "id": "app_signature",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "stage": "4",
+    "inner": "3",
+    "promptIds": [
+     "1",
+     "4:2",
+     "4:3"
+    ],
+    "flatId": "4:3",
+    "linearDataAfterReload": {
+     "inputs": [
+      [
+       "1",
+       "unused"
+      ]
+     ],
+     "outputs": [
+      "3"
+     ]
+    },
+    "note": "linearData names a node id only; inside a stage the stage id path must be added by us"
+   },
+   "assumes": "App mode inputs/outputs (extra.linearData) survive save/reload; they hold bare node ids (no stage path), so the signature names top-level nodes only",
+   "caveat": "a node inside a stage is ambiguous in linearData (ids repeat per graph level): interface nodes stay at the top level",
+   "fallback": "Workflow input / Workflow output nodes at the top level"
+  },
+  {
+   "id": "output_in_nested_stage",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "path": "3:4:2",
+    "run": "success",
+    "keys": [
+     "3:4:2"
+    ],
+    "got": "rows 1",
+    "reached": "rows 1"
+   },
+   "assumes": "An output node two stages deep runs, its ui lands in history under \"outer:inner:node\", and the canvas node receives it",
+   "fallback": "gates read outputs by node title (today)"
+  },
+  {
+   "id": "known_pitfalls",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "bare": [
+     "a",
+     "b",
+     "c"
+    ],
+    "domNodes": 0,
+    "mode": "classic"
+   },
+   "assumes": "ui values are lists (a bare string arrives as characters); Vue nodes mode renders nodes as DOM above the canvas, classic does not",
+   "fallback": "n/a: these describe the platform; update the code that relies on them"
+  },
+  {
+   "id": "stage_skeleton",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "built": {
+     "ports": [
+      [
+       "pairs:PAIRS"
+      ],
+      [
+       "matched:PAIRS"
+      ]
+     ],
+     "nestedPorts": [
+      "pairs:PAIRS"
+     ],
+     "wiredIn": true,
+     "wiredOut": true,
+     "wrongTypeRefused": true,
+     "stubLinks": 2
+    },
+    "run": "success",
+    "report": "rows 1",
+    "reloaded": {
+     "ports": [
+      [
+       "pairs:PAIRS"
+      ],
+      [
+       "matched:PAIRS"
+      ]
+     ],
+     "nested": true,
+     "definitions": 2
+    }
+   },
+   "assumes": "An empty subgraph with typed ports can be created and wired from code, nests, survives save/reload, and runs with a stub inside",
+   "fallback": "step list stays in the contract; stages are packed when built (today)"
+  },
+  {
+   "id": "generic_sockets",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "followed": [
+     "PAIRS",
+     "PAIRS"
+    ],
+    "refused": true,
+    "unionAccepts": true,
+    "toReport": true,
+    "run": "success",
+    "report": "rows 1"
+   },
+   "assumes": "MatchType with our types: the output follows the input through a chain, wrong types are refused, unions accept each member, and the backend runs it",
+   "fallback": "one node per type, no generic stubs"
+  },
+  {
+   "id": "app_signature",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "stage": "4",
+    "inner": "3",
+    "promptIds": [
+     "1",
+     "4:2",
+     "4:3"
+    ],
+    "flatId": "4:3",
+    "linearDataAfterReload": {
+     "inputs": [
+      [
+       "1",
+       "unused"
+      ]
+     ],
+     "outputs": [
+      "3"
+     ]
+    },
+    "note": "linearData names a node id only; inside a stage the stage id path must be added by us"
+   },
+   "assumes": "App mode inputs/outputs (extra.linearData) survive save/reload; they hold bare node ids (no stage path), so the signature names top-level nodes only",
+   "caveat": "a node inside a stage is ambiguous in linearData (ids repeat per graph level): interface nodes stay at the top level",
+   "fallback": "Workflow input / Workflow output nodes at the top level"
+  },
+  {
+   "id": "output_in_nested_stage",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "path": "3:4:2",
+    "run": "success",
+    "keys": [
+     "3:4:2"
+    ],
+    "got": "rows 1",
+    "reached": "rows 1"
+   },
+   "assumes": "An output node two stages deep runs, its ui lands in history under \"outer:inner:node\", and the canvas node receives it",
+   "fallback": "gates read outputs by node title (today)"
+  },
+  {
+   "id": "known_pitfalls",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "bare": [
+     "a",
+     "b",
+     "c"
+    ],
+    "domNodes": 2,
+    "mode": "vue"
+   },
+   "assumes": "ui values are lists (a bare string arrives as characters); Vue nodes mode renders nodes as DOM above the canvas, classic does not",
+   "fallback": "n/a: these describe the platform; update the code that relies on them"
+  }
+ ]
+}

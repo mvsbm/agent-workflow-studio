@@ -1,0 +1,40 @@
+[
+ {
+  "id": "uppercase",
+  "prompt": "Build a workflow that converts the text 'hello studio' to uppercase and shows the result. Run it.",
+  "expect_text": "HELLO STUDIO"
+ },
+ {
+  "id": "join",
+  "prompt": "Make a workflow that joins the words 'alpha' and 'beta' with a hyphen between them, preview the result, and run it.",
+  "expect_text": "alpha-beta"
+ },
+ {
+  "id": "orders_api",
+  "prompt": "Make this an API for our sales team: callers send a folder of order exports (orders.csv, columns order_id, region, amount) and get back the total amount per region. Sample exports are in the input folder orders/. Build it, run it, and run its checks.",
+  "input_files": {
+   "orders/orders.csv": "order_id,region,amount\n1,north,10\n2,south,20\n3,north,5\n4,east,7\n"
+  },
+  "expect_text_ci": "north",
+  "expect_data_input": true
+ },
+ {
+  "id": "edit_existing",
+  "prompt": "Change this workflow so the preview shows its text in uppercase. Keep the existing nodes. Run it.",
+  "setup": "good_morning",
+  "expect_text": "GOOD MORNING",
+  "keep_setup_nodes": true
+ },
+ {
+  "id": "fuzzy_llm",
+  "prompt": "Use the Pi CLI Structured LLM node to decide whether the review 'I absolutely love this product' is positive or negative, show its answer, and run it.",
+  "expect_text_ci": "positive",
+  "expect_record": true
+ },
+ {
+  "id": "fuzzy_node",
+  "prompt": "Use the Fuzzy · Plan with nodes node to turn the text '  Hello   Big World  ' into a lowercase slug where words are joined by single dashes and there are no spaces at the ends. Show the result and run it.",
+  "expect_text": "hello-big-world",
+  "expect_kind": "Fuzzy plan"
+ }
+]

@@ -1,0 +1,755 @@
+[
+ {
+  "name": "comfy_read_workflow",
+  "label": "Inspect canvas",
+  "description": "Read the current live native canvas, selected nodes, widgets and links. Private approval properties and credential fields are excluded.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "read"
+ },
+ {
+  "name": "comfy_node_catalog",
+  "label": "Find native nodes",
+  "description": "Search the node types in this studio's scope (data and text work: the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes are out of scope) by name/category, descriptions, aliases and input/output schemas (including format choices such as csv), or retrieve exact schemas for class_types. Discovery does not install or authorize generated code.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "queries": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 8,
+     "description": "Several searches at once (up to 8), each returning up to 20 matches."
+    },
+    "class_types": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 20
+    }
+   }
+  },
+  "action": "catalog"
+ },
+ {
+  "name": "comfy_edit_workflow",
+  "label": "Edit native canvas",
+  "description": "Apply up to 32 native canvas edits atomically with native undo support. Inside a stage (give \"stage\": the step id), only settings (widget), titles and positions may be edited: its nodes and wires come from its LLD (comfy_build_step). Without \"stage\", operations work at the top level, which holds only stages (named by step id), promised inputs/outputs and the user's given nodes; the API signature is set there. New-node keys stay valid for the rest of this chat. Widget values must match their native schema. Never clears the canvas. Removal, disconnection and replacing occupied inputs require confirmation.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "operations": {
+     "type": "array",
+     "items": {
+      "anyOf": [
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "add",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "The stage (contract step id) the node goes in."
+         },
+         "key": {
+          "type": "string"
+         },
+         "class_type": {
+          "type": "string"
+         },
+         "title": {
+          "type": "string"
+         },
+         "position": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         }
+        },
+        "required": [
+         "op",
+         "stage",
+         "key",
+         "class_type"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "move",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "node": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "position": {
+          "type": "array",
+          "items": {
+           "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+         }
+        },
+        "required": [
+         "op",
+         "node",
+         "position"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "title",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "node": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "title": {
+          "type": "string",
+          "maxLength": 200
+         }
+        },
+        "required": [
+         "op",
+         "node",
+         "title"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "widget",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "node": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "name": {
+          "type": "string"
+         },
+         "value": {}
+        },
+        "required": [
+         "op",
+         "node",
+         "name",
+         "value"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "connect",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "from": {
+          "anyOf": [
+           {
+            "anyOf": [
+             {
+              "type": "string"
+             },
+             {
+              "type": "number"
+             }
+            ]
+           },
+           {
+            "const": "input",
+            "type": "string"
+           }
+          ],
+          "description": "A node key/id; inside a stage \"input\" is its input ports (output = the port name). At the top level a step id names its stage."
+         },
+         "output": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer",
+            "minimum": 0
+           }
+          ]
+         },
+         "to": {
+          "anyOf": [
+           {
+            "anyOf": [
+             {
+              "type": "string"
+             },
+             {
+              "type": "number"
+             }
+            ]
+           },
+           {
+            "const": "output",
+            "type": "string"
+           }
+          ],
+          "description": "A node key/id; inside a stage \"output\" is its output ports (input = the port name)."
+         },
+         "input": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer",
+            "minimum": 0
+           }
+          ]
+         }
+        },
+        "required": [
+         "op",
+         "from",
+         "output",
+         "to",
+         "input"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "remove",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "node": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         }
+        },
+        "required": [
+         "op",
+         "node"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "disconnect",
+          "type": "string"
+         },
+         "stage": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "description": "Contract step id: the stage this operation works inside. Omit for the top level (connect stages and given nodes)."
+         },
+         "node": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "number"
+           }
+          ]
+         },
+         "input": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "integer",
+            "minimum": 0
+           }
+          ]
+         }
+        },
+        "required": [
+         "op",
+         "node",
+         "input"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "arrange",
+          "type": "string"
+         }
+        },
+        "required": [
+         "op"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "op": {
+          "const": "signature",
+          "type": "string"
+         },
+         "inputs": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "node": {
+             "anyOf": [
+              {
+               "type": "string"
+              },
+              {
+               "type": "number"
+              }
+             ]
+            },
+            "widget": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "node",
+            "widget"
+           ]
+          },
+          "maxItems": 12
+         },
+         "outputs": {
+          "type": "array",
+          "items": {
+           "anyOf": [
+            {
+             "type": "string"
+            },
+            {
+             "type": "number"
+            }
+           ]
+          },
+          "minItems": 1,
+          "maxItems": 8
+         }
+        },
+        "required": [
+         "op",
+         "inputs",
+         "outputs"
+        ]
+       }
+      ]
+     },
+     "minItems": 1,
+     "maxItems": 32
+    },
+    "summary": {
+     "type": "string",
+     "maxLength": 200,
+     "description": "One line saying what this batch does and why; recorded as the version message."
+    }
+   },
+   "required": [
+    "operations"
+   ]
+  },
+  "action": "edit"
+ },
+ {
+  "name": "comfy_ask_user",
+  "label": "Ask the user",
+  "description": "Ask the user up to 4 multiple-choice questions and wait for the answers. Each question offers 2-4 short options plus a free-text 'Other'. Use while planning to settle requirements; ask everything you need at once.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "questions": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "question": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+       },
+       "options": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1,
+         "maxLength": 200
+        },
+        "minItems": 2,
+        "maxItems": 4
+       }
+      },
+      "required": [
+       "question",
+       "options"
+      ]
+     },
+     "minItems": 1,
+     "maxItems": 4
+    }
+   },
+   "required": [
+    "questions"
+   ]
+  },
+  "action": "ask_user"
+ },
+ {
+  "name": "comfy_run_workflow",
+  "label": "Run native workflow",
+  "description": "Queue the current workflow using ComfyUI's native Run path, including its validation. The browser requires confirmation unless the user enabled auto-approve runs for this workflow. Returns submission status, not proof of useful results.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "reason": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "reason"
+   ]
+  },
+  "action": "run"
+ },
+ {
+  "name": "comfy_execution_results",
+  "label": "Inspect execution",
+  "description": "Read native queue state and the outputs/errors of the latest run submitted by this chat. `stages` lists each stage's nodes by title with what they said on the run (counts, rates, sizes): judge the run by these numbers; to measure something not shown, add a Summarize or Data checks node in that stage. Waits up to 60 s for the run to finish; if it is still running, call it again rather than stopping.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "results"
+ },
+ {
+  "name": "comfy_propose_contract",
+  "label": "Propose contract",
+  "description": "Propose the workflow contract and wait for the user's approval in the chat. Required first, and again to amend it. Intent only: purpose, requests (the user's words + your restatement + priority), examples (they become acceptance tests), promised inputs/outputs (the workflow's API), the user's decisions, not-now, open questions (must be empty). How it is done (steps, data, the loop) is the design, proposed next with comfy_propose_design.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "contract": {
+     "$ref": "intent.schema.json"
+    }
+   },
+   "required": [
+    "contract"
+   ]
+  },
+  "action": "contract_propose"
+ },
+ {
+  "name": "comfy_propose_design",
+  "label": "Propose design (HLD)",
+  "description": "After the contract is approved: propose its high-level design for the user to approve. Steps (each takes/gives typed ports, does, why, for: the requests it serves, gate: how its output is checked), the data they work on, your design decisions, the improve loop, and which step port delivers each promised output. On approval the canvas gets one stage per step, wired as designed, each waiting for its LLD (comfy_build_step). Proposing again amends the design (the user approves again).",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "design": {
+     "$ref": "design.schema.json"
+    }
+   },
+   "required": [
+    "design"
+   ]
+  },
+  "action": "design_propose"
+ },
+ {
+  "name": "comfy_build_step",
+  "label": "Build a stage (LLD)",
+  "description": "After the design is approved: build one step's stage from its low-level design. Give the nodes (key → native node type from comfy_node_catalog, widget settings, and which HLD clauses it realizes: \"takes <port>\", \"does\", \"gives <port>\", \"why\", \"decision <id>\") and the wires (\"input.<port>\" → \"<node>.<socket>\" → \"output.<port>\"). The studio checks that every clause is realized and every port wired, then compiles it into the stage, replacing its previous build, in one undo step. Use it again to change a stage's nodes or wiring.",
+  "parameters": {
+   "$ref": "build.schema.json"
+  },
+  "action": "build_step"
+ },
+ {
+  "name": "comfy_check_gates",
+  "label": "Check success gates",
+  "description": "After a run (waits up to 60 s for it to finish), every step's gate from the Check nodes inside its stage on the latest run: passed, failed (with the evidence), or needs_user_review when the stage has no Check. Also returns plan_vs_built and its gaps; when a must-have is not proven by an example on this version, before_reporting says so: run comfy_run_examples before telling the user the work is done.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "contract_gates"
+ },
+ {
+  "name": "comfy_loop_step",
+  "label": "Start an improve iteration",
+  "description": "Start one iteration of the improve loop before changing a built workflow: say the hypothesis (why this should help) and the change (which stage/node). Then make that one change, run, and check gates: the studio measures before and after, journals the iteration as a version with its verdict (improved/same/worse), and says what's next: continue, stop (goal met), revert (with the version to restore) or escalate (ask the user). The journal lists ideas already tried.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "hypothesis": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 300
+    },
+    "change": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 300
+    }
+   },
+   "required": [
+    "hypothesis",
+    "change"
+   ]
+  },
+  "action": "loop_step"
+ },
+ {
+  "name": "comfy_run_examples",
+  "label": "Run checks",
+  "description": "Run this workflow's checks (its CI) on exactly this graph: the contract's examples through the API path (given → the promised inputs, expect → the promised outputs), then the whole pipeline: design (no drift, every stage's LLD wired and traced, App = promises), every stage's Checks, the examples, and no regression since the last release. The run is kept as a version; the user can publish only when all pass. Returns each level with what failed.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "examples"
+ },
+ {
+  "name": "comfy_harden_step",
+  "label": "Harden step",
+  "description": "Ask the user to freeze a Fuzzy node's latest plan into fixed, deterministic nodes (a subgraph in its stage). Later runs call no model. Propose it once a fuzzy step's plan has run and looks right; the user approves in the chat.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "stage": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9_]{0,31}$"
+    },
+    "node": {
+     "anyOf": [
+      {
+       "type": "string"
+      },
+      {
+       "type": "number"
+      }
+     ]
+    }
+   },
+   "required": [
+    "stage",
+    "node"
+   ]
+  },
+  "action": "harden"
+ },
+ {
+  "name": "comfy_analyze_graph",
+  "label": "Analyze graph",
+  "description": "Check the live canvas without running it or calling a model: output nodes, nodes that will not run (they reach no output), unconnected required inputs, type mismatches, cycles, deprecated nodes, and per output the checkpoints every path must pass (good places for success gates). Runs automatically after structural edits.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "analyze"
+ },
+ {
+  "name": "comfy_find_converter",
+  "label": "Find converter",
+  "description": "Find the shortest chains of installed nodes that turn one data type into another (e.g. IMAGE to MASK), each step a node with one connected input.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "from_type": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 80
+    },
+    "to_type": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 80
+    }
+   },
+   "required": [
+    "from_type",
+    "to_type"
+   ]
+  },
+  "action": "converters"
+ },
+ {
+  "name": "comfy_input_files",
+  "label": "Input files",
+  "description": "Look at data the user put in ComfyUI's input folder, read-only: without a path, list its files; with a path, show a text file's encoding, size, line count and first 60 lines. An Agent Tool node reads such a folder through its Input folder widget (TOOL_INPUT_DIR).",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "path": {
+     "type": "string",
+     "maxLength": 300
+    }
+   }
+  },
+  "action": "input_files"
+ },
+ {
+  "name": "comfy_contract_status",
+  "label": "Contract status",
+  "description": "Where the work stands against the approved contract: each step's state (planned, built, fuzzy, verified, failing), derived from the stages and their Checks on the latest run, with the next action, plus nodes outside every stage, the to-do list, and plan_vs_built with its gaps (requests and examples proven or not on this version, Checks that differ from the agreed check, designed nodes missing, items waiting for the user, agreed not-now scope).",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "contract_status"
+ },
+ {
+  "name": "comfy_propose_tool",
+  "label": "Propose tool",
+  "description": "Ask the user to approve a Python tool you wrote at tools/<name>.py in this workflow's workspace. The user sees the full code; once approved, the Agent Tool node can run that exact code (stdlib only, confined, time-limited). Any later change to the code needs a new approval.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9_]{0,31}$"
+    },
+    "description": {
+     "type": "string",
+     "minLength": 1,
+     "maxLength": 1200
+    },
+    "inputs": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+       },
+       "kind": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+       }
+      },
+      "required": [
+       "name",
+       "kind"
+      ]
+     },
+     "maxItems": 16
+    },
+    "outputs": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+       },
+       "kind": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+       }
+      },
+      "required": [
+       "name",
+       "kind"
+      ]
+     },
+     "maxItems": 16
+    }
+   },
+   "required": [
+    "name",
+    "description",
+    "inputs",
+    "outputs"
+   ]
+  },
+  "action": "tool_propose"
+ },
+ {
+  "name": "comfy_workspace",
+  "label": "Workflow files",
+  "description": "Show this workflow's persistent workspace and bounded file listing. Files are data, never automatically executed or loaded as agent configuration.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "workspace_info"
+ }
+]

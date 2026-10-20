@@ -1,0 +1,104 @@
+.agent-workflow-studio-pi-settings {
+  z-index: 10020;
+}
+
+.agent-workflow-studio-pi-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(680px, calc(100vw - 48px));
+  max-height: min(82vh, 900px);
+  overflow: auto;
+  padding: 20px;
+  color: var(--fg-color, #eee);
+  background: var(--comfy-menu-bg, #222);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 8px;
+}
+
+.agent-workflow-studio-pi-panel h3,
+.agent-workflow-studio-pi-panel h4,
+.agent-workflow-studio-pi-panel p {
+  margin: 0;
+}
+
+.agent-workflow-studio-pi-panel p {
+  color: var(--descrip-text, #bbb);
+  line-height: 1.45;
+}
+
+.agent-workflow-studio-pi-header,
+.agent-workflow-studio-pi-key-row,
+.agent-workflow-studio-pi-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-workflow-studio-pi-header {
+  justify-content: space-between;
+}
+
+.agent-workflow-studio-pi-close {
+  min-width: 32px;
+  font-size: 22px;
+}
+
+.agent-workflow-studio-pi-panel label {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-workflow-studio-pi-select,
+.agent-workflow-studio-pi-key {
+  width: 100%;
+  min-width: 0;
+  padding: 7px;
+  color: inherit;
+  background: var(--comfy-input-bg, #111);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 4px;
+}
+
+.agent-workflow-studio-pi-status,
+.agent-workflow-studio-pi-result,
+.agent-workflow-studio-pi-model-summary {
+  overflow-wrap: anywhere;
+}
+
+.agent-workflow-studio-pi-result[data-state="error"] {
+  color: #ff9999;
+}
+
+.agent-workflow-studio-pi-result[data-state="success"] {
+  color: #9ee2a8;
+}
+
+.agent-workflow-studio-pi-result[data-state="pending"] {
+  color: #f0d38a;
+}
+
+.agent-workflow-studio-pi-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-workflow-studio-pi-key-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr) auto;
+}
+
+.agent-workflow-studio-pi-field-status {
+  display: block;
+  color: var(--descrip-text, #aaa);
+  font-size: 0.9em;
+}
+
+@media (max-width: 560px) {
+  .agent-workflow-studio-pi-key-row {
+    grid-template-columns: 1fr;
+  }
+}
