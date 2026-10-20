@@ -87,6 +87,8 @@ const artifacts = process.env.ARTIFACTS;
     assert.equal(result.job.status, 'completed', JSON.stringify(result.job));
     // The watch catches the regression: the patched version says "there", so the greet Check (contains "world") fails.
     assert.deepEqual({passing: result.watched?.watch?.last?.passing, checks: result.watched?.watch?.last?.checks}, {passing: false, checks: '0/1'}, JSON.stringify(result.watched));
+    // Anyone with the studio open is told, until they dismiss it (ComfyUI's own toast).
+    await page.getByText('Watch greet-e2e: FAILING').first().waitFor({timeout: 15000});
     assert.match(JSON.stringify(result.job.outputs), /yo there/, 'the job ran the latest version');
     assert.equal(result.openapi.paths['/agent-workflow-studio/api/greet-e2e/run'].post.requestBody.content['application/json'].schema.properties.inputs.properties.value.type, 'string');
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));

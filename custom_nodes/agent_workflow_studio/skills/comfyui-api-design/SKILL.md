@@ -12,7 +12,7 @@ Every workflow with a contract is an API: its promised inputs and outputs become
 |---|---|
 | Request–Response | A short call: `POST /agent-workflow-studio/api/<name>/run` waits for the result. |
 | Async Request–Reply | A long call is a ComfyUI job: start it (`…/jobs`), then poll or cancel it at `/api/jobs/<id>`. Nothing to design: every workflow supports both. |
-| Claim Check | Records (CSV, TSV, JSONL, exports) never travel as one text value. The caller uploads the files with ComfyUI's own upload (`POST /upload/image`, `type=input`, `subfolder=<folder>`), then passes the folder (kind `folder`) or file name (kind `file`). A Read table node in the first stage reads them. |
+| Claim Check | Records (CSV, TSV, JSONL, exports) never travel as one text value. The caller uploads the files with ComfyUI's own upload (`POST /upload/image`, `type=input`, `subfolder=<folder>`), then passes the folder (kind `folder`) or file name (kind `file`). A Read table node in the first stage reads them. A `folder` input becomes a Data folder node: in App mode a person picks a folder or uploads files with its button. |
 | Data contract | Each table output's columns come from a design entity (`data`: `description`, `key`, `fields`). Name the entity like the output or the port that delivers it. |
 | Versioned API | The studio versions every release from what changed for callers: removing, renaming or retyping an input or output, or a new input without a default, is breaking (major); a new optional input, a new output or a design change is minor; anything inside a stage is a patch. Prefer additions to changes. |
 | Idempotent call | The same inputs on the same version give the same result. Keep steps deterministic, or behind a Check when they are not. |

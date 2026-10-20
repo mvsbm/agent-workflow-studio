@@ -1,7 +1,7 @@
 // Native graph APIs, following Comfy-Org/ComfyUI_frontend's app.ts/API queue path.
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
-import {outputNode, setSignature} from './publish.js';
+import {outputNode, refreshApp, setSignature} from './publish.js';
 // Widgets that may hold secrets: hidden from the agent and never set by it. Names like
 // max_tokens or credential_source are ordinary settings, not secrets.
 const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)token$)/i;
@@ -95,7 +95,10 @@ export function stageNumbers(steps) {
 }
 
 // A promised input's kind as a socket type, and the node that holds it at the top level.
-const INPUT_KINDS = {number: ['FLOAT', 'PrimitiveFloat'], integer: ['INT', 'PrimitiveInt'], count: ['INT', 'PrimitiveInt'], boolean: ['BOOLEAN', 'PrimitiveBoolean']};
+// A data folder (claim check) gets the Data folder node: a folder list and an Upload button, also in App mode.
+const INPUT_KINDS = {number: ['FLOAT', 'PrimitiveFloat'], integer: ['INT', 'PrimitiveInt'], count: ['INT', 'PrimitiveInt'], boolean: ['BOOLEAN', 'PrimitiveBoolean'], folder: ['STRING', 'AgentWorkflowDataFolder']};
+// The widget an input node takes its value in.
+const valueWidget = node => (node.type === 'AgentWorkflowDataFolder' ? 'folder' : 'value');
 const inputKind = kind => INPUT_KINDS[String(kind).toLowerCase()] ?? ['STRING', 'PrimitiveString'];
 
 const portType = (steps, source, promises) => {
@@ -287,7 +290,7 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
       graph.add(node);
       node.title = `Input · ${input.name}`;
       node.properties = {...node.properties, aws_input: input.name};
-      const widget = node.widgets?.find(w => w.name === 'value');
+      const widget = node.widgets?.find(w => w.name === valueWidget(node));
       if (widget && input.example != null) widget.value = input.example;
     }
     inputs[input.name] = node;
@@ -316,8 +319,11 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
   // The signature (App mode): the promised inputs in, the stages delivering promised outputs out.
   // Each promise's output node, so App mode shows the result natively.
   const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => outputNode(graph, o.from)?.id).filter(id => id != null))];
-  const settable = node => node.properties?.aws_input_widget ?? 'value';
-  if (outputs.length) setSignature(graph, Object.values(inputs).filter(node => node.widgets?.some(w => w.name === settable(node))).map(node => ({node: node.id, widget: settable(node)})), outputs);
+  const settable = node => node.properties?.aws_input_widget ?? valueWidget(node);
+  // A Data folder's Upload button goes to App mode too (it is UI only: not part of the API).
+  const appInputs = Object.values(inputs).filter(node => node.widgets?.some(w => w.name === settable(node))).flatMap(node =>
+    [{node: node.id, widget: settable(node)}, ...(node.widgets.some(w => w.name === 'upload') ? [{node: node.id, widget: 'upload'}] : [])]);
+  if (outputs.length) setSignature(graph, appInputs, outputs);
   // The contract's intent and the design's shared parts (data entities, decisions, step order)
   // are stored in the workflow itself: the workflow is the single source of truth.
   if (intent) graph.extra = {...graph.extra, aws_contract: intent, ...(meta ? {aws_design: meta} : {})};
@@ -737,6 +743,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       throw Error(`Edits rolled back: ${error.message}`);
     } finally {
       app.canvas.emitAfterChange();
+      if (app.graph.extra?.linearData) refreshApp();  // a signature set inside the batch reaches App mode
     }
   }
 
@@ -825,7 +832,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'skeleton') {
       if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
       app.canvas.emitBeforeChange();
-      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design, intent: args.intent, meta: args.meta}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); }
+      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design, intent: args.intent, meta: args.meta}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); refreshApp(); }
     }
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.

@@ -109,7 +109,9 @@ ids stay the same across runs, and each run says what changed since the last. �
 
 **R16 · A workflow is an API.** A finished workflow is published at a fixed version and called with
 data in and data out; its signature is App mode's inputs/outputs. Data comes in through ComfyUI's own
-upload (the caller uploads files, then passes the folder name); long calls are ComfyUI's native jobs.
+upload (the caller uploads files, then passes the folder name; in App mode, a Data folder input offers
+the folders and an Upload button); long calls are ComfyUI's native jobs, and a failing watch is
+announced in the studio until dismissed.
 APIs serve this machine by design (customer data stays here); remote callers go through a reverse
 proxy with authentication in front of ComfyUI. Every call's result file stays its own; old run outputs
 are cleaned after the days you keep them (never before you have confirmed a clean-up once). ✅

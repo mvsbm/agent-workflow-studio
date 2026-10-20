@@ -45,6 +45,10 @@ app.registerExtension({
   commands: [{id: 'AgentWorkflowStudio.CleanOutputs', label: 'Clean up old run outputs…', function: () => confirmAndClean().catch(error => app.extensionManager?.toast?.add({severity: 'error', summary: 'Clean-up failed', detail: error.message, life: 8000}))}],
   menuCommands: [{path: ['Agent Workflow Studio'], commands: ['AgentWorkflowStudio.CleanOutputs']}],
   async setup() {
+    // A watched API that fails stays on screen until dismissed (ComfyUI's own toast); its recovery too.
+    api.addEventListener('aws.watch', ({detail: w}) => app.extensionManager?.toast?.add(w.passing
+      ? {severity: 'success', summary: `Watch ${w.name}: passing again`, detail: `Checks ${w.checks} on ${w.semver ?? 'the published version'}.`, life: 8000}
+      : {severity: 'error', summary: `Watch ${w.name}: FAILING`, detail: `Checks ${w.checks} on ${w.semver ?? 'the published version'}. Open the workflow's Contract tab to see what failed.`}));
     if (days() <= 0) return;
     if (app.extensionManager?.setting?.get?.(AGREED)) return void cleanup(false).catch(() => {});  // agreed once: quietly
     // Not agreed yet: say what old runs take, and where to clean them; delete nothing.
