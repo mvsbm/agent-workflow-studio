@@ -1,0 +1,508 @@
+{
+ "revision": 0,
+ "last_node_id": 1,
+ "last_link_id": 0,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    320,
+    302
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Matched 1",
+     "name": "matched_1",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Matched 2",
+     "name": "matched_2",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Matched 3",
+     "name": "matched_3",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Different 1",
+     "name": "different_1",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Different 2",
+     "name": "different_2",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "localized_name": "Different 3",
+     "name": "different_3",
+     "shape": 7,
+     "type": "DECISIONS,DICT",
+     "link": null
+    },
+    {
+     "name": "max_size",
+     "type": "INT",
+     "widget": {
+      "name": "max_size"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "customers",
+     "name": "customers",
+     "type": "CUSTOMERS",
+     "links": []
+    }
+   ],
+   "title": "Group into customers",
+   "properties": {
+    "previewExposures": []
+   },
+   "widgets_values": [
+    60
+   ],
+   "widgets_values_named": {
+    "max_size": 60,
+    "stage_card": ""
+   },
+   "color": "#5b3d7a",
+   "bgcolor": "#3a2a4f"
+  }
+ ],
+ "links": [],
+ "version": 0.4,
+ "definitions": {
+  "subgraphs": [
+   {
+    "id": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 68,
+     "lastLinkId": 125,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "Group into customers",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      168
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      68
+     ]
+    },
+    "inputs": [
+     {
+      "id": "866bdf68-98be-4a9d-a425-46d4a3192dbe",
+      "name": "matched_1",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       94
+      ],
+      "localized_name": "Matched 1",
+      "shape": 7,
+      "pos": [
+       51,
+       24
+      ]
+     },
+     {
+      "id": "996e8519-1154-4557-b563-9da67b246a2e",
+      "name": "matched_2",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       99
+      ],
+      "localized_name": "Matched 2",
+      "shape": 7,
+      "pos": [
+       51,
+       44
+      ]
+     },
+     {
+      "id": "bbf16263-2383-4967-a5a7-4f604493eb5d",
+      "name": "matched_3",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       104
+      ],
+      "localized_name": "Matched 3",
+      "shape": 7,
+      "pos": [
+       51,
+       64
+      ]
+     },
+     {
+      "id": "d18f7e50-62ee-43f6-878a-8fdc69f9aba6",
+      "name": "different_1",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       95
+      ],
+      "localized_name": "Different 1",
+      "shape": 7,
+      "pos": [
+       51,
+       84
+      ]
+     },
+     {
+      "id": "17348b5a-71e5-4d64-8d42-5c2b4e3ea5a0",
+      "name": "different_2",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       100
+      ],
+      "localized_name": "Different 2",
+      "shape": 7,
+      "pos": [
+       51,
+       104
+      ]
+     },
+     {
+      "id": "61797186-7143-4803-93bd-544aee822041",
+      "name": "different_3",
+      "type": "DECISIONS,DICT",
+      "linkIds": [
+       105
+      ],
+      "localized_name": "Different 3",
+      "shape": 7,
+      "pos": [
+       51,
+       124
+      ]
+     },
+     {
+      "id": "34f2361b-3457-4519-8ab8-635bb60a5e85",
+      "name": "max_size",
+      "type": "INT",
+      "linkIds": [
+       123
+      ],
+      "label": "Max records per customer",
+      "pos": [
+       0,
+       0
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "49618d07-0e8f-43e7-8150-cf2207b4ae89",
+      "name": "customers",
+      "type": "CUSTOMERS",
+      "linkIds": [
+       62
+      ],
+      "localized_name": "customers",
+      "pos": [
+       24,
+       24
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 41,
+      "type": "AgentWorkflowClusterGuard",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       702
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "All decisions",
+        "name": "data",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": null
+       },
+       {
+        "localized_name": "Matched 1",
+        "name": "matched_1",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 94
+       },
+       {
+        "localized_name": "Matched 2",
+        "name": "matched_2",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 99
+       },
+       {
+        "localized_name": "Matched 3",
+        "name": "matched_3",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 104
+       },
+       {
+        "localized_name": "Matched 4",
+        "name": "matched_4",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": null
+       },
+       {
+        "localized_name": "Different 1",
+        "name": "different_1",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 95
+       },
+       {
+        "localized_name": "Different 2",
+        "name": "different_2",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 100
+       },
+       {
+        "localized_name": "Different 3",
+        "name": "different_3",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": 105
+       },
+       {
+        "localized_name": "Different 4",
+        "name": "different_4",
+        "shape": 7,
+        "type": "DECISIONS,DICT",
+        "link": null
+       },
+       {
+        "localized_name": "Max records per customer",
+        "name": "max_size",
+        "type": "INT",
+        "widget": {
+         "name": "max_size"
+        },
+        "link": 123
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "customers",
+        "name": "customers",
+        "type": "CUSTOMERS",
+        "links": [
+         62,
+         113
+        ]
+       }
+      ],
+      "title": "Build customers (guarded)",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowClusterGuard"
+      },
+      "widgets_values": [
+       60,
+       ""
+      ],
+      "widgets_values_named": {
+       "max_size": 60,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 64,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       10,
+       822
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 113
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · customers",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowCheck"
+      },
+      "widgets_values": [
+       "rows_at_least",
+       "11500",
+       "Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "rows_at_least",
+       "expect": "11500",
+       "says": "Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 94,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 41,
+      "target_slot": 1,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 99,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 41,
+      "target_slot": 2,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 104,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 41,
+      "target_slot": 3,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 95,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 41,
+      "target_slot": 5,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 100,
+      "origin_id": -10,
+      "origin_slot": 4,
+      "target_id": 41,
+      "target_slot": 6,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 105,
+      "origin_id": -10,
+      "origin_slot": 5,
+      "target_id": 41,
+      "target_slot": 7,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 62,
+      "origin_id": 41,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "CUSTOMERS"
+     },
+     {
+      "id": 113,
+      "origin_id": 41,
+      "origin_slot": 0,
+      "target_id": 64,
+      "target_slot": 0,
+      "type": "CUSTOMERS"
+     },
+     {
+      "id": 123,
+      "origin_id": -10,
+      "origin_slot": 6,
+      "target_id": 41,
+      "target_slot": 9,
+      "type": "INT"
+     }
+    ],
+    "extra": {},
+    "description": "Matched pairs merged into customers strongest first, refusing any merge that would join two records decided different, with each customer's evidence shown."
+   }
+  ]
+ },
+ "extra": {
+  "BlueprintDescription": "Matched pairs merged into customers strongest first, refusing any merge that would join two records decided different, with each customer's evidence shown."
+ }
+}

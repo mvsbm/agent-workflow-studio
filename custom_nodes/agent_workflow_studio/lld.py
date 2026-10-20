@@ -56,6 +56,15 @@ def validate_lld(step: dict, spec: object, decisions: list[str] = ()) -> dict:
             )
         node["realizes"] = tags
         realized |= set(tags)
+        promote = node.get("promote") or []
+        if (
+            not isinstance(promote, list)
+            or len(promote) > 6
+            or not all(isinstance(w, str) for w in promote)
+        ):
+            raise ValueError(
+                f"Node {key}: promote is a list of up to 6 of its setting (widget) names to show on the stage card."
+            )
     if missing := [c for c in clauses(step) if c not in realized]:
         raise ValueError(f"No node realizes {', '.join(missing)} of step {step['id']}.")
     takes, gives = set(step.get("takes") or {}), set(step.get("gives") or {})

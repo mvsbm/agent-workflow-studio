@@ -280,7 +280,7 @@ decide: {match: 4, review: 2}
   }
   const summary = await page.evaluate(async ({steps, contract}) => {
     const app = window.comfyAPI.app.app;
-    const {packIntoStage, addCheck, arrangeGraph} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
+    const {packIntoStage, addCheck, arrangeGraph, promoteWidget} = await import('/extensions/agent_workflow_studio/pi_canvas.js');
     for (const {id, title} of steps) {
       const members = app.graph.nodes.filter(n => n.properties?.aws_contract_step === id);
       if (!members.length) continue;
@@ -290,6 +290,19 @@ decide: {match: 4, review: 2}
       // The contract's step: its agreed Check goes in the stage.
       const step = contract.steps.find(s => s.id === id);
       if (step.gate.check) addCheck(stage.subgraph, step.gate.check, step.gate.says);
+    }
+    // Each stage's key knobs on its card (promoted settings), changed without opening the stage.
+    const KNOBS = {
+      find_candidates: [['AgentWorkflowFindCandidates', ['keys', 'max_group']]],
+      decide_score: [['AgentWorkflowLearnWeights', ['match_probability', 'review_probability']], ['Score the unsettled pairs', ['review_limit']]],
+      group_customers: [['AgentWorkflowClusterGuard', ['max_size']]],
+    };
+    for (const [id, knobs] of Object.entries(KNOBS)) {
+      const stage = app.graph.nodes.find(n => n.properties?.aws_stage === id);
+      for (const [which, widgets] of knobs) {
+        const node = stage.subgraph.nodes.find(n => n.type === which || n.title === which);
+        for (const widget of widgets) promoteWidget(stage, node, widget);
+      }
     }
     arrangeGraph(app.graph);
     // What the first run scored (the answer key belongs to the synthetic data, not to the API).

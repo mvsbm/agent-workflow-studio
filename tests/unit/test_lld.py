@@ -57,6 +57,7 @@ class LLDTests(unittest.TestCase):
                 {"from": "llm.result", "to": "nope.x"}
             ),
             "fed twice": lambda s: s["wires"].append({"from": "llm.result", "to": "output.label"}),
+            "promote is a list": lambda s: s["nodes"]["llm"].update(promote="instructions"),
         }
         for message, change in cases.items():
             with self.subTest(message), self.assertRaisesRegex(ValueError, message):

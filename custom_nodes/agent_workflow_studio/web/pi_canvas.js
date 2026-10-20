@@ -53,6 +53,21 @@ export function inStudioScope(def) {
 }
 const outOfScope = name => Error(`${name} is outside this studio's scope (data and text work), so you cannot add it; a person can add it by hand.`);
 
+/** Promote an inner node's setting to its stage card, the way ComfyUI promotes a widget: a stage
+ *  input wired to that widget (the card then shows and sets it; the run uses the card's value). */
+export function promoteWidget(stage, node, name) {
+  const sg = stage.subgraph, input = node.inputs?.find(i => i.widget?.name === name);
+  if (!input) throw Error(`${node.title ?? node.type} has no setting "${name}" to put on the stage card.`);
+  if (input.link != null) return null;  // already wired (or promoted)
+  const label = sg.inputs.some(i => i.name === name) ? `${name}_${node.id}` : name;
+  sg.addInput(label, input.type);
+  // The card shows the setting as the node does ("Match at"), not its internal name.
+  const shown = input.label || input.localized_name || node.widgets?.find(w => w.name === name)?.label;
+  if (shown && shown !== label) sg.inputs.at(-1).label = shown;
+  if (!sg.inputNode.slots.at(-1).connect(input, node)) throw Error(`Could not put ${name} on the stage card.`);
+  return label;
+}
+
 export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
 
 /** Pack nodes into one stage subgraph for a contract step, titled "N · Step name". */
@@ -700,6 +715,14 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           const outputs = (op.outputs ?? []).map(ref => { const node = resolve(ref, op, added); if (!node) throw notFound(ref); return node.properties?.aws_stage ? (outputNode(app.graph, `${node.properties.aws_stage}.`)?.id ?? node.id) : node.id; });
           if (!outputs.length) throw Error('Name at least one output: the stage (step id) whose results the API returns.');
           setSignature(app.graph, inputs, outputs);
+        } else if (op.op === 'unpromote') {
+          const input = where.inputs?.find(i => i.name === op.input);
+          if (input) where.removeInput(input);
+        } else if (op.op === 'promote') {
+          if (op.stage == null) throw Error('Promote a setting inside a stage: give "stage".');
+          const node = resolve(op.node, op, added);
+          if (!node) throw notFound(op.node);
+          promoteWidget(stageNode(app.graph, op.stage), node, op.widget);
         } else if (op.op !== 'arrange') throw Error(`Unsupported operation: ${op.op}`);
       }
       Object.assign(keys, added);
@@ -725,7 +748,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     const stamp = Date.now().toString(36), keyOf = key => `${step}~${key}~${stamp}`;
     const socket = name => (/^\d+$/.test(name) ? Number(name) : name);
     const operations = [
-      // The previous build goes; hand-made nodes go only after the user confirms (edit asks).
+      // The previous build goes (its promoted settings too); hand-made nodes only after the user confirms.
+      ...stage.subgraph.inputs.filter(i => !(i.name in (stage.properties?.aws_step?.takes ?? {}))).map(i => ({op: 'unpromote', stage: step, input: i.name})),
       ...nodes(stage.subgraph).filter(n => !SCAFFOLD.has(n.type)).map(n => ({op: 'remove', stage: step, node: n.id})),
       ...Object.entries(spec).map(([key, node]) => ({op: 'add', stage: step, key: keyOf(key), class_type: node.type, ...(node.title ? {title: node.title} : {}), lld: {key, realizes: node.realizes}})),
       ...Object.entries(spec).flatMap(([key, node]) => Object.entries(node.set ?? {}).map(([name, value]) => ({op: 'widget', stage: step, node: keyOf(key), name, value}))),
@@ -735,6 +759,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
         if (b === 'output') return {op: 'connect', stage: step, from: keyOf(a), output: socket(out), to: 'output', input: into};
         return {op: 'connect', stage: step, from: keyOf(a), output: socket(out), to: keyOf(b), input: into};
       }),
+      // Its key settings on the stage card (promoted, like ComfyUI's own promote widget).
+      ...Object.entries(spec).flatMap(([key, node]) => (node.promote ?? []).map(widget => ({op: 'promote', stage: step, node: keyOf(key), widget}))),
     ];
     if (operations.length > 160) throw Error('This LLD is too large for one stage; split the step in the design.');
     const done = await edit(operations, null, {limit: 160});

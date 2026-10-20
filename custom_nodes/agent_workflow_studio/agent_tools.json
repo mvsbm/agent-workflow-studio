@@ -530,7 +530,7 @@
  {
   "name": "comfy_build_step",
   "label": "Build a stage (LLD)",
-  "description": "After the design is approved: build one step's stage from its low-level design. Give the nodes (key → native node type from comfy_node_catalog, widget settings, and which HLD clauses it realizes: \"takes <port>\", \"does\", \"gives <port>\", \"why\", \"decision <id>\") and the wires (\"input.<port>\" → \"<node>.<socket>\" → \"output.<port>\"). The studio checks that every clause is realized and every port wired, then compiles it into the stage, replacing its previous build, in one undo step. Use it again to change a stage's nodes or wiring.",
+  "description": "After the design is approved: build one step's stage from its low-level design. Give the nodes (key → native node type from comfy_node_catalog, widget settings, and which HLD clauses it realizes: \"takes <port>\", \"does\", \"gives <port>\", \"why\", \"decision <id>\") and the wires (\"input.<port>\" → \"<node>.<socket>\" → \"output.<port>\"). The studio checks that every clause is realized and every port wired, then compiles it into the stage, replacing its previous build, in one undo step. A node's optional \"promote\" lists the settings to show on the stage card (its key knobs). Use it again to change a stage's nodes or wiring.",
   "parameters": {
    "$ref": "build.schema.json"
   },

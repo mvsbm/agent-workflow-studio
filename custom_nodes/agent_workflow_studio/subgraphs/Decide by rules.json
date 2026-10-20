@@ -1,0 +1,378 @@
+{
+ "revision": 0,
+ "last_node_id": 1,
+ "last_link_id": 0,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Pairs",
+     "name": "data",
+     "shape": 7,
+     "type": "PAIRS,DICT",
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "matched",
+     "name": "matched",
+     "type": "DECISIONS",
+     "links": []
+    },
+    {
+     "localized_name": "different",
+     "name": "different",
+     "type": "DECISIONS",
+     "links": []
+    },
+    {
+     "localized_name": "unsettled",
+     "name": "unsettled",
+     "type": "PAIRS",
+     "links": []
+    }
+   ],
+   "title": "Decide by rules",
+   "properties": {
+    "previewExposures": []
+   },
+   "widgets_values_named": {
+    "stage_card": ""
+   },
+   "color": "#5b3d7a",
+   "bgcolor": "#3a2a4f"
+  }
+ ],
+ "links": [],
+ "version": 0.4,
+ "definitions": {
+  "subgraphs": [
+   {
+    "id": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 68,
+     "lastLinkId": 125,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "Decide by rules",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      68
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      108
+     ]
+    },
+    "inputs": [
+     {
+      "id": "376ae074-424f-4018-8a71-566327d3e46d",
+      "name": "data",
+      "type": "PAIRS,DICT",
+      "linkIds": [
+       91
+      ],
+      "localized_name": "Pairs",
+      "shape": 7,
+      "pos": [
+       51,
+       24
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "f0c0ef9c-d15f-40c5-8074-91f8baf51cd8",
+      "name": "matched",
+      "type": "DECISIONS",
+      "linkIds": [
+       55
+      ],
+      "localized_name": "matched",
+      "pos": [
+       24,
+       24
+      ]
+     },
+     {
+      "id": "83c447dc-0000-4982-9f20-6971b3b08858",
+      "name": "different",
+      "type": "DECISIONS",
+      "linkIds": [
+       56
+      ],
+      "localized_name": "different",
+      "pos": [
+       24,
+       44
+      ]
+     },
+     {
+      "id": "c3742d08-9979-4fdd-8028-d401d833ddf7",
+      "name": "unsettled",
+      "type": "PAIRS",
+      "linkIds": [
+       51
+      ],
+      "localized_name": "unsettled",
+      "pos": [
+       24,
+       64
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 37,
+      "type": "AgentWorkflowDecisionRules",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       700
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Pairs",
+        "name": "data",
+        "shape": 7,
+        "type": "PAIRS,DICT",
+        "link": 91
+       },
+       {
+        "localized_name": "Pairs file",
+        "name": "pairs_file",
+        "type": "STRING",
+        "widget": {
+         "name": "pairs_file"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Rules",
+        "name": "rules",
+        "type": "STRING",
+        "widget": {
+         "name": "rules"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Review limit",
+        "name": "review_limit",
+        "type": "INT",
+        "widget": {
+         "name": "review_limit"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "decisions",
+        "name": "decisions",
+        "type": "DECISIONS",
+        "links": null
+       },
+       {
+        "localized_name": "summary",
+        "name": "summary",
+        "type": "STRING",
+        "links": null
+       },
+       {
+        "localized_name": "matched",
+        "name": "matched",
+        "type": "DECISIONS",
+        "links": [
+         55,
+         97
+        ]
+       },
+       {
+        "localized_name": "different",
+        "name": "different",
+        "type": "DECISIONS",
+        "links": [
+         56
+        ]
+       },
+       {
+        "localized_name": "unsettled",
+        "name": "unsettled",
+        "type": "PAIRS",
+        "links": [
+         51
+        ]
+       }
+      ],
+      "title": "Certain matches and non-matches",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowDecisionRules"
+      },
+      "widgets_values": [
+       "pairs.jsonl",
+       "# Certainties only; everything else is passed on to probabilistic matching.\nrules:\n  - name: Different sex\n    when: {sex: different}\n    then: different\n  - name: Family member sharing a phone (different given name)\n    when: {kana_given: different, phone: same}\n    then: different\n  - name: Family member at the same address (different given name)\n    when: {kana_given: different, address: [exact, similar]}\n    then: different\n  - name: Same name, conflicting birth date (a namesake)\n    when: {birth: conflict}\n    then: different\n  - name: Maiden name (same given name and birth, surname changed)\n    when: {kana_given: exact, birth: exact, kana_surname: different}\n    then: match\n  - name: Same policy and same reading\n    when: {policy_ref: same, kana: exact}\n    then: match\n  - name: Same phone and same reading\n    when: {phone: same, kana: exact}\n    then: match\n",
+       2000,
+       ""
+      ],
+      "widgets_values_named": {
+       "pairs_file": "pairs.jsonl",
+       "rules": "# Certainties only; everything else is passed on to probabilistic matching.\nrules:\n  - name: Different sex\n    when: {sex: different}\n    then: different\n  - name: Family member sharing a phone (different given name)\n    when: {kana_given: different, phone: same}\n    then: different\n  - name: Family member at the same address (different given name)\n    when: {kana_given: different, address: [exact, similar]}\n    then: different\n  - name: Same name, conflicting birth date (a namesake)\n    when: {birth: conflict}\n    then: different\n  - name: Maiden name (same given name and birth, surname changed)\n    when: {kana_given: exact, birth: exact, kana_surname: different}\n    then: match\n  - name: Same policy and same reading\n    when: {policy_ref: same, kana: exact}\n    then: match\n  - name: Same phone and same reading\n    when: {phone: same, kana: exact}\n    then: match\n",
+       "review_limit": 2000,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 59,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       10,
+       820
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 97
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · matched",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowCheck"
+      },
+      "widgets_values": [
+       "rows_at_least",
+       "7000",
+       "At least 7,000 certain matches (9,857 on the default data).",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "rows_at_least",
+       "expect": "7000",
+       "says": "At least 7,000 certain matches (9,857 on the default data).",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 91,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 37,
+      "target_slot": 0,
+      "type": "PAIRS"
+     },
+     {
+      "id": 55,
+      "origin_id": 37,
+      "origin_slot": 2,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 56,
+      "origin_id": 37,
+      "origin_slot": 3,
+      "target_id": -20,
+      "target_slot": 1,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 51,
+      "origin_id": 37,
+      "origin_slot": 4,
+      "target_id": -20,
+      "target_slot": 2,
+      "type": "PAIRS"
+     },
+     {
+      "id": 97,
+      "origin_id": 37,
+      "origin_slot": 2,
+      "target_id": 59,
+      "target_slot": 0,
+      "type": "DECISIONS"
+     }
+    ],
+    "extra": {},
+    "description": "Pairs decided by readable rules (the first rule that applies decides): certain matches and certain non-matches leave here; the rest goes on, unsettled."
+   }
+  ]
+ },
+ "extra": {
+  "BlueprintDescription": "Pairs decided by readable rules (the first rule that applies decides): certain matches and certain non-matches leave here; the rest goes on, unsettled."
+ }
+}

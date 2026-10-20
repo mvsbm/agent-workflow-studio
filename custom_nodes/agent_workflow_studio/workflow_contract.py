@@ -269,6 +269,12 @@ def agent_schemas() -> dict[str, dict]:
                         },
                         "title": {"type": "string", "maxLength": 120},
                         "set": {"type": "object", "description": "Widget name → value."},
+                        "promote": {
+                            "type": "array",
+                            "maxItems": 6,
+                            "items": {"type": "string"},
+                            "description": "Settings (widget names) that are this step's key knobs: shown on the stage card, where the user changes them without opening the stage.",
+                        },
                         "realizes": {
                             "type": "array",
                             "minItems": 1,

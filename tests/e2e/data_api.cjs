@@ -53,8 +53,10 @@ const promises = {...intent.promises, outputs: intent.promises.outputs};
       const uploaded = await (await api.fetchApi('/upload/image', {method: 'POST', body: form})).json();
       // Contract first: the skeleton (stage, input node, output node, App mode), then the stage's LLD.
       await bridge.handle('skeleton', {steps, promises, intent, meta});
-      await bridge.handle('build', {step: 'tally', nodes: {read: {type: 'AgentWorkflowReadTable', set: {file: 'orders.csv'}, realizes: ['takes orders', 'does', 'gives totals']}},
+      await bridge.handle('build', {step: 'tally', nodes: {read: {type: 'AgentWorkflowReadTable', set: {file: 'orders.csv'}, promote: ['file'], realizes: ['takes orders', 'does', 'gives totals']}},
         wires: [{from: 'input.orders', to: 'read.folder'}, {from: 'read.table', to: 'output.totals'}]});
+      // Its key setting is on the stage card (promoted), set from there without opening the stage.
+      const card = app.graph.nodes.find(n => n.properties?.aws_stage === 'tally').widgets.find(w => w.name === 'file')?.value;
       // Run once on the canvas (the stage's Check), then the workflow's CI, then publish.
       const queued = await bridge.handle('run', {reason: 'verify'});
       for (let i = 0; i < 60; i++) { const h = await (await api.fetchApi(`/history/${queued.prompt_id}`)).json(); if (h[queued.prompt_id]?.status?.completed !== undefined) break; await new Promise(r => setTimeout(r, 500)); }
@@ -69,9 +71,10 @@ const promises = {...intent.promises, outputs: intent.promises.outputs};
       for (let i = 0; i < 60; i++) { job = await (await api.fetchApi(started.poll)).json(); if (['completed', 'failed'].includes(job.status)) break; await new Promise(r => setTimeout(r, 500)); }
       const cancelled = await api.fetchApi(started.cancel, {method: 'POST'});
       const openapi = await (await api.fetchApi('/agent-workflow-studio/api/orders-e2e/openapi.json')).json();
-      return {uploaded, checks: checks.summary, green: checks.green, published, ran, missing, unknown, started, job: {status: job.status, outputs: JSON.stringify(job.outputs)}, cancel: cancelled.status, openapi};
+      return {card, uploaded, checks: checks.summary, green: checks.green, published, ran, missing, unknown, started, job: {status: job.status, outputs: JSON.stringify(job.outputs)}, cancel: cancelled.status, openapi};
     }, {intent, steps, meta, promises});
     assert.deepEqual(result.uploaded, {...result.uploaded, name: 'orders.csv', subfolder: 'orders_e2e', type: 'input'});
+    assert.equal(result.card, 'orders.csv', 'the promoted setting shows on the stage card');
     assert.equal(result.checks, '✓ design · ✓ stage Checks · ✓ examples · ✓ no regression');
     assert.equal(result.published.semver, '1.0.0');
     // The answer: completed, the rows typed by the design's entity, and the full table as a native file.
