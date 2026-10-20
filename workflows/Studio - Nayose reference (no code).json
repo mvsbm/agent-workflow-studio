@@ -1077,8 +1077,8 @@
       "says": "The result file is written.",
       "check": {
        "output": "path",
-       "kind": "contains",
-       "value": "nayose_result.csv"
+       "kind": "regex",
+       "value": "nayose_result_\\d{5}_\\.csv"
       }
      }
     }
@@ -12905,8 +12905,8 @@
        "aws_headline": "✓ passed · The result file is written. · nayose_reference/nayose_result.csv"
       },
       "widgets_values": [
-       "contains",
-       "nayose_result.csv",
+       "regex",
+       "nayose_result_\\d{5}_\\.csv",
        "The result file is written.",
        ""
       ],
@@ -13129,7 +13129,7 @@
       "exports": "nayose_bench"
      },
      "expect": {
-      "customer_file": "nayose_result.csv"
+      "customer_file": "nayose_result_"
      },
      "note": "The benchmark exports (Studio - Nayose benchmark writes them to input/nayose_bench): one customer id per mention."
     }

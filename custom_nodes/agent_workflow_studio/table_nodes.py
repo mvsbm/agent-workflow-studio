@@ -221,14 +221,14 @@ class WriteTable(io.ComfyNode):
             display_name="Write table",
             category=CATEGORY,
             search_aliases=["save csv", "export", "write file", "result"],
-            description="Writes a table as a UTF-8 CSV under ComfyUI's output directory, with the columns you list (in that order).",
+            description="Writes a table as a UTF-8 CSV under ComfyUI's output directory, with the columns you list (in that order). Like ComfyUI's save nodes it never overwrites: each run writes its own numbered file (result_00001_.csv), so every API call's download stays its own.",
             inputs=[
                 Table.Input("table", display_name="Table", tooltip="The table to write."),
                 io.String.Input(
                     "file",
                     display_name="File",
                     default="result.csv",
-                    tooltip="Path under the output directory, e.g. nayose/nayose_result.csv.",
+                    tooltip="Name under the output directory, e.g. nayose/nayose_result.csv; each run adds a number (nayose_result_00001_.csv).",
                 ),
                 io.String.Input(
                     "columns",
@@ -250,14 +250,21 @@ class WriteTable(io.ComfyNode):
         t = check_table(table)
         cols = columns_of(columns) or t["columns"]
         need_columns(t, cols)
+        import folder_paths
+
         root = output_root()
-        path = (root / file.strip()).resolve()
+        wanted = (root / file.strip()).resolve()
         if (
-            root not in path.parents
-            or path.suffix.lower() != ".csv"
-            or "nayose_benchmark" in path.parts
+            root not in wanted.parents
+            or wanted.suffix.lower() != ".csv"
+            or "nayose_benchmark" in wanted.parts
         ):
             raise ValueError("Write a .csv file under ComfyUI's output directory.")
+        # ComfyUI's own save convention: the next free number for this name, never an overwrite.
+        folder, name, counter, _, _ = folder_paths.get_save_image_path(
+            str(wanted.relative_to(root).with_suffix("")), str(root)
+        )
+        path = Path(folder) / f"{name}_{counter:05}_.csv"
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(handle, cols, extrasaction="ignore")

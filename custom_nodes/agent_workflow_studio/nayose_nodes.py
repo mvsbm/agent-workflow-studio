@@ -396,6 +396,10 @@ def find_file(name: str, result: Any) -> Path:
         path = path.resolve()
         if hidden in path.parents:
             raise ValueError("Answer keys cannot be previewed; use Nayose · Score.")
+        if not path.is_file() and path.parent.is_dir():
+            # Saved like ComfyUI's save nodes (name_00007_.csv): the newest run's file of that name.
+            numbered = sorted(path.parent.glob(f"{path.stem}_[0-9]*_{path.suffix}"))
+            path = numbered[-1] if numbered else path
         if any(root in path.parents for root in roots) and path.is_file():
             return path
     raise ValueError(

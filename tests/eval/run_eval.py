@@ -112,7 +112,11 @@ def check_file(output: Path, expect: dict, started: float) -> dict:
     import io
 
     found = sorted(
-        (p for p in output.rglob(expect["name"]) if p.stat().st_mtime >= started),
+        (
+            p
+            for p in output.rglob(f"{Path(expect['name']).stem}*{Path(expect['name']).suffix}")
+            if p.stat().st_mtime >= started
+        ),
         key=lambda p: p.stat().st_mtime,
     )
     needed = expect.get("min_match", len(expect["rows"]))
@@ -341,7 +345,8 @@ def main() -> int:
                 found = sorted(
                     (
                         p
-                        for p in comfy.output.rglob("nayose_result.csv")
+                        # Saved like ComfyUI's save nodes: nayose_result_00001_.csv, … (or a tool's own file).
+                        for p in comfy.output.rglob("nayose_result*.csv")
                         if p.stat().st_mtime >= started
                     ),
                     key=lambda p: p.stat().st_mtime,

@@ -78,6 +78,29 @@ class TableNodeTests(unittest.TestCase):
             similar_pairs(values, 0.5), {("a", "b"), ("a", "c")}
         )  # one typo in five: 0.5
 
+    def test_each_run_writes_its_own_file_like_comfyuis_save_nodes(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from custom_nodes.agent_workflow_studio.nayose_nodes import find_file
+        from custom_nodes.agent_workflow_studio.table_nodes import WriteTable
+
+        table = make("orders", [{"id": "1", "region": "north"}], ["id", "region"])
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch("folder_paths.get_output_directory", return_value=root),
+            patch("folder_paths.get_input_directory", return_value=root),
+        ):
+            first = WriteTable.execute(table, "api/result.csv", "").result[0]
+            second = WriteTable.execute(table, "api/result.csv", "").result[0]
+            self.assertEqual([first, second], ["api/result_00001_.csv", "api/result_00002_.csv"])
+            self.assertTrue((Path(root) / first).is_file(), "an earlier call's file stays")
+            # Asked for by its plain name, the newest run's file answers.
+            self.assertEqual(find_file("api/result.csv", None).name, "result_00002_.csv")
+            with self.assertRaisesRegex(ValueError, "under ComfyUI's output directory"):
+                WriteTable.execute(table, "../escape.csv", "")
+
     def test_follow_a_record_through_the_run(self) -> None:
         from comfy_execution.utils import CurrentNodeContext
 
