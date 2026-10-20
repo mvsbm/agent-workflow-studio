@@ -1,5 +1,6 @@
 """Credential-store tests use only an in-memory fake, never the OS vault."""
 
+# Verifies: R21
 from __future__ import annotations
 
 from custom_nodes.agent_workflow_studio import credential_store

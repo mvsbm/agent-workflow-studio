@@ -1,5 +1,6 @@
 """The chat's environment prompt stays consistent with the agent's tools (agent_tools.json)."""
 
+# Verifies: R12
 from __future__ import annotations
 
 import json

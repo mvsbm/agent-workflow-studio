@@ -1,5 +1,6 @@
 """Offline tests for the Pi-backed structured agent node."""
 
+# Verifies: R8
 from __future__ import annotations
 
 import asyncio

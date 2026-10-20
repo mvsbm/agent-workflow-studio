@@ -1,5 +1,6 @@
 """A step's LLD is accepted only when it realizes the whole HLD step and every node is traced."""
 
+# Verifies: R12, R27, R31
 import copy
 import unittest
 

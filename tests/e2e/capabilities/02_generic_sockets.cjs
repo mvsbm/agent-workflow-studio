@@ -1,4 +1,5 @@
 // Generic table steps keep the type they are given (MatchType); unions and wrong types are enforced.
+// Verifies: R11
 module.exports = {
   id: 'generic_sockets',
   assumes: 'MatchType with our types: the output follows the input through a chain, wrong types are refused, unions accept each member, and the backend runs it',

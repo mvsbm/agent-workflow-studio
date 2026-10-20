@@ -1,5 +1,6 @@
 // Agent builds and runs a 3-node workflow through the real chat UI, bridge, canvas and queue.
 // Only the LLM is faked (fake_pi.py). Requires BASE (ComfyUI URL) and ARTIFACTS (output dir).
+// Verifies: R1, R2, R8, R27, R35
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

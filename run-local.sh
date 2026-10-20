@@ -20,6 +20,8 @@ if ! command -v pi >/dev/null && [[ -z "${AGENT_WORKFLOW_STUDIO_PI_CLI:-}" && -x
 fi
 
 cd "$COMFYUI_DIR"
+# --disable-api-nodes: no paid cloud nodes, and the frontend makes no internet calls (customer data stays
+# on this machine). The tests run the same way (tests/e2e/fixture.py).
 .venv/bin/python main.py \
     --listen 127.0.0.1 \
     --port "$COMFY_PORT" \
@@ -27,6 +29,7 @@ cd "$COMFYUI_DIR"
     --output-directory "$STATE_DIR/comfy-output" \
     --input-directory "$STATE_DIR/comfy-input" \
     --temp-directory "$STATE_DIR/comfy-temp" \
+    --disable-api-nodes \
     >>"$LOG_DIR/comfyui.log" 2>&1 &
 COMFY_PID=$!
 trap 'kill "$COMFY_PID" 2>/dev/null || true' EXIT INT TERM

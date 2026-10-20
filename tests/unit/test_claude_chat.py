@@ -1,6 +1,7 @@
 """Claude Code as the chat agent, offline: locked-down launch, the shared tools, the workspace file
 rules, the event translation and the in-panel dialogs. No Claude process or provider is used."""
 
+# Verifies: R12, R21
 import asyncio
 import base64
 import hashlib

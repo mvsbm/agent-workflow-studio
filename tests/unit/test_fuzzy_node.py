@@ -1,5 +1,6 @@
 """Fuzzy node: plan validation against live-schema shapes, expansion, and the node."""
 
+# Verifies: R3
 from __future__ import annotations
 
 import tempfile

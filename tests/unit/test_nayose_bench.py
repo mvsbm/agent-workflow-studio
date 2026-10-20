@@ -1,5 +1,6 @@
 """The nayose benchmark is deterministic, its key matches its data, and the scorer is exact."""
 
+# Verifies: R20
 import csv
 import io
 import tempfile

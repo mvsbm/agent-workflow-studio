@@ -1,6 +1,7 @@
 // Capability tests: every platform assumption the architecture relies on, checked the way the
 // product uses it (both node modes, through save/reload and the backend), with its fallback.
 // Run by capabilities.py; writes capabilities.json (results + ComfyUI and frontend versions).
+// Verifies: R9, R15
 const {chromium} = require('playwright-core');
 const fs = require('node:fs');
 const path = require('node:path');

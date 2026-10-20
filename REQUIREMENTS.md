@@ -3,6 +3,10 @@
 What Agent Workflow Studio must be, in the owner's terms, with how each is checked and where it
 stands. Status: ✅ met · 🟡 partly · ⬜ open. DESIGN.md says how; this file says what and why.
 
+Every requirement is verified: a test CI runs names it (`Verifies: R8` in the test file), or the
+requirement says how it is verified instead (*Verified by:* …). `tests/unit/test_traceability.py`
+fails CI when one is neither, or when a test names a requirement that is not here.
+
 ## 1. Purpose
 
 **R1 · An agent that builds real workflows with you, on the canvas.** A Pi-backed agent sees the
@@ -111,6 +115,7 @@ your reviews are shown. ✅
 **R18 · Standalone.** Someone else can install it and have the agent build a transparent workflow
 for their own problem, not only record matching. ✅ (10/10 evals incl. sales report, feedback triage,
 invoice extraction, data quality; installer brings the Pi CLI) — open: a second model, a license
+*Verified by:* the real-agent evals (`tests/eval`, domain scenarios) and CI installing from scratch.
 
 ## 5. The record-matching (名寄せ) benchmark
 
@@ -118,6 +123,7 @@ invoice extraction, data quality; installer brings the Pi CLI) — open: a secon
 typos, missing values, old addresses, maiden names, partial updates, family members, look-alikes),
 beat a Trillium-style pattern grid; target precision ≥ 0.95 and recall ≥ 0.85, confirmed on
 held-out data. ✅ (reference P 0.961 / R 0.893; held-out 0.956/0.882 and 0.970/0.886; grid F1 0.583)
+*Verified by:* the nayose evals and `tests/e2e/build_reference.cjs` (scored on held-out seeds).
 
 **R20 · Fair evaluation.** The answer key never reaches the agent; scores are measured, never tuned
 against. ✅
@@ -135,9 +141,27 @@ sandboxed, reading only its inputs. ✅
 
 **R24 · Tests never touch your instance.** Tests run in isolated ComfyUI instances; on 8188 only the
 studio's own templates and eval workflows are written. ✅
+*Verified by:* construction: every test instance comes from `tests/e2e/fixture.py` (temp directory,
+free port); CI has no 8188 at all.
 
 **R25 · Verified end to end with the real agent.** After changes, real-agent runs on 8188 are
 inspected for process and outcome, not only unit tests. ✅ (practice)
+*Verified by:* practice (each change's report lists the real-agent runs).
 
 **R26 · Plan with small tests first.** Difficult work starts with research and small experiments
 (now capability tests). ✅ (practice)
+*Verified by:* practice.
+
+**R35 · Every workflow has its own CI/CD.** A workflow's tests live in it: its examples
+(acceptance), each stage's Checks (integration), the design rules on every stage (ports wired, every
+part realized, no untraced node) and no regression since the last release. One run checks them all
+on exactly this graph and is kept as a version; publishing needs a green run; each release says why
+its version moved; an API can be rolled back to an earlier release. ✅
+
+**R36 · The studio is traced like its workflows.** Every requirement here is verified by a test CI
+runs, or says how it is verified; the studio's own CI fails otherwise. ✅
+
+**R37 · The agent works in the studio's scope.** Data and text work: the agent finds and adds only
+the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes
+stay installed for people but out of the agent's reach. Paid cloud API nodes are not loaded and the
+frontend makes no internet calls. ✅

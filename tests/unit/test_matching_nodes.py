@@ -1,5 +1,6 @@
 """The matching cascade: EM weights, the cluster guard, the decision tree, local-only LLM calls."""
 
+# Verifies: R7, R22, R34
 import json
 import math
 import random

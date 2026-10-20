@@ -41,6 +41,18 @@ export function quietly(app, write) {
   if (tracker?.activeState && app.rootGraph) tracker.activeState = JSON.parse(JSON.stringify(app.rootGraph.serialize()));
 }
 
+/** The studio's scope for the agent: data and text work. Our own nodes, and ComfyUI's text and
+ *  utility nodes that carry no image, video, audio or model data. The rest stays installed (a person
+ *  can still add it by hand); the agent neither finds nor adds it. */
+const MEDIA = /^(IMAGE|LATENT|MASK|MODEL|VAE|CLIP|CLIP_VISION|CLIP_VISION_OUTPUT|CONDITIONING|CONTROL_NET|STYLE_MODEL|UPSCALE_MODEL|VIDEO|AUDIO|BOUNDING_BOX|NOISE|SAMPLER|SIGMAS|GUIDER|MESH|VOXEL)$/;
+export function inStudioScope(def) {
+  if (String(def?.python_module ?? '').startsWith('custom_nodes.agent_workflow_studio')) return true;
+  if (!/^(text|utilities)(\/|$)/.test(def?.category ?? '')) return false;
+  const types = [...Object.values({...def.input?.required, ...def.input?.optional}).map(spec => spec?.[0]), ...(def.output ?? [])];
+  return !types.some(type => typeof type === 'string' && MEDIA.test(type));
+}
+const outOfScope = name => Error(`${name} is outside this studio's scope (data and text work), so you cannot add it; a person can add it by hand.`);
+
 export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
 
 /** Pack nodes into one stage subgraph for a contract step, titled "N · Step name". */
@@ -524,6 +536,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
   // Node keys stay valid for the whole chat, so later batches can reference earlier nodes.
   const keys = Object.create(null);
   const catalog = async () => definitions ??= await api.getNodeDefs();
+  const agentCatalog = async () => Object.fromEntries(Object.entries(await catalog()).filter(([, def]) => inStudioScope(def)));
   // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.
   const waitForRun = async () => {
     for (let waited = 0; latestPrompt && waited < 60000; waited += 1000) {
@@ -601,6 +614,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
           if (typeof op.key !== 'string' || !op.key || Object.hasOwn(added,op.key)) throw Error('New nodes need unique nonempty keys.');
           if (Object.hasOwn(keys,op.key)) throw Error(`Key "${op.key}" already names a node in this chat; reference it, or use a new key.`);
           if (!Object.hasOwn(defs,op.class_type)) throw Error(`Node is not installed: ${op.class_type}`);
+          if (!inStudioScope(defs[op.class_type])) throw outOfScope(op.class_type);
           const node = globalThis.LiteGraph.createNode(op.class_type);
           if (!node) throw Error(`Cannot create native node: ${op.class_type}`);
           if (op.title != null) {if (typeof op.title !== 'string' || op.title.length > 200) throw Error('Invalid node title.'); node.title = op.title;}
@@ -745,10 +759,10 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       links: links(app.graph).map(link => ({from:link.origin_id,output:link.origin_slot,to:link.target_id,input:link.target_slot})),
     };
     if (action === 'catalog') {
-      const defs = await catalog();
+      const defs = await agentCatalog(), all = await catalog();
       if (args.class_types) {
         if (!Array.isArray(args.class_types) || args.class_types.length > 20) throw Error('Request at most 20 node schemas.');
-        return {schemas:Object.fromEntries(args.class_types.map(name => {if (!Object.hasOwn(defs,name)) throw Error(`Node is not installed: ${name}`);return [name,defs[name]];}))};
+        return {schemas:Object.fromEntries(args.class_types.map(name => {if (!Object.hasOwn(all,name)) throw Error(`Node is not installed: ${name}`); if (!Object.hasOwn(defs,name)) throw outOfScope(name); return [name,defs[name]];}))};
       }
       const search = (text, limit) => {
         const query = String(text??'').toLowerCase();
@@ -810,7 +824,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'analyze') return analyzeGraph((app.rootGraph ?? app.graph).serialize(), withStageOutputs(app.rootGraph ?? app.graph, await catalog()));
     if (action === 'converters') {
       if (typeof args.from_type !== 'string' || typeof args.to_type !== 'string') throw Error('Give from_type and to_type.');
-      return {paths: findConverterPaths(await catalog(), args.from_type, args.to_type)};
+      return {paths: findConverterPaths(await agentCatalog(), args.from_type, args.to_type)};
     }
     if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? '')) === true};
     if (action === 'tool_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this tool?'), String(args.text ?? '')) === true};

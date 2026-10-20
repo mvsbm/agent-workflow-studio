@@ -1,5 +1,7 @@
 """Calculation nodes: numbers from messy text, duplicates by key, safe formulas, group-by totals."""
 
+# Verifies: R4
+
 import unittest
 
 from custom_nodes.agent_workflow_studio.table_calc import (

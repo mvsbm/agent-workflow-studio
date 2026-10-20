@@ -1,3 +1,4 @@
+// Verifies: R11
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {analyzeGraph, findConverterPaths} from '../../custom_nodes/agent_workflow_studio/web/graph_analysis.js';

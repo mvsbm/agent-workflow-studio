@@ -1,5 +1,6 @@
 """The contract, HLD and LLD live in the ComfyUI workflow itself and read back unchanged."""
 
+# Verifies: R10, R28
 import copy
 import unittest
 

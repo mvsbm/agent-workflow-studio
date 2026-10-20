@@ -1,5 +1,6 @@
 // A workflow as an API: build a staged workflow with a given input, set its signature with the
 // agent's edit, publish it (refused before), call it with new data and read the outputs.
+// Verifies: R16, R35
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

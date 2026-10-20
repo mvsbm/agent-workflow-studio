@@ -1,5 +1,6 @@
 """Improve loop: measured verdicts and a controller that stops, reverts or escalates."""
 
+# Verifies: R32
 import unittest
 
 from custom_nodes.agent_workflow_studio.loop import budget_of, next_action, snapshot, verdict

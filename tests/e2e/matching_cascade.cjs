@@ -1,5 +1,6 @@
 // The matching cascade on a canvas: Learn weights writes the scorecard into Decision rules,
 // Cluster guard builds customers and draws the whole decision tree, blocking chained merges.
+// Verifies: R5, R7
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

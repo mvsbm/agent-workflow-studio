@@ -1,5 +1,6 @@
 // A Check (output node) deep inside stages reports through history under its id path and reaches
 // the node on the canvas, so step status can be read from it.
+// Verifies: R14
 module.exports = {
   id: 'output_in_nested_stage',
   assumes: 'An output node two stages deep runs, its ui lands in history under "outer:inner:node", and the canvas node receives it',

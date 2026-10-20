@@ -1,4 +1,5 @@
 // The Fuzzy node plans with the (fake) model, its plan runs as real nodes, and the plan is recorded.
+// Verifies: R3
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

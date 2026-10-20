@@ -1,5 +1,7 @@
 """Plan vs built vs proven: the gaps are named from evidence, never from claims."""
 
+# Verifies: R27, R28
+
 import copy
 import unittest
 

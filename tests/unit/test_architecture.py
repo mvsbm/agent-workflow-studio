@@ -1,5 +1,6 @@
 """Architecture rules: each kind fires on the workflow shape it guards, and only there."""
 
+# Verifies: R13
 import unittest
 
 from custom_nodes.agent_workflow_studio.architecture import COMPLETENESS, RELEASE, STRUCTURAL, check

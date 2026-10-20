@@ -1,5 +1,7 @@
 """The workflow contract: schema rules, YAML, conversion of old plans, lifecycle, preview."""
 
+# Verifies: R10, R27, R29, R31
+
 from __future__ import annotations
 
 import copy
@@ -11,7 +13,6 @@ from custom_nodes.agent_workflow_studio.workflow_contract import (
     TRANSITIONS,
     blocking,
     derive_states,
-    from_plan_v1,
     render,
     review,
     validate_contract,
@@ -158,49 +159,6 @@ class ContractTests(unittest.TestCase):
             validate_intent(changed(lambda c: c.pop("steps")))
         joined = join(intent, {"steps": CONTRACT["steps"], "outputs": {"label": source}})
         self.assertEqual(validate_contract(joined), CONTRACT)
-
-    def test_converts_plans_approved_before_contracts(self) -> None:
-        plan = {
-            "goal": "Show the text hello world.",
-            "inputs": [],
-            "outputs": [{"name": "text", "description": "The greeting", "type": "text"}],
-            "steps": [
-                {
-                    "id": "greet",
-                    "purpose": "Join the words.",
-                    "approach": "deterministic",
-                    "nodes": ["StringConcatenate"],
-                    "success_gate": {
-                        "description": "Says hello world.",
-                        "check": {
-                            "node_title": "Result",
-                            "kind": "contains",
-                            "value": "hello world",
-                        },
-                    },
-                },
-                {
-                    "id": "judge",
-                    "purpose": "Rate it.",
-                    "approach": "llm",
-                    "success_gate": {"description": "Reads well."},
-                },
-            ],
-            "assumptions": ["English only."],
-            "decisions": [{"question": "Which greeting?", "answer": "hello world"}],
-            "open_questions": [],
-        }
-        contract = from_plan_v1(plan)
-        self.assertEqual(contract["purpose"], "Show the text hello world.")
-        self.assertEqual([s["approach"] for s in contract["steps"]], ["fixed", "ai_judgment"])
-        self.assertEqual(
-            contract["steps"][0]["gate"]["check"],
-            {"node": "Result", "kind": "contains", "value": "hello world"},
-        )
-        self.assertEqual(
-            [(d["decision"], d["by"]) for d in contract["decisions"]],
-            [("hello world", "user"), ("English only.", "agent")],
-        )
 
     def test_states_are_derived_from_evidence_through_the_table(self) -> None:
         def states(nodes, results=None):

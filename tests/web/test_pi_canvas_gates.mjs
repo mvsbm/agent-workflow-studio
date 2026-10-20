@@ -1,3 +1,4 @@
+// Verifies: R14, R37
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {agentOutputs, gateResults, stageNumbers, stageSummaries} from '../../custom_nodes/agent_workflow_studio/web/pi_canvas.js';
@@ -75,4 +76,15 @@ test("a run's numbers per stage, by node title, without the hidden score", () =>
   const graph = {nodes: [stage(1, 'group', [node(2, 'AgentWorkflowClusterGuard', {title: 'Build customers'}), node(3, 'AgentWorkflowNayoseScore'), node(4, 'Note')])]};
   const record = {outputs: {'1:2': {aws_headline: ['2,434 customers · 47,304 merges · 2,830 blocked']}, '1:3': {text: ['F1 0.94']}}};
   assert.deepEqual(stageSummaries(record, graph), [{stage: 'uuid 1', nodes: [{node: 'Build customers', said: '2,434 customers · 47,304 merges · 2,830 blocked'}]}]);
+});
+
+import {inStudioScope} from '../../custom_nodes/agent_workflow_studio/web/pi_canvas.js';
+
+test("the agent's scope: the studio's nodes and ComfyUI's text and utility nodes, without media", () => {
+  assert.equal(inStudioScope({python_module: 'custom_nodes.agent_workflow_studio', category: 'agent_workflow_studio/table'}), true);
+  assert.equal(inStudioScope({category: 'text', input: {required: {string_a: ['STRING']}}, output: ['STRING']}), true);
+  assert.equal(inStudioScope({category: 'utilities/primitive', input: {required: {value: ['INT']}}, output: ['INT']}), true);
+  assert.equal(inStudioScope({category: 'utilities', input: {required: {image: ['IMAGE']}}, output: ['BOUNDING_BOX']}), false);
+  assert.equal(inStudioScope({category: 'image', input: {required: {width: ['INT']}}, output: ['IMAGE']}), false);
+  assert.equal(inStudioScope({category: 'model', output: ['MODEL']}), false);
 });

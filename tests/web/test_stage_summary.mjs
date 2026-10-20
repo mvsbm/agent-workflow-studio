@@ -1,3 +1,4 @@
+// Verifies: R6, R27, R28
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {designLabels, nodePath, partsText, requestLabel, stageSummary, stageView} from '../../custom_nodes/agent_workflow_studio/web/stage_summary.js';

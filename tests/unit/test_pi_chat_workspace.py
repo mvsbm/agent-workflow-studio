@@ -1,5 +1,7 @@
 """Real filesystem boundary checks; temporary data only, no model calls."""
 
+# Verifies: R23
+
 import base64
 import concurrent.futures
 import os

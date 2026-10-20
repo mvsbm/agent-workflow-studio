@@ -1,5 +1,6 @@
 """Agent tools: confined execution, failures, approval text."""
 
+# Verifies: R4, R23
 from __future__ import annotations
 
 import tempfile

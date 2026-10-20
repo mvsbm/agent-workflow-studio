@@ -1,4 +1,5 @@
 // The Review tab: a tool's review.json shows as pairs and customers; decisions are versioned.
+// Verifies: R7
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

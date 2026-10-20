@@ -1,3 +1,4 @@
+// Verifies: R6
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {arrangeGraph} from '../../custom_nodes/agent_workflow_studio/web/pi_canvas.js';

@@ -1,5 +1,6 @@
 // A Pi Structured LLM node runs natively (fake Pi answers through the typed-output tool),
 // and its run record appears in the Versions panel with the output.
+// Verifies: R8
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

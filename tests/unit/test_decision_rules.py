@@ -1,5 +1,6 @@
 """Decision rules: order, negation, scorecard thresholds, review overrides and spec errors."""
 
+# Verifies: R6, R7, R17, R34
 import unittest
 
 from custom_nodes.agent_workflow_studio.decision_rules import (

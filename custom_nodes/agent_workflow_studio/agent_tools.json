@@ -12,7 +12,7 @@
  {
   "name": "comfy_node_catalog",
   "label": "Find native nodes",
-  "description": "Search ALL installed native node types by name/category, descriptions, aliases and input/output schemas (including format choices such as csv), or retrieve exact schemas for class_types. Discovery does not install or authorize generated code.",
+  "description": "Search the node types in this studio's scope (data and text work: the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes are out of scope) by name/category, descriptions, aliases and input/output schemas (including format choices such as csv), or retrieve exact schemas for class_types. Discovery does not install or authorize generated code.",
   "parameters": {
    "type": "object",
    "properties": {

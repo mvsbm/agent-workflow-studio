@@ -17,11 +17,6 @@
   "keep_setup_nodes": true
  },
  {
-  "id": "image",
-  "prompt": "Create a 64x64 solid red image and save it as a PNG file. Run it.",
-  "expect_images": 1
- },
- {
   "id": "fuzzy_llm",
   "prompt": "Use the Pi CLI Structured LLM node to decide whether the review 'I absolutely love this product' is positive or negative, show its answer, and run it.",
   "expect_text_ci": "positive",

@@ -1,8 +1,9 @@
 """Per-workflow git history: commits, diffs, restore, and git isolation."""
 
+# Verifies: R8
+
 from __future__ import annotations
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -137,40 +138,6 @@ class ProjectRepoTests(unittest.TestCase):
         other = embed({**CONTRACT, "purpose": "other"}, workflow())
         self.assertFalse(self.repo.adopt_template(other))
         self.assertEqual(self.repo.load_contract(), CONTRACT)
-
-    def test_loads_a_plan_approved_before_contracts(self) -> None:
-        old = ProjectRepo(self.root, "older-workflow")
-        old.tree.mkdir(parents=True)
-        plan = {
-            "goal": "Say hi.",
-            "inputs": [],
-            "outputs": [{"name": "t", "description": "d", "type": "text"}],
-            "steps": [
-                {
-                    "id": "s",
-                    "purpose": "p",
-                    "approach": "deterministic",
-                    "success_gate": {"description": "ok"},
-                }
-            ],
-            "assumptions": [],
-            "decisions": [],
-            "open_questions": [],
-        }
-        (old.tree / "spec.json").write_text(json.dumps(plan))
-        self.assertEqual(old.load_contract()["purpose"], "Say hi.")
-        old._ensure()
-        old._git("add", "spec.json")
-        old._git("commit", "--quiet", "-m", "old plan")
-        from custom_nodes.agent_workflow_studio.native_layers import embed
-
-        from .test_native_layers import workflow
-        from .test_workflow_contract import CONTRACT
-
-        old.commit_contract(embed(CONTRACT, workflow()), "Contract approved")
-        self.assertFalse(
-            (old.tree / "spec.json").exists(), "the old plan is replaced, not kept beside it"
-        )
 
     def test_review_decisions_merge_clear_and_are_the_users(self) -> None:
         self.repo.save_labels({"p1": "same", "p2": "different"}, "match-1")

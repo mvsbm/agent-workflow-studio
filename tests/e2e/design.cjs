@@ -1,6 +1,7 @@
 // The design pipeline on the canvas: the approved HLD builds stages, the API's input node and its
 // signature (contract-first); top-level edits that contradict the design are refused; an amendment
 // marks changed stages stale; the workflow publishes without hand-made signature.
+// Verifies: R9, R30, R31
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

@@ -21,7 +21,6 @@ from pathlib import Path
 from .native_layers import layers
 from .pi_chat_workspace import workspace_id_for_graph
 from .workflow_contract import (
-    from_plan_v1,
     present,
     render,
     report,
@@ -163,10 +162,6 @@ class ProjectRepo:
             self._ensure()
             (self.tree / "workflow.json").write_text(_snapshot(workflow))
             self._git("add", "workflow.json")
-            if (
-                self.tree / "spec.json"
-            ).exists():  # a pre-contract plan is replaced by the contract
-                self._git("rm", "--quiet", "spec.json")
             message = " ".join(message.split())[:500]
             self._git("commit", "--quiet", "--allow-empty", "-m", message, author="user")
             return self._git("rev-parse", "HEAD").strip()
@@ -186,14 +181,9 @@ class ProjectRepo:
         return True
 
     def load_contract(self) -> dict | None:
-        """The contract the latest version holds natively, or a plan approved before contracts
-        existed (converted)."""
+        """The contract the latest version holds natively, if any."""
         if (self.tree / "workflow.json").is_file():
-            found = layers(json.loads((self.tree / "workflow.json").read_text()))
-            if found:
-                return found
-        if (self.tree / "spec.json").is_file():
-            return from_plan_v1(json.loads((self.tree / "spec.json").read_text()))
+            return layers(json.loads((self.tree / "workflow.json").read_text()))
         return None
 
     def save_tool(self, name: str, code: str, manifest: dict) -> str:
@@ -288,10 +278,7 @@ class ProjectRepo:
         )
 
     def contract_at(self, sha: str) -> dict | None:
-        """The contract a version introduced or changed (or a pre-contract plan), if any."""
-        found = self._file_at(sha, lambda name: name == "spec.json")
-        if found:
-            return from_plan_v1(json.loads(found[1]))
+        """The contract a version introduced or changed, if any."""
         entry = next((e for e in self.log() if e["sha"] == sha), None)
         now = layers(self.show(sha))
         before = layers(self.show(entry["parent"])) if entry and entry["parent"] else None

@@ -1,4 +1,5 @@
 // P5: the agent writes a tool, the user approves its code, an Agent Tool node runs it confined.
+// Verifies: R4, R23
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const path = require('node:path');

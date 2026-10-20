@@ -1,5 +1,6 @@
 """Profile data: patterns make mixed formats visible; columns report fill and distinct values."""
 
+# Verifies: R6
 import unittest
 
 from custom_nodes.agent_workflow_studio.eda_node import pattern, profile_rows

@@ -1,5 +1,7 @@
 """Offline RPC/broker checks: no provider, queue, credentials or main writes."""
 
+# Verifies: R2, R12, R27, R32
+
 import asyncio
 import base64
 import json

@@ -1,5 +1,6 @@
 """Check: each kind judges the data a stage gives, and says why."""
 
+# Verifies: R14, R16
 import unittest
 
 from custom_nodes.agent_workflow_studio.check_node import judge

@@ -318,56 +318,6 @@ def present(contract: dict | None) -> dict | None:
     return {**contract, "steps": [s for s in contract["steps"] if not s.get("missing")]}
 
 
-def from_plan_v1(plan: dict) -> dict:
-    """Convert a workflow plan approved before contracts existed (spec.json)."""
-    approach = {"deterministic": "fixed", "fuzzy": "ai_planned", "llm": "ai_judgment"}
-    steps = []
-    for step in plan["steps"]:
-        gate = {"says": step["success_gate"]["description"]}
-        if check := step["success_gate"].get("check"):
-            gate["check"] = {"node": check["node_title"], "kind": check["kind"]}
-            if "value" in check:
-                gate["check"]["value"] = check["value"]
-        converted = {
-            "id": step["id"],
-            "purpose": step["purpose"],
-            "approach": approach[step["approach"]],
-            "covers": ["R1"],
-            "gate": gate,
-        }
-        if step.get("nodes"):
-            converted["nodes"] = step["nodes"]
-        steps.append(converted)
-    decisions = [
-        {"id": f"D{n}", "decision": d["answer"], "why": d["question"], "by": "user"}
-        for n, d in enumerate(plan["decisions"], 1)
-    ] + [
-        {"id": f"D{n}", "decision": a, "why": "Assumption made while planning.", "by": "agent"}
-        for n, a in enumerate(plan["assumptions"], len(plan["decisions"]) + 1)
-    ]
-    ports = lambda items: [{"name": p["name"], "kind": p["type"]} for p in items]  # noqa: E731
-    return validate_contract(
-        {
-            "contract": 2,
-            "purpose": plan["goal"][:600],
-            "requests": [
-                {
-                    "id": "R1",
-                    "you_said": plan["goal"][:300],
-                    "we_understood": plan["goal"][:300],
-                    "priority": "must",
-                }
-            ],
-            "examples": [],
-            "promises": {"inputs": ports(plan["inputs"]), "outputs": ports(plan["outputs"])},
-            "steps": steps,
-            "decisions": decisions[:32],
-            "not_now": [],
-            "open_questions": plan["open_questions"],
-        }
-    )
-
-
 def derive_states(
     contract: dict, nodes: list[dict], gate_results: dict[str, str], open_: dict | None = None
 ) -> list[dict]:
@@ -841,7 +791,6 @@ __all__ = [
     "SCHEMA",
     "TRANSITIONS",
     "derive_states",
-    "from_plan_v1",
     "render",
     "alignment",
     "blocking",

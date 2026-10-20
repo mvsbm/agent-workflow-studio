@@ -1,5 +1,6 @@
 // Decision rules: pairs decided by visible rules and points; the flow shows counts per branch;
 // uncertain pairs reach the Review tab; the user's decision there overrides the rules next run.
+// Verifies: R7, R17
 const {chromium} = require('playwright-core');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

@@ -1,5 +1,7 @@
 """Table nodes: each operation does one visible thing, and says what it changed."""
 
+# Verifies: R6, R34
+
 import unittest
 
 from custom_nodes.agent_workflow_studio.table_nodes import (
