@@ -21,6 +21,7 @@ TESTS = os.environ.get("E2E_ONLY", "").split() or [
     "api.cjs",
     "design.cjs",
     "data_api.cjs",
+    "workflow_tabs.cjs",
 ]
 
 

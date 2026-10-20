@@ -4,7 +4,8 @@
 // inputs["review_labels"], so the next run can learn from and be measured against them.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {registerWorkflowTab} from './workflow_drawer.js';
+import {iconButton, registerWorkflowTab, searchBox, section} from './workflow_drawer.js';
+import {servesOf} from './stage_summary.js';
 
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const PAGE = 40;
@@ -30,7 +31,7 @@ const text = value => (value == null ? '' : typeof value === 'object' ? JSON.str
 // Records side by side: one column per record, one row per field; differing values are marked.
 function compareTable(records, headings) {
   const fields = [...new Set(records.flatMap(record => Object.keys(record)))];
-  const table = el('table', null, {className: 'aw-review-table'});
+  const table = el('table', null, {className: 'aw-table'});
   const head = table.createTHead().insertRow();
   head.append(el('th', ''), ...headings.map(h => el('th', h, {scope: 'col'})));
   const body = table.createTBody();
@@ -40,7 +41,7 @@ function compareTable(records, headings) {
     const differs = new Set(filled).size > 1;
     const row = body.insertRow();
     row.append(el('th', field, {scope: 'row'}));
-    for (const value of values) row.append(el('td', value, {className: differs && value ? 'aw-review-diff' : ''}));
+    for (const value of values) row.append(el('td', value, {className: differs && value ? 'aw-diff' : ''}));
   }
   return table;
 }
@@ -51,7 +52,7 @@ function recordTable(records, onOutlier, isOutlier) {
   const fields = [...new Set(records.flatMap(record => Object.keys(record)))].filter(f => f !== 'id');
   if (records.some(record => record.id != null)) fields.push('id');
   const wrap = el('div', null, {className: 'aw-review-scroll'});
-  const table = el('table', null, {className: 'aw-review-table'});
+  const table = el('table', null, {className: 'aw-table'});
   const head = table.createTHead().insertRow();
   head.append(el('th', 'Not this person', {scope: 'col'}), ...fields.map(f => el('th', f, {scope: 'col'})));
   const common = Object.fromEntries(fields.map(field => {
@@ -70,7 +71,7 @@ function recordTable(records, onOutlier, isOutlier) {
     row.append(cell);
     for (const field of fields) {
       const value = text(record[field]);
-      row.append(el('td', value, {className: field !== 'id' && value && value !== common[field] ? 'aw-review-diff' : ''}));
+      row.append(el('td', value, {className: field !== 'id' && value && value !== common[field] ? 'aw-diff' : ''}));
     }
   });
   wrap.append(table);
@@ -81,7 +82,7 @@ function choices(options, current, onPick, label) {
   const group = el('div', null, {className: 'aw-review-choices', role: 'group'});
   group.setAttribute('aria-label', label);
   for (const [value, name] of options) {
-    const button = el('button', name, {type: 'button', className: 'p-button p-component p-button-sm p-button-outlined'});
+    const button = el('button', name, {type: 'button', className: 'aw-button'});
     button.setAttribute('aria-pressed', String(current === value));
     button.addEventListener('click', () => onPick(current === value ? null : value));
     group.append(button);
@@ -90,22 +91,20 @@ function choices(options, current, onPick, label) {
 }
 
 function createPanel() {
-  const root = el('section', null, {className: 'aw-review'});
-  const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
-  const header = el('header');
-  header.append(el('h2', 'Review'), refresh);
-  const status = el('p', null, {className: 'aw-review-status', role: 'status'});
-  const tabs = el('div', null, {className: 'aw-review-tabs', role: 'group'});
-  const search = el('input', null, {type: 'search', placeholder: 'Search names, ids, addresses…', className: 'p-inputtext p-component'});
-  search.setAttribute('aria-label', 'Search review items');
+  const root = el('section', null, {className: 'aw-review aw-tab'});
+  const refresh = iconButton('pi pi-refresh', 'Refresh');
+  const {box, input: search} = searchBox('Search names, ids…', 'Search review items');
+  const bar = el('div', null, {className: 'aw-tab-bar'});
+  bar.append(box, refresh);
+  const tabs = el('div', null, {className: 'aw-tab-bar', role: 'group'});
+  tabs.setAttribute('aria-label', 'What to review');
   const open = el('label', null, {className: 'aw-review-open'});
   const openOnly = el('input', null, {type: 'checkbox', checked: true});
-  open.append(openOnly, ' Undecided only');
-  const tools = el('div', null, {className: 'aw-review-tools'});
-  tools.append(search, open);
+  open.append(openOnly, 'Undecided only');
+  const status = el('p', null, {className: 'aw-status aw-review-status', role: 'status'});
   const list = el('div', null, {className: 'aw-review-list'});
-  const more = el('button', 'Show more', {type: 'button', className: 'p-button p-component p-button-sm p-button-text'});
-  root.append(header, status, tabs, tools, list, more);
+  const more = el('button', 'Show more', {type: 'button', className: 'aw-button aw-review-more'});
+  root.append(bar, tabs, status, list, more);
 
   let review = null, labels = {}, run = '', mode = 'pairs', shown = PAGE, pending = {}, timer = null;
 
@@ -116,7 +115,9 @@ function createPanel() {
     const parts = [];
     if (review?.pairs?.length) parts.push(`Pairs: ${decided('pairs')} of ${review.pairs.length} decided`);
     if (review?.groups?.length) parts.push(`Customers: ${decided('groups')} of ${review.groups.length} checked`);
-    status.textContent = [review?.title, `run ${run}`, ...parts, note].filter(Boolean).join(' · ');
+    // A review merged from several decision stages is titled by its sections, shown as they are.
+    status.textContent = [review?.sections?.length ? '' : review?.title, ...parts, note].filter(Boolean).join(' · ');
+    status.title = `Latest run: ${run}`;
   }
 
   function decide(id, value) {
@@ -141,6 +142,7 @@ function createPanel() {
     const card = el('article', null, {className: 'aw-review-card'});
     const meta = [pair.id, pair.score != null && `score ${pair.score}`, pair.suggestion && `suggests ${pair.suggestion}`].filter(Boolean).join(' · ');
     card.append(el('div', meta, {className: 'aw-review-meta'}));
+    if (pair.branch && !String(pair.reason ?? '').startsWith('Spot check')) card.append(el('div', `Left to you by: ${pair.branch}`, {className: 'aw-review-why'}));
     if (pair.reason) card.append(el('div', pair.reason, {className: 'aw-review-reason'}));
     card.append(compareTable([pair.a ?? {}, pair.b ?? {}], ['A', 'B']));
     card.append(choices(PAIR_CHOICES, labels[pair.id], value => { decide(pair.id, value); render(); }, `Is pair ${pair.id} the same person?`));
@@ -165,15 +167,30 @@ function createPanel() {
 
   function render() {
     tabs.replaceChildren(...[['pairs', 'Candidate pairs'], ['groups', 'Matched customers']].filter(([kind]) => review?.[kind]?.length).map(([kind, name]) => {
-      const button = el('button', `${name} (${review[kind].length})`, {type: 'button', className: 'p-button p-component p-button-sm p-button-text'});
+      const button = el('button', `${name} · ${review[kind].length.toLocaleString()}`, {type: 'button', className: 'aw-pill'});
       button.setAttribute('aria-pressed', String(mode === kind));
       button.addEventListener('click', () => { mode = kind; shown = PAGE; render(); });
       return button;
-    }));
+    }), open);
     const query = search.value.trim().toLowerCase();
     const visible = items().filter(item => (!openOnly.checked || !labels[item.id]) && (!query || JSON.stringify(item).toLowerCase().includes(query)));
-    list.replaceChildren(...visible.slice(0, shown).map(item => (mode === 'pairs' ? pairCard(item) : groupCard(item))));
-    if (!visible.length) list.append(el('p', review ? 'Nothing left to review here.' : '', {className: 'aw-review-empty'}));
+    // One section per decision stage that sent them, titled as on the canvas, with the request it serves.
+    const key = stage => stage?.id || stage?.title || '';  // reviews from before stage ids carry only the title
+    const groups = new Map();
+    for (const item of visible) groups.set(key(item.stage), [...groups.get(key(item.stage)) ?? [], item]);
+    let left = shown;
+    list.replaceChildren(...[...groups.values()].flatMap(group => {
+      if (left <= 0) return [];
+      const cards = group.slice(0, left).map(item => (mode === 'pairs' ? pairCard(item) : groupCard(item)));
+      left -= cards.length;
+      const stage = group[0].stage;
+      if (!stage) return cards;
+      const {node, body} = section(stage.title || stage.id, {sub: servesOf(rootGraph(), stage), count: group.length});
+      node.classList.add('aw-review-stage');
+      body.append(...cards);
+      return [node];
+    }));
+    if (!visible.length) list.append(el('p', review ? 'Nothing left to review here.' : '', {className: 'aw-empty'}));
     more.hidden = visible.length <= shown;
     summary();
   }

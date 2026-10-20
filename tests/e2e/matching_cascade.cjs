@@ -103,7 +103,7 @@ decide: {match: 2, review: 1}
     await largest.locator('summary').click({timeout: 30000});
     await largest.locator('ol').waitFor({timeout: 10000});
     const why = (await largest.innerText()).replace(/\s+/g, ' ');
-    assert.match(why, /Joined by \(\d+\) .* ↔ .* — /, why);
+    assert.match(why, /JOINED BY \(\d+\) .* ↔ /, why);
     await page.screenshot({path: path.join(artifacts, 'customers-tab.png')});
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).closeWorkflowDrawer());
     // At a glance: every wire is labelled with what flows along it, and zoomed out each node shows its headline.
