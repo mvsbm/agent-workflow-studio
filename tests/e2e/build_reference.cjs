@@ -1,4 +1,4 @@
-// Builds workflows/Studio - Nayose reference (no code).json in an isolated ComfyUI: the nayose
+// Builds example_workflows/Studio - Nayose reference (no code).json in an isolated ComfyUI: the nayose
 // benchmark solved only with visible nodes (no agent code), one stage per standard step, run, scored
 // and packed into stage cards. Usage: scripts/build_templates.sh (after the benchmark template).
 const {chromium} = require('playwright-core');
@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const base = process.env.BASE;
-const root = path.join(__dirname, '..', '..', 'workflows');
+const root = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows');
 const template = JSON.parse(fs.readFileSync(path.join(root, 'Studio - Nayose benchmark.json'), 'utf8'));
 const target = path.join(root, 'Studio - Nayose reference (no code).json');
 // VARIANT=deterministic: only the certain rules decide; VARIANT=patterns: a classic match-pattern grid

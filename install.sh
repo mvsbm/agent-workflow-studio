@@ -73,7 +73,8 @@ elif [[ "$(cd "$NODE_DIR" && pwd -P)" != "$(cd "$NODE_SRC" && pwd -P)" ]]; then
 fi
 
 mkdir -p "$APP_HOME/state/comfy-user/default/workflows"
-cp -n "$PACKAGE_ROOT"/workflows/*.json "$APP_HOME/state/comfy-user/default/workflows/" || true
+# The studio's workflows ship in the pack's example_workflows/: ComfyUI's Templates browser serves
+# them from the package itself, so they are always the installed version (nothing copied).
 
 printf '\nInstalled Agent Workflow Studio at: %s\n' "$APP_HOME"
 # The agent runs on the Pi CLI. Without one on PATH, install the pinned version privately.

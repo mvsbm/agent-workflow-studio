@@ -48,6 +48,29 @@ def install_routes() -> None:
 
     routes = PromptServer.instance.routes
 
+    @routes.post("/agent-workflow-studio/outputs/cleanup")
+    async def cleanup_outputs(request: web.Request) -> web.Response:
+        """Remove run outputs older than `days` (a dry run by default: what it would free)."""
+        if not _is_local_request(request):
+            return web.json_response({"error": "local access only"}, status=403)
+        import time
+        from pathlib import Path
+
+        import folder_paths
+
+        from .outputs import cleanup
+
+        body = (await request.json()) if request.can_read_body else {}
+        try:
+            days = float(body.get("days", 30))
+        except (TypeError, ValueError):
+            return web.json_response({"error": "days must be a number"}, status=400)
+        root = Path(folder_paths.get_output_directory()).resolve()
+        done = await asyncio.to_thread(
+            cleanup, root, days, time.time(), body.get("dry_run", True) is not False
+        )
+        return web.json_response({**done, "removed": done["removed"][:200]})
+
     @routes.get(f"{PI_BASE}/catalog")
     async def pi_catalog(request: web.Request) -> web.Response:
         if not _is_local_request(request):
