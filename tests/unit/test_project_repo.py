@@ -139,6 +139,60 @@ class ProjectRepoTests(unittest.TestCase):
         self.assertFalse(self.repo.adopt_template(other))
         self.assertEqual(self.repo.load_contract(), CONTRACT)
 
+    def test_each_stage_that_asks_has_its_newest_review_shown(self) -> None:
+        import json
+        import os
+        import tempfile
+
+        from custom_nodes.agent_workflow_studio.project_repo import merged_review
+
+        with tempfile.TemporaryDirectory() as tmp:
+
+            def write(folder, stage, pair, age):
+                path = Path(tmp) / folder / "review.json"
+                path.parent.mkdir()
+                path.write_text(
+                    json.dumps({"stage": stage, "title": stage["title"], "pairs": [{"id": pair}]})
+                )
+                os.utime(path, (age, age))
+                return path
+
+            rules = {"id": "decide_rules", "title": "6 · Decide: certain rules"}
+            score = {"id": "decide_score", "title": "7 · Decide: learned score"}
+            found = [
+                write("decision_rules-1", score, "old", 100),
+                write("decision_rules-2", rules, "r1", 200),
+                write("decision_rules-3", score, "s1", 300),
+            ]
+            merged = merged_review(found)
+        self.assertEqual(
+            [p["id"] for p in merged["pairs"]], ["r1", "s1"]
+        )  # the old run is replaced
+        self.assertEqual(merged["pairs"][1]["stage"], score)
+        self.assertEqual([s["pairs"] for s in merged["sections"]], [1, 1])
+
+    def test_a_version_says_its_layer_and_the_requests_it_touched(self) -> None:
+        from custom_nodes.agent_workflow_studio.native_layers import embed
+        from custom_nodes.agent_workflow_studio.project_repo import layer_of, touched
+
+        from .test_native_layers import workflow
+        from .test_workflow_contract import CONTRACT
+
+        self.assertEqual(layer_of("Design approved: 2 steps", "user")["layer"], "design")
+        self.assertEqual(layer_of("Build classify from its LLD", "agent")["layer"], "lld")
+        self.assertEqual(layer_of("Checks · ✓ design", "agent")["layer_label"], "Checks")
+        stored = embed(CONTRACT, workflow())
+        diff = {"added": [{"id": "sg-a:1", "stage": "1 · Classify"}], "removed": [], "changed": []}
+        self.assertEqual(
+            touched(diff, stored),
+            [{"stage": "1 · Classify", "step": "classify", "serves": ["R1 · Label each review"]}],
+        )
+        diff["changed"] = [{"stage": "10 · Publish"}, {"stage": "2 · Report"}]
+        self.assertEqual(
+            [t["stage"] for t in touched(diff, stored)],
+            ["1 · Classify", "2 · Report", "10 · Publish"],
+        )
+
     def test_review_decisions_merge_clear_and_are_the_users(self) -> None:
         self.repo.save_labels({"p1": "same", "p2": "different"}, "match-1")
         self.repo.save_labels({"p1": None, "C7": "wrong"}, "match-2")

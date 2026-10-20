@@ -16,3 +16,42 @@
 .aw-overview-content { flex: 1; min-height: 0; overflow: auto; }
 /* While one of ours is shown, the native tab row shows no tab as current. */
 .aw-overview-on > section nav [data-state="active"] { background: transparent !important; box-shadow: none !important; opacity: 0.7; }
+/* Our tabs in the look of ComfyUI's own right-side panel (Parameters, Global Settings): flat
+   collapsible sections divided by the panel stroke, 14px semibold titles with a chevron, muted labels,
+   8px-rounded gray controls, and its colour tokens. */
+.aw-tab [hidden] { display: none !important; }
+.aw-tab { display: flex; flex-direction: column; font-size: 14px; color: var(--base-foreground, #fff); }
+.aw-tab-bar { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px 16px; }
+.aw-tab-bar > .aw-status { flex: 1; padding: 0; }
+.aw-search { flex: 1; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; background: var(--secondary-background, #313235); color: var(--muted-foreground, #8a8a8a); }
+.aw-search input { all: unset; flex: 1; min-width: 0; font-size: 14px; color: var(--base-foreground, #fff); }
+.aw-search input::placeholder { color: var(--muted-foreground, #8a8a8a); }
+.aw-icon-button, .aw-pill { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--muted-foreground, #8a8a8a); white-space: nowrap; }
+.aw-icon-button { width: 32px; flex-shrink: 0; }
+.aw-pill { padding: 0 10px; }
+.aw-icon-button:hover, .aw-pill:hover { background: var(--secondary-background-hover, #3c3d42); color: var(--base-foreground, #fff); }
+.aw-pill[aria-pressed="true"] { background: var(--secondary-background, #313235); color: var(--base-foreground, #fff); }
+.aw-icon-button:focus-visible, .aw-pill:focus-visible, .aw-button:focus-visible, .aw-section-head:focus-visible { outline: 1px solid var(--primary-background, #0b8ce9); outline-offset: -1px; }
+.aw-button { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 14px; background: var(--secondary-background, #313235); color: var(--base-foreground, #fff); }
+.aw-button:hover { background: var(--secondary-background-hover, #3c3d42); }
+.aw-button[aria-pressed="true"] { background: var(--primary-background, #0b8ce9); color: #fff; }
+.aw-button:disabled { opacity: 0.5; cursor: default; }
+.aw-status { margin: 0; padding: 0 16px 8px; font-size: 12px; color: var(--muted-foreground, #8a8a8a); }
+.aw-section { border-top: 1px solid var(--interface-stroke, #505053); }
+.aw-section-head { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 8px 12px 8px 16px; cursor: pointer; list-style: none; }
+.aw-section-head::-webkit-details-marker { display: none; }
+.aw-section-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aw-section-title > strong { font-size: 14px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.aw-section-sub { font-size: 12px; color: var(--muted-foreground, #8a8a8a); overflow-wrap: anywhere; }
+.aw-section-head > .pi { font-size: 12px; color: var(--muted-foreground, #8a8a8a); }
+details[open] > .aw-section-head > .pi, .aw-section-head[aria-expanded="true"] > .pi { transform: rotate(180deg); }
+.aw-section-body { display: flex; flex-direction: column; gap: 8px; padding: 0 16px 16px; }
+.aw-section-body[hidden] { display: none; }
+.aw-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted-foreground, #8a8a8a); margin-top: 4px; }
+.aw-count { font-size: 12px; min-width: 20px; padding: 0 6px; line-height: 20px; text-align: center; border-radius: 10px; background: var(--secondary-background, #313235); color: var(--muted-foreground, #8a8a8a); }
+.aw-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.aw-table th, .aw-table td { padding: 4px 6px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--interface-stroke, #505053); overflow-wrap: anywhere; }
+.aw-table th { font-weight: 400; color: var(--muted-foreground, #8a8a8a); }
+.aw-diff { background: color-mix(in srgb, var(--warning-background, #d9a441) 22%, transparent); }
+.aw-empty { padding: 16px; font-size: 14px; color: var(--muted-foreground, #8a8a8a); text-align: center; }
+.aw-table th[scope="row"] { white-space: nowrap; width: 1%; overflow-wrap: normal; }

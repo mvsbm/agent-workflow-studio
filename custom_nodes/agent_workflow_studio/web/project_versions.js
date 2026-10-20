@@ -3,7 +3,7 @@
 // version as a new commit (history is never rewritten).
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {registerWorkflowTab} from './workflow_drawer.js';
+import {iconButton, registerWorkflowTab} from './workflow_drawer.js';
 
 const rootGraph = () => app.rootGraph ?? app.graph;
 const workflowId = () => rootGraph()?.id;
@@ -53,9 +53,10 @@ function describe(diff) {
 function nodeList(title, nodes) {
   if (!nodes.length) return null;
   const list = el('ul', null, {className: 'aw-versions-nodes'});
-  for (const node of nodes) list.append(el('li', `${node.title || node.type} (#${node.id})`));
+  // A node inside a stage is named by its stage; its id there is the subgraph's, unreadable.
+  for (const node of nodes) list.append(el('li', node.stage ? `${node.title || node.type} in ${node.stage}` : `${node.title || node.type} (#${node.id})`));
   const section = el('div');
-  section.append(el('strong', title), list);
+  section.append(el('div', title, {className: 'aw-label'}), list);
   return section;
 }
 
@@ -63,7 +64,7 @@ function recordSection(record) {
   const section = el('div', null, {className: 'aw-versions-record'});
   const model = [record.model?.provider, record.model?.model].filter(Boolean).join(' · ') || 'Pi defaults';
   section.append(
-    el('strong', `Run record · ${record.status}`),
+    el('div', `Run record · ${record.status}`, {className: 'aw-label'}),
     el('p', `${model} · ${record.duration_seconds}s${record.error ? ` · ${record.error}` : ''}`),
   );
   if (record.output) section.append(el('pre', JSON.stringify(record.output, null, 2).slice(0, 2000)));
@@ -89,13 +90,13 @@ async function restore(sha) {
 }
 
 function createPanel() {
-  const root = el('section', null, {className: 'aw-versions'});
-  const status = el('p', null, {className: 'aw-versions-status', role: 'status'});
+  const root = el('section', null, {className: 'aw-versions aw-tab'});
+  const status = el('p', null, {className: 'aw-status aw-versions-status', role: 'status'});
   const list = el('ol', null, {className: 'aw-versions-list'});
-  const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
-  const header = el('header');
-  header.append(el('h2', 'Versions'), refresh);
-  root.append(header, status, list);
+  const refresh = iconButton('pi pi-refresh', 'Refresh');
+  const bar = el('div', null, {className: 'aw-tab-bar'});
+  bar.append(status, refresh);
+  root.append(bar, list);
 
   async function load() {
     if (typeof workflowId() !== 'string') {
@@ -115,15 +116,22 @@ function createPanel() {
   }
 
   function item(commit, latest) {
-    const row = el('li', null, {className: `aw-versions-item aw-versions-${commit.author}`});
-    const toggle = el('button', null, {type: 'button', className: 'aw-versions-toggle'});
+    const row = el('li', null, {className: `aw-section aw-versions-item aw-versions-${commit.author}`});
+    // A section head like a node's in the Parameters tab: who and which layer, then what it did.
+    const toggle = el('button', null, {type: 'button', className: 'aw-section-head aw-versions-toggle'});
     toggle.setAttribute('aria-expanded', 'false');
-    toggle.append(
+    const meta = el('span', null, {className: 'aw-versions-meta'});
+    const when = new Date(commit.time * 1000);
+    meta.append(
       el('span', commit.author === 'agent' ? 'Agent' : 'You', {className: 'aw-versions-author'}),
-      el('span', commit.message, {className: 'aw-versions-message'}),
-      el('time', new Date(commit.time * 1000).toLocaleString(), {dateTime: new Date(commit.time * 1000).toISOString()}),
+      // Which layer of the workflow it changed: contract, design, a stage's LLD, checks, a run, a release.
+      el('span', commit.layer_label ?? '', {className: `aw-versions-layer aw-layer-${commit.layer ?? 'edit'}`}),
+      el('time', when.toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}), {dateTime: when.toISOString(), title: when.toLocaleString()}),
     );
-    const details = el('div', null, {className: 'aw-versions-details', hidden: true});
+    const titles = el('span', null, {className: 'aw-section-title'});
+    titles.append(meta, el('strong', commit.message, {className: 'aw-versions-message', title: commit.message}));
+    toggle.append(titles, el('i', null, {className: 'pi pi-chevron-down'}));
+    const details = el('div', null, {className: 'aw-section-body aw-versions-details', hidden: true});
     row.append(toggle, details);
     toggle.addEventListener('click', async () => {
       const open = details.hidden;
@@ -131,10 +139,22 @@ function createPanel() {
       toggle.setAttribute('aria-expanded', String(open));
       if (!open || details.childElementCount) return;
       try {
-        const {diff, record, plan_text: planText, workflow} = await request(`/commits/${commit.sha}`);
+        const {diff, record, plan_text: planText, workflow, touched = []} = await request(`/commits/${commit.sha}`);
+        if (touched.length) {
+          const stages = el('div', null, {className: 'aw-versions-record'});
+          stages.append(el('div', 'Stages it changed', {className: 'aw-label'}));
+          const list = el('ul', null, {className: 'aw-versions-nodes'});
+          for (const t of touched) {
+            const line = el('li', t.stage);
+            if (t.serves.length) line.append(el('div', `serves ${t.serves.join(' + ')}`, {className: 'aw-section-sub'}));
+            list.append(line);
+          }
+          stages.append(list);
+          details.append(stages);
+        }
         if (planText) {
           const plan = el('div', null, {className: 'aw-versions-record'});
-          plan.append(el('strong', 'Approved plan'), el('pre', planText));
+          plan.append(el('div', 'Approved plan', {className: 'aw-label'}), el('pre', planText));
           details.append(plan);
         }
         if (record) details.append(recordSection(record));
@@ -144,11 +164,13 @@ function createPanel() {
         }
         const button = el('button', !workflow ? 'No canvas snapshot' : latest ? 'Current version' : 'Restore this version', {
           type: 'button',
-          className: 'p-button p-component p-button-sm',
+          className: 'aw-button',
           disabled: latest || !workflow,
         });
         button.addEventListener('click', () => restore(commit.sha).catch(error => { status.textContent = error.message; }));
-        details.append(el('small', commit.sha.slice(0, 12)), button);
+        const foot = el('div', null, {className: 'aw-versions-foot'});
+        foot.append(el('span', `version ${commit.sha.slice(0, 12)}`), button);
+        details.append(foot);
       } catch (error) {
         details.append(el('p', error.message));
       }

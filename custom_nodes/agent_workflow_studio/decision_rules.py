@@ -164,6 +164,26 @@ def pair_id(row: dict, index: int) -> str:
     )
 
 
+def stage_card(pnginfo: Any, uid: str) -> dict | None:
+    """The stage card a node runs inside: its step id and title, from the workflow the run carries
+    (the node's id is "<stage>:<node>"); None for a node at the top level."""
+    workflow = (pnginfo or {}).get("workflow") if isinstance(pnginfo, dict) else None
+    top = uid.split(":")[0] if ":" in uid else None
+    for node in (workflow or {}).get("nodes") or [] if top else []:
+        if str(node.get("id")) == top and (node.get("properties") or {}).get("aws_stage"):
+            # A stage card's title is its subgraph's name unless renamed (then it is saved on the node).
+            name = next(
+                (
+                    d.get("name")
+                    for d in (workflow.get("definitions") or {}).get("subgraphs", [])
+                    if d.get("id") == node.get("type")
+                ),
+                "",
+            )
+            return {"id": node["properties"]["aws_stage"], "title": node.get("title") or name}
+    return None
+
+
 def run_rules(
     rows: list[dict], spec: dict, labels: dict, earlier: dict | None = None
 ) -> tuple[list[dict], dict]:
@@ -383,9 +403,12 @@ class DecisionRules(io.ComfyNode):
 
         hidden = getattr(cls, "hidden", None)
         uid = str(getattr(hidden, "unique_id", ""))
-        stage = ((getattr(hidden, "prompt", None) or {}).get(uid) or {}).get("_meta", {}).get(
+        title = ((getattr(hidden, "prompt", None) or {}).get(uid) or {}).get("_meta", {}).get(
             "title"
         ) or "Decision rules"
+        card = stage_card(getattr(hidden, "extra_pnginfo", None), uid)
+        # Decisions are named by the stage card they come from (what the user sees on the canvas).
+        stage = card["title"] if card else title
         runs = Path(folder_paths.get_output_directory()) / "agent_tools" / repo.id
         # The node id keeps two stages finishing in the same second apart.
         stamp = f"{time.strftime('%Y%m%d-%H%M%S')}{int(time.time() * 1000) % 1000:03d}"
@@ -459,6 +482,7 @@ class DecisionRules(io.ComfyNode):
         # Only this stage's own decisions: an earlier stage spot-checks its own.
         sample = spot_check_sample([d for d in decided if d["id"] not in earlier])
         review = {
+            "stage": {**(card or {"title": stage}), "node": title},
             "title": f"Decision rules · {len(uncertain):,} pairs to review"
             + f" · {len(sample)} automatic decisions to spot-check",
             "pairs": [
@@ -467,6 +491,7 @@ class DecisionRules(io.ComfyNode):
                     "a": by_id[d["id"]].get("a") or {"mention": d["left"]},
                     "b": by_id[d["id"]].get("b") or {"mention": d["right"]},
                     "score": round(float(d["score"]), 2) if d["score"] not in (None, "") else None,
+                    "branch": d["branch"],  # the rule (or score band) that left it to you
                     "reason": d["why"]
                     + (
                         f" · reranker {by_id[d['id']]['rerank_score']:.2f}"

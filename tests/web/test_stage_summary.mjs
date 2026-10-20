@@ -1,7 +1,7 @@
 // Verifies: R6, R27, R28
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {designLabels, nodePath, partsText, requestLabel, stageSummary, stageView} from '../../custom_nodes/agent_workflow_studio/web/stage_summary.js';
+import {designLabels, nodePath, partsText, requestLabel, servesOf, stageSummary, stageView} from '../../custom_nodes/agent_workflow_studio/web/stage_summary.js';
 
 test('a stage card tells what each inner node did', () => {
   const tool = {type: 'AgentWorkflowAgentTool', properties: {aws_tables: [{title: 'Operation', rows: []}, {title: 'Data in → out', rows: [['in', 'mentions.csv', '13,575', ''], ['out', 'pairs.jsonl', '94,254', '']]}]}};
@@ -60,4 +60,13 @@ test('a stage shows each part of its step with the nodes realizing it, and why e
   assert.deepEqual([view.checks, view.extra, view.serves.map(r => r.id)], [['Check · table'], ['2.3 Peek'], ['R3']]);
   assert.deepEqual(nodePath(roles, stage, requests), ['R3 · Own cleaning lane per system', '2 · Clean policies', '2.2 Stack roles · does · gives table']);
   assert.equal(nodePath(loose, stage, requests)[2], '2.3 Peek · not in the design');
+});
+
+test('a stage is named with the request it serves, found by its step or its card title', () => {
+  const graph = {extra: {aws_contract: {requests: [{id: 'R2', title: 'You check uncertain pairs'}]}},
+    nodes: [{title: '7 · Decide: learned score', properties: {aws_stage: 'decide_score', aws_step: {covers: ['R2']}}}]};
+  assert.equal(servesOf(graph, 'decide_score'), 'serves R2 · You check uncertain pairs');
+  assert.equal(servesOf(graph, '7 · Decide: learned score'), 'serves R2 · You check uncertain pairs');
+  assert.equal(servesOf(graph, {id: 'decide_score', title: '7 · Decide: learned score'}), 'serves R2 · You check uncertain pairs');
+  assert.equal(servesOf(graph, 'matched_1'), '');
 });

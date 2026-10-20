@@ -110,3 +110,12 @@ export function nodePath(node, stage, requests = []) {
   const tags = [].concat(node.properties?.aws_realizes ?? []);
   return [served.join(' + ') || 'no request', stage.title, `${numberOf(node, stage)} ${node.title ?? node.type} · ${tags.length ? partsText(tags) : 'not in the design'}`];
 }
+
+/** "serves R3 · Own cleaning lane" for a stage of the workflow, found by its step id or its card title
+ *  (how decisions, reviews and versions name it); '' when it is not a contract stage. */
+export function servesOf(graph, stage, requests = graph?.extra?.aws_contract?.requests ?? []) {
+  const key = typeof stage === 'string' ? stage : stage?.id ?? stage?.title;
+  const node = (graph?.nodes ?? []).find(n => n.properties?.aws_stage && (n.properties.aws_stage === key || n.title === key || n.title === stage?.title));
+  const served = (node?.properties?.aws_step?.covers ?? []).map(id => requests.find(r => r.id === id)).filter(Boolean);
+  return served.length ? `serves ${served.map(requestLabel).join(' + ')}` : '';
+}

@@ -17,6 +17,39 @@ const workflowId = () => (app.rootGraph ?? app.graph)?.id;
 
 export const workflowTabs = () => tabs;
 
+// The pieces of ComfyUI's own right panel the tabs are built from (styles in workflow_drawer.css).
+/** An icon-only button, named for screen readers and on hover. */
+export function iconButton(icon, label) {
+  const button = el('button', {type: 'button', className: 'aw-icon-button', title: label});
+  button.setAttribute('aria-label', label);
+  button.append(el('i', {className: icon}));
+  return button;
+}
+
+/** A search box like the Parameters tab's; returns the box and its input. */
+export function searchBox(placeholder, label) {
+  const box = el('label', {className: 'aw-search'});
+  const input = el('input', {type: 'search', placeholder});
+  input.setAttribute('aria-label', label);
+  box.append(el('i', {className: 'pi pi-search'}), input);
+  return {box, input};
+}
+
+/** A collapsible section like a node's in the Parameters tab: a title, a muted line under it, a count. */
+export function section(title, {sub, count, open = true} = {}) {
+  const node = el('details', {className: 'aw-section', open});
+  const head = el('summary', {className: 'aw-section-head'});
+  const titles = el('span', {className: 'aw-section-title'});
+  titles.append(el('strong', {}, title));
+  if (sub) titles.append(el('span', {className: 'aw-section-sub'}, sub));
+  head.append(titles);
+  if (count != null) head.append(el('span', {className: 'aw-count'}, String(count)));
+  head.append(el('i', {className: 'pi pi-chevron-down'}));
+  const body = el('div', {className: 'aw-section-body'});
+  node.append(head, body);
+  return {node, head, body};
+}
+
 /** A panel of the open workflow: {id, order, title, icon, tooltip, render(container)}. */
 export function registerWorkflowTab(tab) {
   tabs.push(tab);

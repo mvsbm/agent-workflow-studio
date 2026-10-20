@@ -138,5 +138,22 @@ class DecisionRulesTests(unittest.TestCase):
                 load_spec(bad)
 
 
+class StageCardTests(unittest.TestCase):
+    def test_decisions_are_named_by_the_stage_card_they_come_from(self) -> None:
+        from custom_nodes.agent_workflow_studio.decision_rules import stage_card
+
+        workflow = {
+            "nodes": [{"id": 61, "type": "sg-7", "properties": {"aws_stage": "decide_score"}}],
+            "definitions": {"subgraphs": [{"id": "sg-7", "name": "7 · Decide: learned score"}]},
+        }
+        self.assertEqual(
+            stage_card({"workflow": workflow}, "61:5"),
+            {"id": "decide_score", "title": "7 · Decide: learned score"},
+        )
+        workflow["nodes"][0]["title"] = "7 · Score"  # renamed on the canvas
+        self.assertEqual(stage_card({"workflow": workflow}, "61:5")["title"], "7 · Score")
+        self.assertIsNone(stage_card({"workflow": workflow}, "5"))  # a node at the top level
+
+
 if __name__ == "__main__":
     unittest.main()

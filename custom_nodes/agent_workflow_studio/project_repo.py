@@ -24,6 +24,7 @@ from .workflow_contract import (
     present,
     render,
     report,
+    title_of,
     validate_contract,
 )
 
@@ -107,6 +108,7 @@ class ProjectRepo:
                     "author": author,
                     "time": int(timestamp),
                     "message": subject,
+                    **layer_of(subject, author),
                 }
             )
         return entries
@@ -357,14 +359,112 @@ def node_diff(before: dict, after: dict) -> dict:
     }
 
 
+# What a version changed, by its message: the layer of the workflow it belongs to.
+LAYERS = (
+    ("Contract approved", "contract", "Contract"),
+    ("Template:", "contract", "Contract"),
+    ("Design approved", "design", "Design (HLD)"),
+    ("Checks ·", "checks", "Checks"),
+    ("Acceptance ·", "checks", "Examples"),
+    ("Publish API", "release", "Release"),
+    ("Roll back API", "release", "Release"),
+    ("Run ·", "run", "Run"),
+    ("Watch ", "run", "Watch"),
+    ("Loop ", "loop", "Improve loop"),
+    ("Tool approved", "tool", "Agent tool"),
+    ("Review", "review", "Your review"),
+    ("Restore", "restore", "Restore"),
+    ("Save ", "save", "Saved"),
+)
+
+
+def layer_of(message: str, author: str) -> dict:
+    """The layer a version belongs to: contract, design, a stage's LLD, checks, run, release, …"""
+    for prefix, key, label in LAYERS:
+        if message.startswith(prefix):
+            return {"layer": key, "layer_label": label}
+    return (
+        {"layer": "lld", "layer_label": "Stage build (LLD)"}
+        if author == "agent"
+        else {"layer": "edit", "layer_label": "Your change"}
+    )
+
+
+def canvas_order(title: object) -> tuple:
+    """Stage titles in canvas order: "2 · Clean" before "10 · Publish"."""
+    m = re.match(r"\d+", str(title))
+    return (int(m[0]) if m else float("inf"), str(title))
+
+
+def touched(diff: dict, workflow: dict | None) -> list[dict]:
+    """The stages a version changed inside, and the requests each serves (from that version)."""
+    names = {
+        n.get("stage") for k in ("added", "removed", "changed") for n in diff[k] if n.get("stage")
+    }
+    contract = layers(workflow) if workflow else None
+    requests = {r["id"]: r for r in (contract or {}).get("requests", [])}
+    steps = {s["id"]: s for s in (contract or {}).get("steps", [])}
+    titles = {}
+    for node in (workflow or {}).get("nodes") or []:
+        step = (node.get("properties") or {}).get("aws_stage")
+        definition = next(
+            (
+                d
+                for d in (workflow.get("definitions") or {}).get("subgraphs", [])
+                if d.get("id") == node.get("type")
+            ),
+            {},
+        )
+        if step:
+            titles[definition.get("name") or node.get("title")] = step
+    out = []
+    for name in sorted(names, key=canvas_order):
+        step = steps.get(titles.get(name), {})
+        serves = [
+            f"{rid} · {title_of(requests[rid])}"
+            for rid in step.get("covers", [])
+            if rid in requests
+        ]
+        out.append({"stage": name, "step": titles.get(name), "serves": serves})
+    return out
+
+
 def _detail(repo: ProjectRepo, sha: str) -> dict:
     contract = repo.contract_at(sha)
+    workflow, diff = repo.show(sha), repo.diff(sha)
     return {
-        "workflow": repo.show(sha),
-        "diff": repo.diff(sha),
+        "workflow": workflow,
+        "diff": diff,
+        "touched": touched(diff, workflow),
         "record": repo.record(sha),
         "plan_text": render(contract) if contract else None,
     }
+
+
+def merged_review(found: list[Path]) -> dict:
+    """What to review across the workflow: the newest review of each stage that asks (each Decision
+    rules stage writes its own), every item tagged with the stage that sent it."""
+    newest: dict[str, tuple[Path, dict]] = {}
+    for path in found:  # oldest first: a later run of the same stage replaces an earlier one
+        review = json.loads(path.read_text(encoding="utf-8"))
+        stage = review.get("stage") or {"title": path.parent.name.rsplit("-", 2)[0]}
+        newest[stage.get("id") or stage["title"]] = (path, {**review, "stage": stage})
+    sections, pairs, groups = [], [], []
+    for _, review in sorted(
+        newest.values(), key=lambda item: canvas_order(item[1]["stage"]["title"])
+    ):
+        stage = review["stage"]
+        pairs += [{**p, "stage": stage} for p in review.get("pairs") or []]
+        groups += [{**g, "stage": stage} for g in review.get("groups") or []]
+        sections.append(
+            {
+                "stage": stage,
+                "title": review.get("title", ""),
+                "pairs": len(review.get("pairs") or []),
+            }
+        )
+    title = " · ".join(s["title"] for s in sections if s["title"]) or "Review"
+    return {"title": title, "sections": sections, "pairs": pairs, "groups": groups}
 
 
 def projects_root() -> Path:
@@ -479,11 +579,11 @@ def install_project_routes() -> None:
             found = sorted(runs.glob("*/review.json"), key=lambda p: p.stat().st_mtime)
             if not found:
                 return {"review": None, "labels": repo.load_labels()}
-            if found[-1].stat().st_size > REVIEW_FILE_LIMIT:
+            if any(p.stat().st_size > REVIEW_FILE_LIMIT for p in found[-12:]):
                 raise ValueError("review.json is over 20 MB; ask the agent to write fewer items.")
             return {
                 "run": found[-1].parent.name,
-                "review": json.loads(found[-1].read_text(encoding="utf-8")),
+                "review": merged_review(found),
                 "labels": repo.load_labels(),
             }
 
