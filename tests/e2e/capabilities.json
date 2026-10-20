@@ -126,6 +126,23 @@
    "fallback": "n/a: these describe the platform; update the code that relies on them"
   },
   {
+   "id": "promoted_widget",
+   "mode": "classic",
+   "ok": true,
+   "evidence": {
+    "label": "string_b",
+    "cardWidgets": [
+     "string_b",
+     "stage_card"
+    ],
+    "shown": "inner",
+    "sent": "from the card",
+    "reloaded": "from the card"
+   },
+   "assumes": "a stage input wired to an inner widget shows that widget on the stage card; its value flows into the inner node in the prompt and survives save/reload",
+   "fallback": "settings stay inside the stages (open a stage to change them)"
+  },
+  {
    "id": "stage_skeleton",
    "mode": "vue",
    "ok": true,
@@ -244,6 +261,23 @@
    },
    "assumes": "ui values are lists (a bare string arrives as characters); Vue nodes mode renders nodes as DOM above the canvas, classic does not",
    "fallback": "n/a: these describe the platform; update the code that relies on them"
+  },
+  {
+   "id": "promoted_widget",
+   "mode": "vue",
+   "ok": true,
+   "evidence": {
+    "label": "string_b",
+    "cardWidgets": [
+     "string_b",
+     "stage_card"
+    ],
+    "shown": "inner",
+    "sent": "from the card",
+    "reloaded": "from the card"
+   },
+   "assumes": "a stage input wired to an inner widget shows that widget on the stage card; its value flows into the inner node in the prompt and survives save/reload",
+   "fallback": "settings stay inside the stages (open a stage to change them)"
   }
  ]
 }

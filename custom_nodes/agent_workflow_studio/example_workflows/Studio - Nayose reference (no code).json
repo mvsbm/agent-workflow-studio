@@ -1,8 +1,8 @@
 {
- "id": "c9b507d4-aec1-48a8-a375-f4d2a3bc5bb1",
+ "id": "bfbaa8e5-ad67-44ec-b343-af649da13ffd",
  "revision": 0,
  "last_node_id": 68,
- "last_link_id": 119,
+ "last_link_id": 125,
  "nodes": [
   {
    "id": 8,
@@ -35,7 +35,7 @@
   },
   {
    "id": 44,
-   "type": "40224230-85fd-411f-afaf-17d41068827a",
+   "type": "9373f320-9764-43f0-8c01-72a965027b11",
    "pos": [
     480,
     10
@@ -55,7 +55,7 @@
      "widget": {
       "name": "folder"
      },
-     "link": 118
+     "link": 124
     }
    ],
    "outputs": [
@@ -120,7 +120,7 @@
   },
   {
    "id": 46,
-   "type": "00f6a3c1-2837-466c-a318-2dfd27f45eeb",
+   "type": "133dd207-b8ea-4e12-b401-02517f0f4521",
    "pos": [
     1000,
     10
@@ -203,7 +203,7 @@
   },
   {
    "id": 48,
-   "type": "f3e2cf96-92bc-4b1f-a42a-730a316a6cee",
+   "type": "4f99c922-31ae-4648-80ad-1656dd8cc056",
    "pos": [
     1000,
     360
@@ -286,7 +286,7 @@
   },
   {
    "id": 50,
-   "type": "fd080dde-89d6-4448-8464-61331a7090b1",
+   "type": "a884c4ae-4359-45b5-a2ca-e1c1ba65c406",
    "pos": [
     1000,
     710
@@ -369,7 +369,7 @@
   },
   {
    "id": 52,
-   "type": "ba47687f-a86d-436e-994e-f88443dbc059",
+   "type": "ed16acff-4b2f-4817-a88d-c0609f4ccc7e",
    "pos": [
     1520,
     10
@@ -463,14 +463,14 @@
   },
   {
    "id": 54,
-   "type": "57db52de-0e91-4978-8971-21a352260d6c",
+   "type": "54321fe5-27e8-4bf9-9480-979f1439a8ed",
    "pos": [
     2040,
     10
    ],
    "size": [
     320,
-    240
+    256
    ],
    "flags": {},
    "order": 7,
@@ -481,6 +481,22 @@
      "name": "table",
      "type": "TABLE",
      "link": 86
+    },
+    {
+     "name": "keys",
+     "type": "STRING",
+     "widget": {
+      "name": "keys"
+     },
+     "link": null
+    },
+    {
+     "name": "max_group",
+     "type": "INT",
+     "widget": {
+      "name": "max_group"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -529,7 +545,13 @@
      }
     }
    },
+   "widgets_values": [
+    "kana\npolicy_ref\nphone\nname\naccount\nkana_given+birth",
+    40
+   ],
    "widgets_values_named": {
+    "keys": "kana\npolicy_ref\nphone\nname\naccount\nkana_given+birth",
+    "max_group": 40,
     "stage_card": ""
    },
    "color": "#3d4a5c",
@@ -537,7 +559,7 @@
   },
   {
    "id": 56,
-   "type": "5418fc05-c32c-4332-a01d-5d493d3471b7",
+   "type": "16f2833a-110f-48ff-a094-6b513673acb5",
    "pos": [
     2560,
     10
@@ -618,7 +640,7 @@
   },
   {
    "id": 58,
-   "type": "0ce689ca-63ef-498b-943c-e1431cd9b4b9",
+   "type": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
    "pos": [
     3080,
     10
@@ -713,14 +735,14 @@
   },
   {
    "id": 60,
-   "type": "772bb988-4242-4bc6-8c2a-2691e2e185b9",
+   "type": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
    "pos": [
     3600,
     10
    ],
    "size": [
     320,
-    240
+    290
    ],
    "flags": {},
    "order": 10,
@@ -732,6 +754,30 @@
      "shape": 7,
      "type": "PAIRS,DICT",
      "link": 98
+    },
+    {
+     "name": "match_probability",
+     "type": "FLOAT",
+     "widget": {
+      "name": "match_probability"
+     },
+     "link": null
+    },
+    {
+     "name": "review_probability",
+     "type": "FLOAT",
+     "widget": {
+      "name": "review_probability"
+     },
+     "link": null
+    },
+    {
+     "name": "review_limit",
+     "type": "INT",
+     "widget": {
+      "name": "review_limit"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -801,7 +847,15 @@
      }
     }
    },
+   "widgets_values": [
+    0.95,
+    0.3,
+    2000
+   ],
    "widgets_values_named": {
+    "match_probability": 0.95,
+    "review_probability": 0.3,
+    "review_limit": 2000,
     "stage_card": ""
    },
    "color": "#5b3d7a",
@@ -809,7 +863,7 @@
   },
   {
    "id": 62,
-   "type": "368cfe83-e918-4183-b288-aea230fe9f82",
+   "type": "8451745d-4989-422a-a9ae-ee864a7b486b",
    "pos": [
     4120,
     10
@@ -890,14 +944,14 @@
   },
   {
    "id": 63,
-   "type": "576d46e4-9d08-4032-8990-9daf8dbe6dc9",
+   "type": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
    "pos": [
     4640,
     10
    ],
    "size": [
     320,
-    278
+    302
    ],
    "flags": {},
    "order": 12,
@@ -944,6 +998,14 @@
      "shape": 7,
      "type": "DECISIONS,DICT",
      "link": 111
+    },
+    {
+     "name": "max_size",
+     "type": "INT",
+     "widget": {
+      "name": "max_size"
+     },
+     "link": null
     }
    ],
    "outputs": [
@@ -1000,7 +1062,11 @@
      }
     }
    },
+   "widgets_values": [
+    60
+   ],
    "widgets_values_named": {
+    "max_size": 60,
     "stage_card": ""
    },
    "color": "#5b3d7a",
@@ -1008,7 +1074,7 @@
   },
   {
    "id": 65,
-   "type": "7bcfa68e-dbd7-4c0d-83a8-9f65e6cb5c26",
+   "type": "06539e58-62ec-41d0-9a05-928246fac477",
    "pos": [
     5160,
     10
@@ -1040,7 +1106,7 @@
      "name": "path",
      "type": "STRING",
      "links": [
-      119
+      125
      ]
     }
    ],
@@ -1120,7 +1186,7 @@
      "name": "STRING",
      "type": "STRING",
      "links": [
-      118
+      124
      ]
     }
    ],
@@ -1155,7 +1221,7 @@
      "localized_name": "Value",
      "name": "value",
      "type": "*",
-     "link": 119
+     "link": 125
     },
     {
      "localized_name": "Name",
@@ -1344,7 +1410,7 @@
    "CUSTOMERS"
   ],
   [
-   118,
+   124,
    67,
    0,
    44,
@@ -1352,7 +1418,7 @@
    "STRING"
   ],
   [
-   119,
+   125,
    65,
    0,
    68,
@@ -1364,12 +1430,12 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "40224230-85fd-411f-afaf-17d41068827a",
+    "id": "9373f320-9764-43f0-8c01-72a965027b11",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -1395,7 +1461,7 @@
     },
     "inputs": [
      {
-      "id": "985fb4be-f875-46d2-bd0c-308b2c04357c",
+      "id": "b0e98a46-fe52-4fb0-b787-76398e7c8881",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -1410,7 +1476,7 @@
     ],
     "outputs": [
      {
-      "id": "d608c6c8-ecfc-409d-839b-a3a771060f24",
+      "id": "cc5e5fc9-ada7-4890-b7a0-14db670a6548",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -2054,12 +2120,12 @@
     "description": "Does: Look at the three exports before cleaning using Profile data (EDA)\nTakes: folder (your input)\nGives: folder (STRING)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: The synthetic exports were profiled.\nBecause: each column’s dirt decides its cleaning"
    },
    {
-    "id": "00f6a3c1-2837-466c-a318-2dfd27f45eeb",
+    "id": "133dd207-b8ea-4e12-b401-02517f0f4521",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -2085,7 +2151,7 @@
     },
     "inputs": [
      {
-      "id": "0f1950fc-138d-4678-9bbd-f7ffac096b65",
+      "id": "284ba9a8-be81-4824-a1a5-970ef385c6f2",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -2100,7 +2166,7 @@
     ],
     "outputs": [
      {
-      "id": "dd07fc75-364e-45d6-aaf7-308a3e42f09e",
+      "id": "aa4934f0-7bdf-4aa9-aee8-2808298f15b6",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -4298,12 +4364,12 @@
     "description": "Does: Clean the policy system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 policy mentions come out (5,480 on the default data).\nBecause: it stores three roles side by side"
    },
    {
-    "id": "f3e2cf96-92bc-4b1f-a42a-730a316a6cee",
+    "id": "4f99c922-31ae-4648-80ad-1656dd8cc056",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -4329,7 +4395,7 @@
     },
     "inputs": [
      {
-      "id": "65976569-e93e-4d2a-9e32-572ec0fb7b57",
+      "id": "d6079b06-bcbb-4fe8-b14d-36566ac62099",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4344,7 +4410,7 @@
     ],
     "outputs": [
      {
-      "id": "ccc8178a-cffa-4806-8304-693818f2a792",
+      "id": "e013c6c0-149c-4ee2-9274-e1cc4a91abca",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -6476,12 +6542,12 @@
     "description": "Does: Clean the claims system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 2,200 claim mentions come out (2,699 on the default data).\nBecause: clerks type variant kanji"
    },
    {
-    "id": "fd080dde-89d6-4448-8464-61331a7090b1",
+    "id": "a884c4ae-4359-45b5-a2ca-e1c1ba65c406",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -6507,7 +6573,7 @@
     },
     "inputs": [
      {
-      "id": "d421c59b-e926-461e-a905-7729781ab962",
+      "id": "ed177ca7-68ce-41a2-95e1-625b4ccc4e33",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -6522,7 +6588,7 @@
     ],
     "outputs": [
      {
-      "id": "554e72ef-8cc9-4156-8277-92fe27b3dde3",
+      "id": "8ddb8a41-16c0-4bc3-aabc-7e257a6d44a7",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -7458,12 +7524,12 @@
     "description": "Does: Clean the payment system’s mentions in its own lane using Read table, Stack roles, Normalize text\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 payment mentions come out (5,396 on the default data).\nBecause: it holds only bank kana"
    },
    {
-    "id": "ba47687f-a86d-436e-994e-f88443dbc059",
+    "id": "ed16acff-4b2f-4817-a88d-c0609f4ccc7e",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -7489,7 +7555,7 @@
     },
     "inputs": [
      {
-      "id": "0d0af764-38b2-42b2-a2ca-1ce2bc5571c6",
+      "id": "e3a09f09-fb0b-483e-83e9-af2a0781a27a",
       "name": "a",
       "type": "TABLE",
       "linkIds": [
@@ -7502,7 +7568,7 @@
       ]
      },
      {
-      "id": "bb1c0138-06b1-432b-bfee-170827779c91",
+      "id": "2139ffdd-dcc4-49e2-a1bf-e3eb95b3a42a",
       "name": "b",
       "type": "TABLE",
       "linkIds": [
@@ -7516,7 +7582,7 @@
       ]
      },
      {
-      "id": "e6577033-98c5-4166-96a6-cc33fc9369d6",
+      "id": "8b08ca53-6247-4616-b070-296516e34727",
       "name": "c",
       "type": "TABLE",
       "linkIds": [
@@ -7532,7 +7598,7 @@
     ],
     "outputs": [
      {
-      "id": "c15c06db-1d4a-4a10-b00d-5b01ffb8207a",
+      "id": "19ae5173-3818-4507-98f9-2fb61a5950bb",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -8659,12 +8725,12 @@
     "description": "Does: Join the lanes and fix OCR look-alikes and company marks using Concatenate tables, Map values\nTakes: a from 2 · Clean policies, b from 2 · Clean claims, c from 2 · Clean payments\nGives: table (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: All mentions go on: at least 11,500 (13,575 on the default data).\nBecause: the same name must read the same way"
    },
    {
-    "id": "57db52de-0e91-4978-8971-21a352260d6c",
+    "id": "54321fe5-27e8-4bf9-9480-979f1439a8ed",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -8690,7 +8756,7 @@
     },
     "inputs": [
      {
-      "id": "75c8ce74-8480-4265-aad8-ec0ca11b5c5a",
+      "id": "25c77447-7586-472f-9696-ed9094f178a4",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -8701,11 +8767,37 @@
        51,
        24
       ]
+     },
+     {
+      "id": "c4bd23a9-c772-4a35-bd24-38f47e9e2c91",
+      "name": "keys",
+      "type": "STRING",
+      "linkIds": [
+       118
+      ],
+      "label": "Blocking keys",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "a4303a70-dce4-4c37-9913-f367739f8d95",
+      "name": "max_group",
+      "type": "INT",
+      "linkIds": [
+       119
+      ],
+      "label": "Largest group",
+      "pos": [
+       0,
+       0
+      ]
      }
     ],
     "outputs": [
      {
-      "id": "aacf9cfc-90bf-4afe-940c-e74c7a96d091",
+      "id": "cfed26f9-a0e5-42fe-a036-7914efc75b66",
       "name": "pairs",
       "type": "TABLE",
       "linkIds": [
@@ -8757,7 +8849,7 @@
         "widget": {
          "name": "keys"
         },
-        "link": null
+        "link": 118
        },
        {
         "localized_name": "Largest group",
@@ -8766,7 +8858,7 @@
         "widget": {
          "name": "max_group"
         },
-        "link": null
+        "link": 119
        }
       ],
       "outputs": [
@@ -8875,6 +8967,8 @@
        ],
        "aws_realizes": [
         "gives pairs",
+        "takes keys",
+        "takes max_group",
         "takes table",
         "does"
        ]
@@ -8987,18 +9081,34 @@
       "target_id": 55,
       "target_slot": 0,
       "type": "TABLE"
+     },
+     {
+      "id": 118,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 35,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 119,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 35,
+      "target_slot": 3,
+      "type": "INT"
      }
     ],
     "extra": {},
     "description": "Does: Pair mentions that share a key using Find candidate pairs (blocking keys)\nTakes: table from 3 · Enrich\nGives: pairs (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 candidate pairs (about 58,000 on the default data).\nBecause: comparing every pair is too slow"
    },
    {
-    "id": "5418fc05-c32c-4332-a01d-5d493d3471b7",
+    "id": "16f2833a-110f-48ff-a094-6b513673acb5",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -9024,7 +9134,7 @@
     },
     "inputs": [
      {
-      "id": "32671eec-a5d4-4b20-9b81-4894ccf3bd52",
+      "id": "6561aa0a-aed5-471f-a6b1-c6031c75abc2",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -9037,7 +9147,7 @@
       ]
      },
      {
-      "id": "87bae372-36f7-4808-bff6-14b93973ed00",
+      "id": "20a0a132-2080-463c-95a4-f732647b0774",
       "name": "pairs",
       "type": "TABLE",
       "linkIds": [
@@ -9052,7 +9162,7 @@
     ],
     "outputs": [
      {
-      "id": "d9819de1-e5d6-48bc-86b7-6c6ea40f7e73",
+      "id": "d7f75436-a32a-42ec-909c-c83d0e06650f",
       "name": "data",
       "type": "PAIRS",
       "linkIds": [
@@ -9439,12 +9549,12 @@
     "description": "Does: Compare each pair field by field using Compare fields\nTakes: records from 3 · Enrich, pairs from 4 · Find candidates\nGives: data (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 pairs compared (57,624 on the default data).\nBecause: decisions need plain levels"
    },
    {
-    "id": "0ce689ca-63ef-498b-943c-e1431cd9b4b9",
+    "id": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -9470,7 +9580,7 @@
     },
     "inputs": [
      {
-      "id": "0163a30a-ba81-4284-84a6-9d0bec39f84c",
+      "id": "376ae074-424f-4018-8a71-566327d3e46d",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -9486,7 +9596,7 @@
     ],
     "outputs": [
      {
-      "id": "a44119a1-b237-45b5-8e34-5c3891a23e90",
+      "id": "f0c0ef9c-d15f-40c5-8074-91f8baf51cd8",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -9499,7 +9609,7 @@
       ]
      },
      {
-      "id": "4b326ec1-10b8-49d0-bfcc-865e1bbbc310",
+      "id": "83c447dc-0000-4982-9f20-6971b3b08858",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -9512,7 +9622,7 @@
       ]
      },
      {
-      "id": "2aa8f89c-6326-4172-ac98-aa802061f824",
+      "id": "c3742d08-9979-4fdd-8028-d401d833ddf7",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -10140,12 +10250,12 @@
     "description": "Does: Settle the certain pairs by rule using Decision rules\nTakes: data from 5 · Compare\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 7,000 certain matches (9,857 on the default data).\nBecause: sure cases need no score"
    },
    {
-    "id": "772bb988-4242-4bc6-8c2a-2691e2e185b9",
+    "id": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -10171,7 +10281,7 @@
     },
     "inputs": [
      {
-      "id": "7883d355-fd2a-424d-b984-6d0fa83ba90a",
+      "id": "3945bfd7-9dec-42d4-a465-2959c31fd8f7",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -10183,11 +10293,50 @@
        51,
        24
       ]
+     },
+     {
+      "id": "574d0e45-b6b0-458a-acb4-6276bf37f45a",
+      "name": "match_probability",
+      "type": "FLOAT",
+      "linkIds": [
+       120
+      ],
+      "label": "Match at",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "5bfadc6b-c3cf-45e7-bca6-b7843264175e",
+      "name": "review_probability",
+      "type": "FLOAT",
+      "linkIds": [
+       121
+      ],
+      "label": "Review from",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "52eabc3c-4111-4dbd-b7d2-eabc97aee3a8",
+      "name": "review_limit",
+      "type": "INT",
+      "linkIds": [
+       122
+      ],
+      "label": "Review limit",
+      "pos": [
+       0,
+       0
+      ]
      }
     ],
     "outputs": [
      {
-      "id": "36a3c1f2-750b-4ff0-b1ef-10415e05e132",
+      "id": "bdd9d50e-5f41-4f53-b074-db53ddb039d3",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -10200,7 +10349,7 @@
       ]
      },
      {
-      "id": "47e85b75-6ddb-4b18-be23-4ede28c93191",
+      "id": "35e729d1-4c16-438c-8dab-bda80c8ac084",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -10213,7 +10362,7 @@
       ]
      },
      {
-      "id": "a93a583c-5e83-47c3-9978-4ee790e7a9a5",
+      "id": "fe2d4390-dae7-4c7b-8eae-67df1007efb4",
       "name": "unsettled",
       "type": "PAIRS",
       "linkIds": [
@@ -10275,7 +10424,7 @@
         "widget": {
          "name": "match_probability"
         },
-        "link": null
+        "link": 120
        },
        {
         "localized_name": "Review from",
@@ -10284,7 +10433,7 @@
         "widget": {
          "name": "review_probability"
         },
-        "link": null
+        "link": 121
        }
       ],
       "outputs": [
@@ -10633,6 +10782,8 @@
        ],
        "aws_realizes": [
         "takes data",
+        "takes match_probability",
+        "takes review_probability",
         "does"
        ]
       },
@@ -10698,7 +10849,7 @@
         "widget": {
          "name": "review_limit"
         },
-        "link": null
+        "link": 122
        }
       ],
       "outputs": [
@@ -11127,6 +11278,7 @@
         "gives different",
         "gives matched",
         "gives unsettled",
+        "takes review_limit",
         "does"
        ]
       },
@@ -11270,18 +11422,42 @@
       "target_id": 61,
       "target_slot": 0,
       "type": "DECISIONS"
+     },
+     {
+      "id": 120,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 38,
+      "target_slot": 3,
+      "type": "FLOAT"
+     },
+     {
+      "id": 121,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 38,
+      "target_slot": 4,
+      "type": "FLOAT"
+     },
+     {
+      "id": 122,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 39,
+      "target_slot": 3,
+      "type": "INT"
      }
     ],
     "extra": {},
     "description": "Does: Score the rest with learned points using Learn weights, Decision rules\nTakes: data from 6 · Decide rules\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 30,000 scored matches (38,520 on the default data).\nBecause: each field’s evidence differs"
    },
    {
-    "id": "368cfe83-e918-4183-b288-aea230fe9f82",
+    "id": "8451745d-4989-422a-a9ae-ee864a7b486b",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -11307,7 +11483,7 @@
     },
     "inputs": [
      {
-      "id": "8e2a240c-b32d-407b-a3d1-8b4436b6ea00",
+      "id": "bbd94b5b-bdb5-44c5-8c7d-49bdcd842983",
       "name": "data",
       "type": "PAIRS,DICT",
       "linkIds": [
@@ -11322,7 +11498,7 @@
     ],
     "outputs": [
      {
-      "id": "d656593e-cfd5-4b04-b30e-2dc57c00f933",
+      "id": "3d94f867-8e21-457e-9a3a-a21b18eea494",
       "name": "matched",
       "type": "DECISIONS",
       "linkIds": [
@@ -11335,7 +11511,7 @@
       ]
      },
      {
-      "id": "106da63e-fce1-4656-80b9-4d1d872041be",
+      "id": "4cc386c5-62c2-4733-a5ad-c734e192ff81",
       "name": "different",
       "type": "DECISIONS",
       "linkIds": [
@@ -11582,12 +11758,12 @@
     "description": "Does: You decide the pairs the score is unsure of using Your review decisions\nTakes: data from 7 · Decide score\nGives: matched (DECISIONS), different (DECISIONS)\nServes R2 · You check uncertain pairs: you said “a person checks what the machine is unsure of”\nVerified when: The unsure pairs reached you in the Review tab.\nBecause: a person beats a guess"
    },
    {
-    "id": "576d46e4-9d08-4032-8990-9daf8dbe6dc9",
+    "id": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -11613,7 +11789,7 @@
     },
     "inputs": [
      {
-      "id": "6935746d-09f1-4dd9-bbb4-02752fe5a03b",
+      "id": "866bdf68-98be-4a9d-a425-46d4a3192dbe",
       "name": "matched_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11627,7 +11803,7 @@
       ]
      },
      {
-      "id": "7c881f54-f0b5-4dca-8683-e1978d1eb122",
+      "id": "996e8519-1154-4557-b563-9da67b246a2e",
       "name": "matched_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11641,7 +11817,7 @@
       ]
      },
      {
-      "id": "c6cc07ec-69d5-46a1-a4db-e8ffe0b5705d",
+      "id": "bbf16263-2383-4967-a5a7-4f604493eb5d",
       "name": "matched_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11655,7 +11831,7 @@
       ]
      },
      {
-      "id": "a17d2467-6e7d-40d2-8637-4cf897fe5986",
+      "id": "d18f7e50-62ee-43f6-878a-8fdc69f9aba6",
       "name": "different_1",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11669,7 +11845,7 @@
       ]
      },
      {
-      "id": "9bd084f3-39ce-47b2-8b4a-55cef7a7f205",
+      "id": "17348b5a-71e5-4d64-8d42-5c2b4e3ea5a0",
       "name": "different_2",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11683,7 +11859,7 @@
       ]
      },
      {
-      "id": "7173389c-d207-452c-af23-73e61de391a9",
+      "id": "61797186-7143-4803-93bd-544aee822041",
       "name": "different_3",
       "type": "DECISIONS,DICT",
       "linkIds": [
@@ -11695,11 +11871,24 @@
        51,
        124
       ]
+     },
+     {
+      "id": "34f2361b-3457-4519-8ab8-635bb60a5e85",
+      "name": "max_size",
+      "type": "INT",
+      "linkIds": [
+       123
+      ],
+      "label": "Max records per customer",
+      "pos": [
+       0,
+       0
+      ]
      }
     ],
     "outputs": [
      {
-      "id": "3a71f56e-244e-4103-b8b1-2e4e57cef0d9",
+      "id": "49618d07-0e8f-43e7-8150-cf2207b4ae89",
       "name": "customers",
       "type": "CUSTOMERS",
       "linkIds": [
@@ -11799,7 +11988,7 @@
         "widget": {
          "name": "max_size"
         },
-        "link": null
+        "link": 123
        }
       ],
       "outputs": [
@@ -11987,7 +12176,7 @@
            "",
            "policy_ref=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002517/holder and claims/0001252/insured, decided different"
+           "would join policies/0002517/holder and claims/0001251/insured, decided different"
           ],
           [
            "p750e2ab2a56d",
@@ -11998,7 +12187,7 @@
            "",
            "policy_ref=same, kana=exact",
            "Certain matches and non-matches",
-           "would join policies/0002517/holder and claims/0001252/insured, decided different"
+           "would join policies/0002517/holder and claims/0001251/insured, decided different"
           ],
           [
            "p8f4c86fe08ad",
@@ -12217,6 +12406,7 @@
         "takes matched_1",
         "takes matched_2",
         "takes matched_3",
+        "takes max_size",
         "does"
        ]
       },
@@ -12364,18 +12554,26 @@
       "target_id": 64,
       "target_slot": 0,
       "type": "CUSTOMERS"
+     },
+     {
+      "id": 123,
+      "origin_id": -10,
+      "origin_slot": 6,
+      "target_id": 41,
+      "target_slot": 9,
+      "type": "INT"
      }
     ],
     "extra": {},
     "description": "Does: Group matches into customers, refusing bad merges using Cluster guard\nTakes: matched_1 from 6 · Decide rules, matched_2 from 7 · Decide score, matched_3 from 8 · You verify, different_1 from 6 · Decide rules, different_2 from 7 · Decide score, different_3 from 8 · You verify\nGives: customers (CUSTOMERS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).\nBecause: one wrong link must not chain many"
    },
    {
-    "id": "7bcfa68e-dbd7-4c0d-83a8-9f65e6cb5c26",
+    "id": "06539e58-62ec-41d0-9a05-928246fac477",
     "version": 1,
     "state": {
      "lastGroupId": 0,
      "lastNodeId": 68,
-     "lastLinkId": 119,
+     "lastLinkId": 125,
      "lastRerouteId": 0
     },
     "revision": 0,
@@ -12401,7 +12599,7 @@
     },
     "inputs": [
      {
-      "id": "244dd3d2-9afd-484f-b284-63be11f08312",
+      "id": "950fed66-4a4d-43f4-a4a9-10e960eae4fe",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -12414,7 +12612,7 @@
       ]
      },
      {
-      "id": "75a0c6d8-4717-47f0-ba38-1af87c52af5f",
+      "id": "6b4ad7aa-3bfb-4287-b805-5c3c19b24880",
       "name": "groups",
       "type": "CUSTOMERS,DICT",
       "linkIds": [
@@ -12429,7 +12627,7 @@
     ],
     "outputs": [
      {
-      "id": "a6287132-4921-40c6-9600-1cc35966779f",
+      "id": "5bcff46f-a948-4291-9dfd-75808482993f",
       "name": "path",
       "type": "STRING",
       "linkIds": [
@@ -12763,7 +12961,7 @@
        "aws_wires": [
         ""
        ],
-       "aws_headline": "13,575 → 13,575 rows · file output/nayose_reference/nayose_result.csv",
+       "aws_headline": "13,575 → 13,575 rows · file output/nayose_reference/nayose_result_00002_.csv",
        "aws_tables": [
         {
          "title": "Write table",
@@ -12786,12 +12984,12 @@
           ],
           [
            "file",
-           "output/nayose_reference/nayose_result.csv"
+           "output/nayose_reference/nayose_result_00002_.csv"
           ]
          ]
         },
         {
-         "title": "nayose_result · sample (first 5 of 13,575)",
+         "title": "nayose_result_00002_ · sample (first 5 of 13,575)",
          "columns": [
           "system",
           "record_id",
@@ -12902,7 +13100,7 @@
       "properties": {
        "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "path",
-       "aws_headline": "✓ passed · The result file is written. · nayose_reference/nayose_result.csv"
+       "aws_headline": "✓ passed · The result file is written. · nayose_reference/nayose_result_00002_.csv"
       },
       "widgets_values": [
        "regex",
@@ -12911,8 +13109,8 @@
        ""
       ],
       "widgets_values_named": {
-       "kind": "contains",
-       "expect": "nayose_result.csv",
+       "kind": "regex",
+       "expect": "nayose_result_\\d{5}_\\.csv",
        "says": "The result file is written.",
        "table_view": ""
       }
@@ -12987,7 +13185,7 @@
    ]
   },
   "aws_verified": {
-   "fingerprint": "656320ed2f2106e4fdbbd57f",
+   "fingerprint": "3aba2634550d4687be0ff718",
    "gates": {
     "profile_data": "passed",
     "clean_policies": "passed",
@@ -13084,14 +13282,14 @@
      {
       "title": "Check · path",
       "passed": true,
-      "evidence": "nayose_reference/nayose_result.csv"
+      "evidence": "nayose_reference/nayose_result_00002_.csv"
      }
     ]
    },
    "open": {
     "you_verify": 2331
    },
-   "at": "2026-10-20T23:35"
+   "at": "2026-10-21T00:59"
   },
   "aws_contract": {
    "contract": 2,
