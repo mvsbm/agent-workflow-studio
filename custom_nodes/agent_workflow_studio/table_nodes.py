@@ -168,6 +168,25 @@ def output_root() -> Path:
 
 
 # --- read and write ---------------------------------------------------------------------------
+DATA_FILES = (".csv", ".tsv", ".jsonl", ".json")
+
+
+def one_data_file(base: Path, folder: str) -> str:
+    """The name of the one data file in an input folder (File left empty), or why there is none."""
+    where = (base / folder).resolve()
+    if base not in where.parents or not where.is_dir():
+        raise ValueError(f"No folder {folder!r} in ComfyUI's input folder.")
+    found = sorted(
+        p.name for p in where.iterdir() if p.is_file() and p.suffix.lower() in DATA_FILES
+    )
+    if len(found) != 1:
+        raise ValueError(
+            f"Folder {folder!r} holds {len(found)} data files ({', '.join(found[:6]) or 'none'}); "
+            "put one there, or name the File to read."
+        )
+    return found[0]
+
+
 class ReadTable(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -185,7 +204,10 @@ class ReadTable(io.ComfyNode):
                     tooltip="Folder inside ComfyUI's input directory (connect a data source's folder).",
                 ),
                 io.String.Input(
-                    "file", display_name="File", default="", tooltip="File name in that folder."
+                    "file",
+                    display_name="File",
+                    default="",
+                    tooltip="File name in that folder; empty: the folder's one data file, whatever its name (a new month's export).",
                 ),
             ],
             outputs=[Table.Output(display_name="table", tooltip="The rows, for the next step.")],
@@ -199,6 +221,8 @@ class ReadTable(io.ComfyNode):
         from .data_preview import read_rows
 
         base = Path(folder_paths.get_input_directory()).resolve()
+        if not file.strip():
+            file = one_data_file(base, folder.strip())
         path = (base / folder.strip() / file.strip()).resolve()
         if base not in path.parents or not path.is_file():
             raise ValueError(f"No file {file!r} in input folder {folder!r}.")

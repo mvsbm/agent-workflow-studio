@@ -50,7 +50,15 @@ class TableNodeTests(unittest.TestCase):
             )
             with patch("folder_paths.get_input_directory", return_value=root):
                 out = ReadTable.execute("m", "orders.csv").args[0]
-        self.assertEqual((out["columns"], out["rows"]), (["order_id", "region", "amount"], []))
+            self.assertEqual((out["columns"], out["rows"]), (["order_id", "region", "amount"], []))
+            # File left empty: the folder's one data file, whatever this month calls it.
+            with patch("folder_paths.get_input_directory", return_value=root):
+                self.assertEqual(ReadTable.execute("m", "").args[0]["name"], "orders")
+                (Path(root) / "m" / "march.csv").write_text("a\n1\n", encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError, "holds 2 data files \\(march.csv, orders.csv\\)"
+                ):
+                    ReadTable.execute("m", "")
 
     def test_a_tools_table_output_reaches_the_table_nodes(self) -> None:
         from custom_nodes.agent_workflow_studio.table_nodes import TableFromResult
