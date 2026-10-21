@@ -17,7 +17,7 @@ Compares each candidate pair field by field into plain levels — text: exact / 
 | Output | Type | What it is |
 | --- | --- | --- |
 | compared | `TABLE` | Pairs with one level per field. |
-| data | `PAIRS` | Run folders with pairs.jsonl, for Learn weights and Decision rules. |
+| data | `RECORD_PAIRS` | Run folders with pairs.jsonl, for Learn weights and Decision rules. |
 
 ## Where it runs
 

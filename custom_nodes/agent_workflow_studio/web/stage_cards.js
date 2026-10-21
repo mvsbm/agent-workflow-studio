@@ -48,7 +48,7 @@ function ensureCard(node) {
 }
 
 // Design badges (native node badges): read at draw time from the stored tags (see designLabels).
-const BADGES = {request: '#24496b', part: '#2f5d3a', gate: '#3d4a5c', extra: '#7a5c14'};
+const BADGES = {request: '#24496b', part: '#2f5d3a', gate: '#3d4a5c', extra: '#7a5c14', code: '#5a3d8a'};
 function designBadges(node) {
   const root = app.rootGraph;
   // shortcut: scans the top level per draw; cache per subgraph if workflows grow past ~100 stages.
@@ -108,7 +108,7 @@ app.registerExtension({
   },
   nodeCreated(node) {
     // Read at draw time, so it follows the node's tags as they change.
-    // shortcut: up to three request badges per stage; a stage serving more shows the first three.
+    // shortcut: up to three badges per stage (requests, then workflow code); more show the first three.
     if (globalThis.LGraphBadge) for (const i of [0, 1, 2]) node.badges.push(() => badge(designBadges(node)[i]));
     // Subgraph nodes are created on load too; give them their card (filled from saved properties).
     queueMicrotask(() => ensureCard(node));

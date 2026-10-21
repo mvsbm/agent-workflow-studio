@@ -104,7 +104,7 @@
        "type": "string",
        "pattern": "^(\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
       },
-      "description": "The stage's typed outputs: port name -> socket type (TABLE, PAIRS, DECISIONS, CUSTOMERS, STRING, IMAGE, ..., or * while unknown)."
+      "description": "The stage's typed outputs: port name -> a registered type's socket (the type standard: TABLE, STRING, INT, ..., or a dataset class such as RECORD_PAIRS), or * while unknown."
      },
      "takes": {
       "type": "object",

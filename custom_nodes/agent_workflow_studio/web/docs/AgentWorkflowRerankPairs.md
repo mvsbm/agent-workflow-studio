@@ -6,7 +6,7 @@ Reads both records of each pair together with a local Japanese reranker and adds
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| Pairs | `PAIRS,DICT` | Compare fields' data, or a stage's unsettled branch (only those are scored). |
+| Pairs | `RECORD_PAIRS,DICT` | Compare fields' data, or a stage's unsettled branch (only those are scored). |
 | Text from | `STRING` | Each record's columns (as shown in Review) joined into its text. Default: `name, kana, birth, address, phone`. |
 | High from | `FLOAT` | Score from which a pair is high (in our test, half of the true pairs scored above 0.5). Default: `0.5`. |
 | Low below | `FLOAT` | Score below which a pair is low. Default: `0.05`. |
@@ -16,7 +16,7 @@ Reads both records of each pair together with a local Japanese reranker and adds
 
 | Output | Type | What it is |
 | --- | --- | --- |
-| data | `PAIRS` | The pairs with `rerank`, for Learn weights and Decision rules. |
+| data | `RECORD_PAIRS` | The pairs with `rerank`, for Learn weights and Decision rules. |
 
 ## Where it runs
 

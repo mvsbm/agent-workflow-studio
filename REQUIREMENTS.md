@@ -49,7 +49,10 @@ mode, the run queue), no parallel workflow format. ✅
 subgraphs with typed ports on approval; status, cards, labels, to-dos and the API are derived from
 the graph, never stored twice. ✅
 
-**R11 · Typed end to end.** Data between stages is typed (TABLE, PAIRS, DECISIONS, CUSTOMERS, ...);
+**R11 · Typed end to end, by one standard.** Every port, tool port, API input and output is typed
+from one registry (STANDARDS.md): closed core types, and dataset classes per domain (record matching:
+RECORD_PAIRS, PAIR_DECISIONS, RECORD_CLUSTERS); a workflow names its own datasets. Unregistered types
+are refused; old names resolve as aliases, and workflows saved with them open with today's names.
 ComfyUI refuses wrong wires; generic steps keep the type they are given. ✅
 
 **R12 · The architecture is enforced by the tools, not the prompt.** The agent edits inside stages;
@@ -145,8 +148,10 @@ records; keychain secrets are never printed. ✅
 **R22 · Customer data stays on the machine.** LLM help on real records uses local (loopback) models
 only. ✅
 
-**R23 · Agent-written code is approved and confined.** You see and approve the exact code; it runs
-sandboxed, reading only its inputs. ✅
+**R23 · Agent-written code is approved, confined, typed and tested.** You see and approve the exact
+code; it runs sandboxed, reading only its inputs. It has a node's interface (ports typed with the
+studio's types, checked on every run) and its own tests (examples), run before approval and in every
+Run checks; a proven tool graduates into a reviewed studio node. ✅
 
 **R24 · Tests never touch your instance.** Tests run in isolated ComfyUI instances; on 8188 only the
 studio's own templates and eval workflows are written. ✅

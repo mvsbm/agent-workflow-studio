@@ -1,24 +1,24 @@
-.aw-contract { display: flex; flex-direction: column; gap: 8px; padding: 12px; height: 100%; overflow: auto; }
-.aw-contract header { display: flex; align-items: center; justify-content: space-between; }
-.aw-contract h2 { font-size: 1rem; margin: 0; }
-.aw-contract-status { margin: 0; font-size: 0.85rem; opacity: 0.85; }
-.aw-contract-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
-.aw-contract-steps li { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; }
-.aw-contract-steps small { grid-column: 2; opacity: 0.75; }
-.aw-contract-chip { font-size: 0.7rem; font-weight: 600; color: #fff; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
-.aw-contract-warning { margin: 0; font-size: 0.85rem; color: var(--p-yellow-400, #e0b84a); }
-.aw-contract pre { margin: 4px 0 0; white-space: pre-wrap; font-size: 0.75rem; background: var(--comfy-input-bg, #222); padding: 8px; border-radius: 4px; }
-.aw-contract-api { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-.aw-contract-call { font-size: 11px; white-space: pre-wrap; word-break: break-all; opacity: 0.85; }
-.aw-contract-summary { margin: 0; font-weight: 600; font-size: 0.9rem; }
-.aw-contract summary { cursor: pointer; font-weight: 600; font-size: 0.85rem; }
-.aw-contract-gap-group { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 0 4px; align-items: flex-start; }
-.aw-contract-gap-group ul { margin: 0; padding-left: 18px; font-size: 0.8rem; }
-.aw-contract-requests { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
-.aw-contract-requests li { display: flex; flex-direction: column; gap: 2px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color, #333); }
-.aw-contract-requests small { opacity: 0.75; }
-.aw-contract-steps li > details > summary { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-weight: normal; }
-.aw-contract-steps li > details > summary small { flex-basis: 100%; opacity: 0.75; }
-.aw-contract-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 6px 0; font-size: 0.75rem; }
-.aw-contract-columns > div { background: var(--comfy-input-bg, #222); border-radius: 4px; padding: 6px; overflow-wrap: anywhere; }
-.aw-contract-columns h4 { margin: 0 0 4px; font-size: 0.8rem; }
+/* Contract: the shared native pieces (sections, buttons, fields) are in workflow_drawer.css. */
+.aw-contract-summary { margin: 0; padding: 0 16px 12px; font-weight: 600; font-size: 14px; }
+.aw-contract-chip { display: inline-block; font-size: 12px; font-weight: 600; color: #fff; padding: 0 6px; line-height: 20px; border-radius: 6px; white-space: nowrap; }
+.aw-contract-warning { margin: 0; font-size: 13px; color: color-mix(in srgb, #c98a1a 70%, var(--base-foreground, #fff)); }
+.aw-contract pre { margin: 0; white-space: pre-wrap; font-size: 12px; background: var(--secondary-background, #313235); padding: 8px; border-radius: 8px; }
+.aw-contract-gap-group { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.aw-contract-gap-group ul { margin: 0; padding-left: 18px; font-size: 13px; }
+.aw-contract-requests { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.aw-contract-requests li { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--interface-stroke, #505053); }
+.aw-contract-requests li:last-child { border-bottom: none; padding-bottom: 0; }
+.aw-contract-requests small { color: var(--muted-foreground, #8a8a8a); font-size: 12px; }
+.aw-contract-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.aw-contract-steps li > details > summary { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; cursor: pointer; }
+.aw-contract-steps li > details > summary small { flex-basis: 100%; color: var(--muted-foreground, #8a8a8a); font-size: 12px; }
+.aw-contract-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin: 6px 0; font-size: 12px; }
+.aw-contract-columns > div { background: var(--secondary-background, #313235); border-radius: 8px; padding: 8px; overflow-wrap: anywhere; }
+.aw-contract-columns h4 { margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted-foreground, #8a8a8a); }
+.aw-contract-todo { font-size: 13px; }
+.aw-contract-api-info { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.aw-contract-call { font-size: 11px; white-space: pre-wrap; word-break: break-all; padding: 8px; border-radius: 8px; background: var(--secondary-background, #313235); }
+.aw-contract-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.aw-contract-row > .aw-field { flex: 1; min-width: 120px; }
+.aw-contract-result { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.aw-contract-result:empty { display: none; }

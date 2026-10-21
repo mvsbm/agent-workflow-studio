@@ -1,5 +1,5 @@
 {
- "id": "a7d7ceb6-504d-4f22-947f-2c3cc5a1fd96",
+ "id": "1ead0ccf-ce82-405b-bcf6-27e257384930",
  "revision": 0,
  "last_node_id": 9,
  "last_link_id": 19,
@@ -36,7 +36,6 @@
    ],
    "title": "Data folder",
    "properties": {
-    "Node name for S&R": "PreviewAny",
     "aws_given": true
    },
    "widgets_values": [],
@@ -86,7 +85,6 @@
    "outputs": [],
    "title": "Score · hidden answer key",
    "properties": {
-    "Node name for S&R": "AgentWorkflowNayoseScore",
     "aws_given": true,
     "aws_tables": [
      {
@@ -146,7 +144,7 @@
   },
   {
    "id": 9,
-   "type": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
+   "type": "5abc18e9-fe52-495c-9a18-aa879c454656",
    "pos": [
     0,
     160
@@ -185,7 +183,9 @@
     "aws_card": {
      "purpose": "",
      "lines": [
-      "people 2,810"
+      "people 2,810",
+      "policy_master.csv 3,589",
+      "claims.csv 1,808"
      ],
      "state": ""
     },
@@ -224,7 +224,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "7718ddee-7b4e-4e2f-9396-cbdef56002ec",
+    "id": "5abc18e9-fe52-495c-9a18-aa879c454656",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -255,7 +255,7 @@
     },
     "inputs": [
      {
-      "id": "5eaa68c5-f521-49aa-a647-21af819cc7d8",
+      "id": "1456df60-1b7f-449f-9131-e62c75370e10",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -273,7 +273,7 @@
     ],
     "outputs": [
      {
-      "id": "2eb8f787-c786-4c67-81f6-ca8c7e78cdf3",
+      "id": "d34e1593-d346-4934-9c55-e799b8cdc9ab",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -326,14 +326,13 @@
        {
         "localized_name": "people",
         "name": "people",
-        "type": "NAYOSE_PEOPLE",
+        "type": "SYNTHETIC_PEOPLE",
         "links": [
          1
         ]
        }
       ],
       "properties": {
-       "Node name for S&R": "AgentWorkflowNayosePeople",
        "aws_given": true,
        "aws_tables": [
         {
@@ -636,7 +635,7 @@
        {
         "localized_name": "People",
         "name": "people",
-        "type": "NAYOSE_PEOPLE",
+        "type": "SYNTHETIC_PEOPLE",
         "link": 1
        },
        {
@@ -662,7 +661,7 @@
        {
         "localized_name": "facts",
         "name": "facts",
-        "type": "NAYOSE_FACTS",
+        "type": "SYNTHETIC_ACTIVITY",
         "links": [
          2,
          3,
@@ -671,7 +670,6 @@
        }
       ],
       "properties": {
-       "Node name for S&R": "AgentWorkflowNayoseActivity",
        "aws_given": true,
        "aws_tables": [
         {
@@ -1101,7 +1099,7 @@
        {
         "localized_name": "Facts",
         "name": "facts",
-        "type": "NAYOSE_FACTS",
+        "type": "SYNTHETIC_ACTIVITY",
         "link": 2
        },
        {
@@ -1163,7 +1161,6 @@
       ],
       "title": "Export · policies",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNayoseExport",
        "aws_given": true,
        "aws_tables": [
         {
@@ -1937,7 +1934,7 @@
        {
         "localized_name": "Facts",
         "name": "facts",
-        "type": "NAYOSE_FACTS",
+        "type": "SYNTHETIC_ACTIVITY",
         "link": 3
        },
        {
@@ -1999,7 +1996,6 @@
       ],
       "title": "Export · claims",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNayoseExport",
        "aws_given": true,
        "aws_tables": [
         {
@@ -2585,7 +2581,7 @@
        {
         "localized_name": "Facts",
         "name": "facts",
-        "type": "NAYOSE_FACTS",
+        "type": "SYNTHETIC_ACTIVITY",
         "link": 4
        },
        {
@@ -2647,7 +2643,6 @@
       ],
       "title": "Export · payments",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNayoseExport",
        "aws_given": true,
        "aws_tables": [
         {
@@ -2980,7 +2975,7 @@
       "origin_slot": 0,
       "target_id": 2,
       "target_slot": 0,
-      "type": "NAYOSE_PEOPLE"
+      "type": "SYNTHETIC_PEOPLE"
      },
      {
       "id": 2,
@@ -2988,7 +2983,7 @@
       "origin_slot": 0,
       "target_id": 3,
       "target_slot": 0,
-      "type": "NAYOSE_FACTS"
+      "type": "SYNTHETIC_ACTIVITY"
      },
      {
       "id": 3,
@@ -2996,7 +2991,7 @@
       "origin_slot": 0,
       "target_id": 4,
       "target_slot": 0,
-      "type": "NAYOSE_FACTS"
+      "type": "SYNTHETIC_ACTIVITY"
      },
      {
       "id": 5,
@@ -3012,7 +3007,7 @@
       "origin_slot": 0,
       "target_id": 5,
       "target_slot": 0,
-      "type": "NAYOSE_FACTS"
+      "type": "SYNTHETIC_ACTIVITY"
      },
      {
       "id": 6,

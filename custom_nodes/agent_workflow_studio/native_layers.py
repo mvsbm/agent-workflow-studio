@@ -112,22 +112,33 @@ def embed(contract: dict, workflow: dict, sentences: dict[str, str] | None = Non
 def infer_realizes(workflow: dict) -> dict:
     """The workflow with each untagged node inside a stage tagged by what its wiring shows (a copy):
     fed by the stage's input port → "takes <port>", feeding its output port → "gives <port>", and
-    every working node → "does". A starting point the author confirms; existing tags are kept."""
+    every working node → "does". A port the step does not take, wired to a widget, is a setting
+    promoted to the stage card, not data. A starting point the author confirms; existing tags kept."""
     out = copy.deepcopy(workflow)
-    stages = {n.get("type") for n in stage_nodes(out).values()}
+    takes = {
+        n.get("type"): ((n.get("properties") or {}).get("aws_step") or {}).get("takes") or {}
+        for n in stage_nodes(out).values()
+    }
     for definition in (out.get("definitions") or {}).get("subgraphs", []):
-        if definition.get("id") not in stages:
+        if definition.get("id") not in takes:
             continue
         inputs = [i.get("name") for i in definition.get("inputs", [])]
         outputs = [o.get("name") for o in definition.get("outputs", [])]
         boundary_in = (definition.get("inputNode") or {}).get("id", -10)
         boundary_out = (definition.get("outputNode") or {}).get("id", -20)
         found: dict = {}
+        slots = {n.get("id"): n.get("inputs") or [] for n in definition.get("nodes", [])}
         for link in definition.get("links", []):
             if link.get("origin_id") == boundary_in and link["origin_slot"] < len(inputs):
-                found.setdefault(link["target_id"], []).append(
-                    f"takes {inputs[link['origin_slot']]}"
-                )
+                port, target = inputs[link["origin_slot"]], slots.get(link.get("target_id"), [])
+                slot = link.get("target_slot", 0)
+                if (
+                    slot < len(target)
+                    and target[slot].get("widget")
+                    and port not in takes[definition["id"]]
+                ):
+                    continue  # a setting on the stage card
+                found.setdefault(link["target_id"], []).append(f"takes {port}")
             if link.get("target_id") == boundary_out and link["target_slot"] < len(outputs):
                 found.setdefault(link["origin_id"], []).append(
                     f"gives {outputs[link['target_slot']]}"

@@ -1,19 +1,31 @@
+/* The credentials dialog, in the look of ComfyUI's own dialogs (Settings, Templates): its panel
+   surface, stroke, rounded gray controls and colour tokens. */
 .agent-workflow-studio-pi-settings {
-  z-index: 10020;
+  padding: 0;
+  border: 1px solid var(--interface-stroke, #505053);
+  border-radius: 16px;
+  background: var(--interface-panel-surface, var(--comfy-menu-bg, #171718));
+  color: var(--base-foreground, #fff);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.agent-workflow-studio-pi-settings:focus-visible {
+  outline: none;
+}
+
+.agent-workflow-studio-pi-settings::backdrop {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .agent-workflow-studio-pi-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: min(680px, calc(100vw - 48px));
   max-height: min(82vh, 900px);
   overflow: auto;
-  padding: 20px;
-  color: var(--fg-color, #eee);
-  background: var(--comfy-menu-bg, #222);
-  border: 1px solid var(--border-color, #555);
-  border-radius: 8px;
+  padding: 20px 24px 24px;
+  font-size: 14px;
 }
 
 .agent-workflow-studio-pi-panel h3,
@@ -22,8 +34,21 @@
   margin: 0;
 }
 
+.agent-workflow-studio-pi-panel h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.agent-workflow-studio-pi-panel h4 {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted-foreground, #8a8a8a);
+}
+
 .agent-workflow-studio-pi-panel p {
-  color: var(--descrip-text, #bbb);
+  color: var(--muted-foreground, #8a8a8a);
   line-height: 1.45;
 }
 
@@ -33,15 +58,46 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .agent-workflow-studio-pi-header {
   justify-content: space-between;
 }
 
-.agent-workflow-studio-pi-close {
-  min-width: 32px;
-  font-size: 22px;
+.agent-workflow-studio-pi-panel button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--secondary-background, #313235);
+  color: var(--base-foreground, #fff);
+}
+
+.agent-workflow-studio-pi-panel button:hover {
+  background: var(--secondary-background-hover, #3c3d42);
+}
+
+.agent-workflow-studio-pi-panel button:focus-visible {
+  outline: 1px solid var(--primary-background, #0b8ce9);
+}
+
+.agent-workflow-studio-pi-panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.agent-workflow-studio-pi-panel .agent-workflow-studio-pi-close {
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+  font-size: 20px;
+  background: transparent;
+  color: var(--muted-foreground, #8a8a8a);
 }
 
 .agent-workflow-studio-pi-panel label {
@@ -49,35 +105,40 @@
   grid-template-columns: 110px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
+  color: var(--muted-foreground, #8a8a8a);
 }
 
 .agent-workflow-studio-pi-select,
 .agent-workflow-studio-pi-key {
   width: 100%;
   min-width: 0;
-  padding: 7px;
-  color: inherit;
-  background: var(--comfy-input-bg, #111);
-  border: 1px solid var(--border-color, #555);
-  border-radius: 4px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  color: var(--base-foreground, #fff);
+  background: var(--secondary-background, #313235);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
 .agent-workflow-studio-pi-status,
 .agent-workflow-studio-pi-result,
 .agent-workflow-studio-pi-model-summary {
   overflow-wrap: anywhere;
+  font-size: 13px;
 }
 
 .agent-workflow-studio-pi-result[data-state="error"] {
-  color: #ff9999;
+  color: color-mix(in srgb, #d04545 70%, var(--base-foreground, #fff));
 }
 
 .agent-workflow-studio-pi-result[data-state="success"] {
-  color: #9ee2a8;
+  color: color-mix(in srgb, #2f9e5a 70%, var(--base-foreground, #fff));
 }
 
 .agent-workflow-studio-pi-result[data-state="pending"] {
-  color: #f0d38a;
+  color: color-mix(in srgb, #c98a1a 70%, var(--base-foreground, #fff));
 }
 
 .agent-workflow-studio-pi-credentials {
@@ -93,8 +154,8 @@
 
 .agent-workflow-studio-pi-field-status {
   display: block;
-  color: var(--descrip-text, #aaa);
-  font-size: 0.9em;
+  color: var(--muted-foreground, #8a8a8a);
+  font-size: 12px;
 }
 
 @media (max-width: 560px) {

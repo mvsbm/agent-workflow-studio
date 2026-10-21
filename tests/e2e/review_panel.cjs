@@ -35,7 +35,7 @@ const REVIEW = {
     fs.writeFileSync(path.join(run, 'review.json'), JSON.stringify(REVIEW));
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-review'));
     const status = page.locator('.aw-review-status');
-    await status.filter({hasText: 'Pairs: 0 of 2 decided · Customers: 0 of 1 checked'}).waitFor({timeout: 30000});
+    await status.filter({hasText: 'Pairs: 0 of 2 decided · Groups: 0 of 1 checked'}).waitFor({timeout: 30000});
 
     await page.getByRole('group', {name: 'Is pair p1 the same person?'}).getByRole('button', {name: 'Same'}).click();
     await status.filter({hasText: /Saved · version [0-9a-f]{8}/}).waitFor({timeout: 30000});
@@ -46,7 +46,7 @@ const REVIEW = {
     await page.getByText('C0001 · 2 records · 鈴木 恵子').click();
     await page.getByRole('checkbox', {name: 'Record 2 is not this person'}).check();
     await page.getByRole('group', {name: 'Is C0001 one person?'}).getByRole('button', {name: 'Has someone else'}).click();
-    await status.filter({hasText: 'Customers: 1 of 1 checked · Saved'}).waitFor({timeout: 30000});
+    await status.filter({hasText: 'Groups: 1 of 1 checked · Saved'}).waitFor({timeout: 30000});
 
     const saved = await page.evaluate(async id => {
       const prefix = `/agent-workflow-studio/projects/${encodeURIComponent(id)}`;

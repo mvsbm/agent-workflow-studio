@@ -1,4 +1,4 @@
-// Builds example_workflows/Studio - Nayose reference (no code).json in an isolated ComfyUI: the nayose
+// Builds example_workflows/Studio - Nayose reference.json in an isolated ComfyUI: the nayose
 // benchmark solved only with visible nodes (no agent code), one stage per standard step, run, scored
 // and packed into stage cards. Usage: scripts/build_templates.sh (after the benchmark template).
 const {chromium} = require('playwright-core');
@@ -8,7 +8,7 @@ const path = require('node:path');
 const base = process.env.BASE;
 const root = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows');
 const template = JSON.parse(fs.readFileSync(path.join(root, 'Studio - Nayose benchmark.json'), 'utf8'));
-const target = path.join(root, 'Studio - Nayose reference (no code).json');
+const target = path.join(root, 'Studio - Nayose reference.json');
 // VARIANT=deterministic: only the certain rules decide; VARIANT=patterns: a classic match-pattern grid
 // (no learning). Both leave unsettled pairs unmerged and print the score instead of saving the template.
 const VARIANT = process.env.VARIANT || '';
@@ -65,11 +65,11 @@ const CONTRACT = {
     {id: 'clean_payments', purpose: 'Clean the payment system’s mentions in its own lane.', approach: 'fixed', covers: ['R3'], takes: {folder: 'profile_data.folder'}, gives: {table: 'TABLE'}, uses: 'Read table, Stack roles, Normalize text', why: 'it holds only bank kana', pattern: 'Pipes and filters', gate: {says: 'At least 4,500 payment mentions come out (5,396 on the default data).', check: at('table', 'rows_at_least', 4500)}},
     {id: 'enrich', purpose: 'Join the lanes and fix OCR look-alikes and company marks.', approach: 'fixed', covers: ['R1'], takes: {a: 'clean_policies.table', b: 'clean_claims.table', c: 'clean_payments.table'}, gives: {table: 'TABLE'}, uses: 'Concatenate tables, Map values', why: 'the same name must read the same way', pattern: 'Content enricher', gate: {says: 'All mentions go on: at least 11,500 (13,575 on the default data).', check: at('table', 'rows_at_least', 11500)}},
     {id: 'find_candidates', purpose: 'Pair mentions that share a key.', approach: 'fixed', covers: ['R1'], takes: {table: 'enrich.table'}, gives: {pairs: 'TABLE'}, uses: 'Find candidate pairs (blocking keys)', why: 'comparing every pair is too slow', pattern: 'Blocking', gate: {says: 'At least 45,000 candidate pairs (about 58,000 on the default data).', check: at('pairs', 'rows_at_least', 45000)}},
-    {id: 'compare', purpose: 'Compare each pair field by field.', approach: 'fixed', covers: ['R1'], takes: {records: 'enrich.table', pairs: 'find_candidates.pairs'}, gives: {data: 'PAIRS'}, uses: 'Compare fields', why: 'decisions need plain levels', pattern: 'Comparison vector', gate: {says: 'At least 45,000 pairs compared (57,624 on the default data).', check: at('data', 'rows_at_least', 45000)}},
-    {id: 'decide_rules', purpose: 'Settle the certain pairs by rule.', approach: 'fixed', covers: ['R1'], takes: {data: 'compare.data'}, gives: {matched: 'DECISIONS', different: 'DECISIONS', unsettled: 'PAIRS'}, uses: 'Decision rules', why: 'sure cases need no score', pattern: 'Rules cascade', gate: {says: 'At least 7,000 certain matches (9,857 on the default data).', check: at('matched', 'rows_at_least', 7000)}},
-    {id: 'decide_score', purpose: 'Score the rest with learned points.', approach: 'fixed', covers: ['R1'], takes: {data: 'decide_rules.unsettled'}, gives: {matched: 'DECISIONS', different: 'DECISIONS', unsettled: 'PAIRS'}, uses: 'Learn weights, Decision rules', why: 'each field’s evidence differs', pattern: 'Fellegi–Sunter', gate: {says: 'At least 30,000 scored matches (38,520 on the default data).', check: at('matched', 'rows_at_least', 30000)}},
-    {id: 'you_verify', purpose: 'You decide the pairs the score is unsure of.', approach: 'fixed', person: true, covers: ['R2'], takes: {data: 'decide_score.unsettled'}, gives: {matched: 'DECISIONS', different: 'DECISIONS'}, uses: 'Your review decisions', why: 'a person beats a guess', pattern: 'Human in the loop', gate: {says: 'The unsure pairs reached you in the Review tab.'}},
-    {id: 'group_customers', purpose: 'Group matches into customers, refusing bad merges.', approach: 'fixed', covers: ['R1'], takes: {matched_1: 'decide_rules.matched', matched_2: 'decide_score.matched', matched_3: 'you_verify.matched', different_1: 'decide_rules.different', different_2: 'decide_score.different', different_3: 'you_verify.different'}, gives: {customers: 'CUSTOMERS'}, uses: 'Cluster guard', why: 'one wrong link must not chain many', pattern: 'Guarded clustering', gate: {says: 'Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).', check: at('customers', 'rows_at_least', 11500)}},
+    {id: 'compare', purpose: 'Compare each pair field by field.', approach: 'fixed', covers: ['R1'], takes: {records: 'enrich.table', pairs: 'find_candidates.pairs'}, gives: {data: 'RECORD_PAIRS'}, uses: 'Compare fields', why: 'decisions need plain levels', pattern: 'Comparison vector', gate: {says: 'At least 45,000 pairs compared (57,624 on the default data).', check: at('data', 'rows_at_least', 45000)}},
+    {id: 'decide_rules', purpose: 'Settle the certain pairs by rule.', approach: 'fixed', covers: ['R1'], takes: {data: 'compare.data'}, gives: {matched: 'PAIR_DECISIONS', different: 'PAIR_DECISIONS', unsettled: 'RECORD_PAIRS'}, uses: 'Decision rules', why: 'sure cases need no score', pattern: 'Rules cascade', gate: {says: 'At least 7,000 certain matches (9,857 on the default data).', check: at('matched', 'rows_at_least', 7000)}},
+    {id: 'decide_score', purpose: 'Score the rest with learned points.', approach: 'fixed', covers: ['R1'], takes: {data: 'decide_rules.unsettled'}, gives: {matched: 'PAIR_DECISIONS', different: 'PAIR_DECISIONS', unsettled: 'RECORD_PAIRS'}, uses: 'Learn weights, Decision rules', why: 'each field’s evidence differs', pattern: 'Fellegi–Sunter', gate: {says: 'At least 30,000 scored matches (38,520 on the default data).', check: at('matched', 'rows_at_least', 30000)}},
+    {id: 'you_verify', purpose: 'You decide the pairs the score is unsure of.', approach: 'fixed', person: true, covers: ['R2'], takes: {data: 'decide_score.unsettled'}, gives: {matched: 'PAIR_DECISIONS', different: 'PAIR_DECISIONS'}, uses: 'Your review decisions', why: 'a person beats a guess', pattern: 'Human in the loop', gate: {says: 'The unsure pairs reached you in the Review tab.'}},
+    {id: 'group_customers', purpose: 'Group matches into customers, refusing bad merges.', approach: 'fixed', covers: ['R1'], takes: {matched_1: 'decide_rules.matched', matched_2: 'decide_score.matched', matched_3: 'you_verify.matched', different_1: 'decide_rules.different', different_2: 'decide_score.different', different_3: 'you_verify.different'}, gives: {customers: 'RECORD_CLUSTERS'}, uses: 'Cluster guard', why: 'one wrong link must not chain many', pattern: 'Guarded clustering', gate: {says: 'Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).', check: at('customers', 'rows_at_least', 11500)}},
     {id: 'publish', purpose: 'Write one customer id per mention.', approach: 'fixed', covers: ['R1'], takes: {records: 'enrich.table', groups: 'group_customers.customers'}, gives: {path: 'STRING'}, uses: 'Attach group ids, Write table', why: 'the systems need one shared id', pattern: 'Publish', gate: {says: 'The result file is written.', check: at('path', 'regex', 'nayose_result_\\d{5}_\\.csv')}},
   ],
   decisions: [
@@ -285,10 +285,10 @@ decide: {match: 4, review: 2}
       const members = app.graph.nodes.filter(n => n.properties?.aws_contract_step === id);
       if (!members.length) continue;
       for (const n of members) delete n.properties.aws_contract_step; // the stage now says which step
-      const stage = packIntoStage(app.graph, members, id, Number(/^\s*(\d+)/.exec(title)[1]));
-      stage.title = stage.subgraph.name = title;  // the pipeline's own words (Decide: certain rules)
-      // The contract's step: its agreed Check goes in the stage.
+      // The contract's step: its ports name the stage's ports; its agreed Check goes in the stage.
       const step = contract.steps.find(s => s.id === id);
+      const stage = packIntoStage(app.graph, members, id, Number(/^\s*(\d+)/.exec(title)[1]), step.gives);
+      stage.title = stage.subgraph.name = title;  // the pipeline's own words (Decide: certain rules)
       if (step.gate.check) addCheck(stage.subgraph, step.gate.check, step.gate.says);
     }
     // Each stage's key knobs on its card (promoted settings), changed without opening the stage.
@@ -311,11 +311,12 @@ decide: {match: 4, review: 2}
     // synthetic generator and its scorer leave: they stay in Studio - Nayose benchmark, as test data.
     const {setSignature} = await import('/extensions/agent_workflow_studio/publish.js');
     const synthetic = app.graph.nodes.find(n => n.isSubgraphNode?.() && !n.properties?.aws_stage);
-    const exports = window.LiteGraph.createNode('PrimitiveString');
+    // A data folder input: pick a folder in ComfyUI's input folder, or upload the files (App mode too).
+    const exports = window.LiteGraph.createNode('AgentWorkflowDataFolder');
     app.graph.add(exports);
     exports.title = 'Input · exports';
     exports.properties = {...exports.properties, aws_input: 'exports'};
-    exports.widgets.find(w => w.name === 'value').value = 'nayose_bench';
+    exports.widgets.find(w => w.name === 'folder').value = 'nayose_bench';
     const profileStage = app.graph.nodes.find(n => n.properties?.aws_stage === 'profile_data');
     const into = profileStage.inputs.findIndex(i => i.name === 'folder');
     profileStage.disconnectInput(into);
@@ -330,14 +331,15 @@ decide: {match: 4, review: 2}
     answer.properties = {...answer.properties, aws_output: 'customer_file', aws_output_from: 'publish.path'};
     answer.widgets.find(w => w.name === 'name').value = 'customer_file';
     published.connect(0, answer, 0);
-    setSignature(app.graph, [{node: exports.id, widget: 'value'}], [answer.id]);
+    // The folder and its Upload button: App mode offers both, so a user brings their own exports there.
+    setSignature(app.graph, [{node: exports.id, widget: 'folder'}, {node: exports.id, widget: 'upload'}], [answer.id]);
     // The note says how to use this workflow as it now is: an API for your exports.
     const note = app.graph.nodes.find(n => n.type === 'MarkdownNote');
     if (note) note.widgets[0].value = [
       '# Nayose reference: customer ids for your exports',
       '',
-      "1. Put the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv) in one folder under ComfyUI's input folder, or upload each: `curl -F image=@policy_master.csv -F type=input -F subfolder=my_exports http://127.0.0.1:8188/upload/image`.",
-      '2. Set **Input · exports** to that folder and press **Run** (or open it as an App: Alt+M). Published, it is an API: the Contract tab shows the call.',
+      '1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI\'s input folder.',
+      '2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.',
       '3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench.',
     ].join('\n');
     arrangeGraph(app.graph);

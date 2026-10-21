@@ -57,7 +57,7 @@ export async function hardenStep(node) {
   try {
     // Where the step's input text comes from: the linked node, or the typed widget value.
     const textSlot = node.inputs.findIndex(input => input.name === 'text');
-    const inputLink = linkIn(graph, node.inputs[textSlot]?.link);
+    const inputLink = textSlot >= 0 ? node.getInputLink(textSlot) : null;
     let source;
     if (inputLink) {
       source = {node: graph.getNodeById(inputLink.origin_id), slot: inputLink.origin_slot};

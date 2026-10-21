@@ -22,14 +22,16 @@ import yaml
 from comfy_api.latest import io
 
 from .data_preview import decode, table
+from .datasets import ref, ui_datasets
+from .standards import custom, dataset_sockets
 
-Table = io.Custom("TABLE")
-# What flows between matching stages. The value is the same run-folder record as before; the
-# socket type says what it holds, so ComfyUI refuses a wrong wire. Typed inputs also take DICT
-# (an Agent Tool's result), the escape hatch for agent-written steps.
-Pairs = io.Custom("PAIRS")  # compared pairs not decided yet
-Decisions = io.Custom("DECISIONS")  # decided pairs: matched or different
-Customers = io.Custom("CUSTOMERS")  # records grouped into customers
+# The sockets come from the type standard (standards/): TABLE is a core type; the others are the
+# record-matching domain's dataset classes, so ComfyUI refuses a wrong wire. Typed inputs also take
+# DICT (an Agent Tool's result), the escape hatch for agent-written steps.
+Table = custom("TABLE")
+RecordPairs = custom("record_pairs")  # compared pairs, not decided yet
+PairDecisions = custom("pair_decisions")  # decided pairs: match or different
+RecordClusters = custom("record_clusters")  # records grouped into clusters (one entity each)
 CATEGORY = "agent_workflow_studio/table"
 
 
@@ -1202,7 +1204,7 @@ class CompareFields(io.ComfyNode):
             ],
             outputs=[
                 Table.Output(display_name="compared", tooltip="Pairs with one level per field."),
-                Pairs.Output(
+                RecordPairs.Output(
                     display_name="data",
                     tooltip="Run folders with pairs.jsonl, for Learn weights and Decision rules.",
                 ),
@@ -1273,9 +1275,15 @@ class CompareFields(io.ComfyNode):
         }
         ui = report("Compare fields", pt, out, notes)
         ui["aws_wires"] *= 2  # the table and the pairs file carry the same pairs
-        return io.NodeOutput(
-            out, {"_run_folders": [str(folder.resolve())], "file": "pairs.jsonl"}, ui=ui
+        pairs = ref(
+            "record_pairs",
+            "pairs",
+            folder / "pairs.jsonl",
+            len(rows),
+            run_folders=[str(folder.resolve())],
         )
+        ui["aws_datasets"] = ui_datasets((1, pairs))
+        return io.NodeOutput(out, pairs, ui=ui)
 
 
 class AttachGroups(io.ComfyNode):
@@ -1291,7 +1299,7 @@ class AttachGroups(io.ComfyNode):
                 Table.Input("records", display_name="Records", tooltip="All records."),
                 io.MultiType.Input(
                     "groups",
-                    types=[Customers, io.Dict],
+                    types=[RecordClusters, io.Dict],
                     display_name="Groups",
                     tooltip="Connect Cluster guard's customers.",
                 ),
@@ -1314,15 +1322,16 @@ class AttachGroups(io.ComfyNode):
 
     @classmethod
     def execute(cls, records: Any, groups: Any, id: str, column: str) -> io.NodeOutput:  # noqa: A002
-        from .nayose_nodes import find_file
+        from .datasets import dataset_file
 
         rt = check_table(records, "Records")
         ids = columns_of(id)
         need_columns(rt, ids)
+        # record_clusters rows are (record, cluster); files from before the standard say (mention, customer).
         clusters = {
-            r["mention"]: r["customer"]
+            r.get("record", r.get("mention")): r.get("cluster", r.get("customer"))
             for r in csv.DictReader(
-                find_file("clusters.csv", groups).read_text(encoding="utf-8").splitlines()
+                dataset_file(groups, "clusters.csv").read_text(encoding="utf-8").splitlines()
             )
         }
         n, rows, alone = len(set(clusters.values())), [], 0
@@ -1350,7 +1359,8 @@ class Stub(io.ComfyNode):
     """A planned stage's placeholder: passes its input on, typed as its input, so the pipeline runs
     end to end before the stage is built."""
 
-    T = io.MatchType.Template("data", [Table, Pairs, Decisions, Customers])
+    # A stand-in for any table or dataset the standard registers (memory datasets included).
+    T = io.MatchType.Template("data", [Table, *(custom(s) for s in dataset_sockets(storage=None))])
 
     @classmethod
     def define_schema(cls) -> io.Schema:

@@ -31,6 +31,8 @@ def rows_of(value: Any) -> int | None:
     if isinstance(value, dict):
         if isinstance(value.get("rows"), list):
             return len(value["rows"])
+        if isinstance(value.get("row_count"), int):  # a dataset reference says its size
+            return value["row_count"]
         if isinstance(value.get("count"), int):
             return value["count"]
         if value.get("file") and value.get("_run_folders"):  # a run-folder record: count its file

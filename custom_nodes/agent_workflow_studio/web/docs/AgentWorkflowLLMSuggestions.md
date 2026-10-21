@@ -6,7 +6,7 @@ Asks a local model (an OpenAI-compatible server on this machine, e.g. llama-serv
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| Decisions | `PAIRS,DECISIONS,DICT` | Connect Decision rules' decisions. |
+| Decisions | `RECORD_PAIRS,PAIR_DECISIONS,DICT` | Connect Decision rules' decisions. |
 | Pairs file | `STRING` | The compared pairs, for the records' details. Default: `pairs.jsonl`. |
 | Model server | `STRING` | A local OpenAI-compatible server, e.g. llama-server -hf ggml-org/gemma-4-E4B-it-GGUF:Q4_0 --port 8091. Default: `http://127.0.0.1:8091/v1`. |
 | Model | `STRING` | Model name the server expects. Default: `gemma-4-E4B-it`. |
@@ -17,7 +17,7 @@ Asks a local model (an OpenAI-compatible server on this machine, e.g. llama-serv
 
 | Output | Type | What it is |
 | --- | --- | --- |
-| suggestions | `PAIRS` | Counts and run folders (suggestions.csv) for Cluster guard. |
+| suggestions | `RECORD_PAIRS` | Counts and run folders (suggestions.csv) for Cluster guard. |
 
 ## Where it runs
 

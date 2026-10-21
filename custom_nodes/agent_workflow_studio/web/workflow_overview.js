@@ -1,4 +1,4 @@
-// The open workflow's panels (design, contract, versions, data, review, customers) as tabs in ComfyUI's
+// The open workflow's panels (design, contract, versions, data, review, clusters) as tabs in ComfyUI's
 // own right panel, in its Workflow overview: what it shows when nothing is selected. Tabs marked
 // `selection` (Design) also show beside the native tabs of a selected node, and follow the selection. ComfyUI has no API
 // for that panel's tabs, so ours attach to it by its test ids (the frontend is pinned, and a browser
@@ -24,6 +24,8 @@ function render(host) {
   if (!tab) return;
   shownFor = graphId();
   shownIn = host;
+  // A new showing: a tab's earlier render still loading (its awTicket older) must not write here.
+  host.awTicket = (host.awTicket ?? 0) + 1;
   tab.render(host);
 }
 

@@ -1,6 +1,18 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
-import { $el, ComfyDialog } from "../../scripts/ui.js";
+
+// A small element builder ("tag.class", props, children), in place of ComfyUI's deprecated scripts/ui.js.
+function $el(tag, props = {}, children = []) {
+  if (Array.isArray(props)) [props, children] = [{}, props];
+  const [name, ...classes] = tag.split(".");
+  const node = document.createElement(name);
+  const { dataset, ...rest } = props;
+  Object.assign(node, rest);
+  Object.assign(node.dataset, dataset ?? {});
+  if (classes.length) node.classList.add(...classes);
+  node.append(...children);
+  return node;
+}
 
 const route = "/agent-workflow-studio/pi";
 
@@ -12,14 +24,21 @@ if (!document.getElementById("agent-workflow-studio-pi-settings-css")) {
   document.head.append(stylesheet);
 }
 
-class PiSettingsDialog extends ComfyDialog {
+// A native modal <dialog>: focus stays inside, Escape closes it, the page behind is inert.
+class PiSettingsDialog {
   constructor() {
-    super();
-    this.element.classList.add("agent-workflow-studio-pi-settings");
+    this.element = $el("dialog.agent-workflow-studio-pi-settings");
+    this.element.setAttribute("aria-label", "Pi provider credentials & model catalog");
+    // Closing by any way (Escape included) clears typed keys, so none stays in the page.
+    this.element.addEventListener("close", () => {
+      for (const input of this.element.querySelectorAll('input[type="password"]')) input.value = "";
+    });
   }
 
-  createButtons() {
-    return [];
+  show(content) {
+    if (!this.element.isConnected) document.body.append(this.element);
+    this.element.replaceChildren(content);
+    if (!this.element.open) this.element.showModal();
   }
 
   async open() {
@@ -55,7 +74,7 @@ class PiSettingsDialog extends ComfyDialog {
       title: "Close",
       onclick: () => {
         clear();
-        this.element.style.display = "none";
+        this.element.close();
       },
     });
   }
@@ -282,12 +301,6 @@ class PiSettingsDialog extends ComfyDialog {
       $el("p", { textContent: "This check uses `pi auth check --no-refresh`: local readiness only, no model call and no OAuth refresh. A live provider test is intentionally separate and is not performed here." }),
       result,
     ]);
-    panel.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close.click();
-      }
-    });
     providerSelect.value = providers[0]?.id || "";
     refreshModels();
     this.show(panel);

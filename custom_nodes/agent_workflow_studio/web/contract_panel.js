@@ -3,7 +3,7 @@
 // the server by the same transition table the agent's status tool uses.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {registerWorkflowTab} from './workflow_drawer.js';
+import {iconButton, registerWorkflowTab, section} from './workflow_drawer.js';
 import {contractEvidence} from './pi_canvas.js';
 import {publishWorkflow, rollbackApi, runChecks} from './publish.js';
 import {designPage} from './design_page.js';
@@ -30,9 +30,10 @@ function chip(label, color) {
 
 // Plan vs built vs proven, every gap named (progress.py): nothing here is the agent's own claim.
 function gapsSection(trace) {
-  const section = el('details', null, {open: true, className: 'aw-contract-gaps'});
   const total = trace.gaps.length;
-  section.append(el('summary', total ? `Gaps (${total}) · ${Object.entries(trace.gap_counts).filter(([, n]) => n).map(([k, n]) => `${GAPS[k][0].toLowerCase()} ${n}`).join(' · ')}` : 'No gaps: everything agreed is built and proven on this version'));
+  const {node, body: gaps} = section(total ? `Gaps · ${total}` : 'No gaps',
+    {sub: total ? Object.entries(trace.gap_counts).filter(([, n]) => n).map(([k, n]) => `${GAPS[k][0].toLowerCase()} ${n}`).join(' · ') : 'everything agreed is built and proven on this version'});
+  node.classList.add('aw-contract-gaps');
   for (const [severity, [label, color]] of Object.entries(GAPS)) {
     const mine = trace.gaps.filter(g => g.severity === severity);
     if (!mine.length) continue;
@@ -41,14 +42,13 @@ function gapsSection(trace) {
     const list = el('ul');
     for (const g of mine) list.append(el('li', `${g.where}: ${g.text}`));
     group.append(list);
-    section.append(group);
+    gaps.append(group);
   }
-  return section;
+  return node;
 }
 
 function requestsSection(trace) {
-  const section = el('details', null, {open: true});
-  section.append(el('summary', 'Your requests → proof'));
+  const {node, body} = section('Your requests → proof', {sub: 'each request, what serves it and what proves it'});
   const list = el('ul', null, {className: 'aw-contract-requests'});
   for (const r of trace.requests) {
     const item = el('li');
@@ -59,8 +59,8 @@ function requestsSection(trace) {
     item.append(el('small', `Served by: ${r.steps.map(s => `${s.id} (${s.state ?? '?'})`).join(', ') || 'no step'} · Examples: ${r.examples.map(e => `${e.id} ${MARK[e.status]}`).join(', ') || 'none'} (they verify it)`));
     list.append(item);
   }
-  section.append(list);
-  return section;
+  body.append(list);
+  return node;
 }
 
 // One step: what was agreed (contract + design), what is built, what the last run proved.
@@ -97,26 +97,28 @@ async function request(path, options) {
 // The workflow as an API: what is published (endpoint, version, a call to copy) and the button to
 // publish the current version. The server refuses until the structure and release items hold.
 function apiSection() {
-  const section = el('section', null, {className: 'aw-contract-api'});
-  const info = el('div');
-  const name = el('input', null, {type: 'text', placeholder: 'api name, e.g. nayose', className: 'p-inputtext p-component', size: 18});
+  const {node: part, body: apiBody} = section('API', {sub: 'this workflow called over HTTP, at a fixed version'});
+  part.classList.add('aw-contract-api');
+  const info = el('div', null, {className: 'aw-contract-api-info'});
+  const name = el('input', null, {type: 'text', placeholder: 'API name, e.g. nayose', className: 'aw-field'});
   name.setAttribute('aria-label', 'API name');
-  const publish = el('button', 'Publish as API', {type: 'button', className: 'p-button p-component p-button-sm'});
-  const examples = el('button', 'Run checks', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: "This workflow's CI: its design, every stage's Checks, the contract's examples and no regression since the last release, on exactly this graph. Publishing needs them all to pass."});
-  const back = el('button', 'Roll back', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', hidden: true});
-  const result = el('p', null, {role: 'status'});
+  const publish = el('button', 'Publish as API', {type: 'button', className: 'aw-button aw-button-primary'});
+  const examples = el('button', 'Run checks', {type: 'button', className: 'aw-button', title: "This workflow's CI: its design, every stage's Checks, the contract's examples and no regression since the last release, on exactly this graph. Publishing needs them all to pass."});
+  const back = el('button', 'Roll back', {type: 'button', className: 'aw-button', hidden: true});
+  const result = el('p', null, {role: 'status', className: 'aw-contract-result'});
   // The outer loop: run the published workflow on a schedule; each run's Checks become a version.
-  const every = el('input', null, {type: 'number', min: '0', step: '5', placeholder: 'minutes', className: 'p-inputtext p-component', style: 'width: 7em'});
+  const every = el('input', null, {type: 'number', min: '0', step: '5', placeholder: 'minutes', className: 'aw-field', style: 'width: 7em; flex: none'});
   every.setAttribute('aria-label', 'Watch every N minutes (0 stops)');
-  const watch = el('button', 'Watch', {type: 'button', className: 'p-button p-component p-button-sm p-button-text', title: 'Run the published API on a schedule and record whether its Checks pass'});
-  section.append(el('h3', 'API'), info, name, examples, publish, back, every, watch, result);
+  const watch = el('button', 'Watch', {type: 'button', className: 'aw-button', title: 'Run the published API on a schedule and record whether its Checks pass'});
+  const row = (...items) => { const line = el('div', null, {className: 'aw-contract-row'}); line.append(...items); return line; };
+  apiBody.append(info, row(name, examples, publish), row(back, every, watch), result);
   watch.addEventListener('click', async () => {
     try {
       const response = await api.fetchApi(`/agent-workflow-studio/api/${encodeURIComponent(name.value.trim())}/watch`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: Number(every.value || 0)})});
       const body = await response.json();
       if (!response.ok) throw Error(body.error ?? 'Could not set the watch.');
       result.textContent = body.watch ? `Watching every ${body.watch.every_minutes} min.` : 'Watch stopped.';
-      await section.load();
+      await part.load();
     } catch (error) {
       result.textContent = error.message;
     }
@@ -144,7 +146,7 @@ function apiSection() {
     back.hidden = !earlier.length;
     back.textContent = `Roll back to ${earlier.at(-1) ?? ''}`;
     back.onclick = async () => {
-      try { await rollbackApi(api, item.name, earlier.at(-1)); result.textContent = `${item.name} now serves ${earlier.at(-1)}.`; await section.load(); } catch (error) { result.textContent = error.message; }
+      try { await rollbackApi(api, item.name, earlier.at(-1)); result.textContent = `${item.name} now serves ${earlier.at(-1)}.`; await part.load(); } catch (error) { result.textContent = error.message; }
     };
     info.replaceChildren(el('div', `Published as ${item.name} · ${item.semver ?? ''} (${item.version.slice(0, 8)}) · ${item.published_at}`),
       ...(item.notes ? [el('div', item.notes)] : []),
@@ -154,7 +156,7 @@ function apiSection() {
       Object.assign(el('a', 'OpenAPI description'), {href: `/agent-workflow-studio/api/${item.name}/openapi.json`, target: '_blank'}));
     name.value ||= item.name;
   };
-  section.load = async () => {
+  part.load = async () => {
     const response = await api.fetchApi('/agent-workflow-studio/api');
     const mine = response.ok ? (await response.json()).apis.filter(a => a.workflow_id === rootGraph()?.id) : [];
     if (mine.length) show(mine.at(-1));
@@ -165,30 +167,30 @@ function apiSection() {
     try {
       const done = await publishWorkflow(app, api, name.value.trim());
       result.textContent = `Published ${done.semver} (${done.version}): ${done.notes} POST ${done.endpoint}` + (done.todo.length ? ` · still to do: ${done.todo.join('; ')}` : '');
-      await section.load();
+      await part.load();
     } catch (error) {
       result.textContent = error.message;
     }
   });
-  return section;
+  return part;
 }
 
 function createPanel() {
-  const root = el('section', null, {className: 'aw-contract'});
-  const status = el('p', null, {className: 'aw-contract-status', role: 'status'});
-  const body = el('div');
-  const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
+  const root = el('section', null, {className: 'aw-contract aw-tab'});
+  const status = el('p', null, {className: 'aw-status aw-contract-status', role: 'status'});
+  const body = el('div', null, {className: 'aw-contract-body'});
+  const refresh = iconButton('pi pi-refresh', 'Refresh');
   // One shareable page generated from the workflow: design, data, stages, decisions, status, loop, API.
-  const exportDesign = el('button', 'Export design', {type: 'button', className: 'p-button p-component p-button-sm p-button-text'});
+  const exportDesign = iconButton('pi pi-download', 'Export design');
   exportDesign.addEventListener('click', async () => {
     const text = await designPage(app, api);
     const link = Object.assign(document.createElement('a'), {href: URL.createObjectURL(new Blob([text], {type: 'text/markdown'})), download: 'design.md'});
     link.click();
     URL.revokeObjectURL(link.href);
   });
-  const header = el('header');
-  header.append(el('h2', 'Contract'), exportDesign, refresh);
-  root.append(header, status, body, apiSection());
+  const bar = el('div', null, {className: 'aw-tab-bar'});
+  bar.append(status, exportDesign, refresh);
+  root.append(bar, body, apiSection());
 
   async function load() {
     if (typeof rootGraph()?.id !== 'string') {
@@ -216,19 +218,18 @@ function createPanel() {
       }
       // Drift is listed among the gaps (Broken), with everything else that is not as agreed.
       const parts = [el('p', trace.summary, {className: 'aw-contract-summary'}), gapsSection(trace), requestsSection(trace)];
-      const stepsBox = el('details', null, {open: true});
-      stepsBox.append(el('summary', `Steps · ${result.progress} · open one to compare agreed / built / proven`), steps);
-      parts.push(stepsBox);
+      const stepsBox = section(`Steps · ${result.progress}`, {sub: 'open one to compare agreed, built and proven'});
+      stepsBox.body.append(steps);
+      parts.push(stepsBox.node);
       if (result.todo?.length) {
-        const todo = el('details');
-        todo.append(el('summary', `To do (${result.todo.length})`), ...result.todo.map(item => el('div', item, {className: 'aw-contract-todo'})));
-        parts.push(todo);
+        const todo = section(`To do · ${result.todo.length}`, {open: false});
+        todo.body.append(...result.todo.map(item => el('div', item, {className: 'aw-contract-todo'})));
+        parts.push(todo.node);
       }
       // The improve loop: each iteration's hypothesis, change and measured verdict (a version each).
       const {journal = [], budget, outside = []} = await request('/loop').catch(() => ({}));
       if (journal.length) {
-        const loop = el('details', null, {open: true});
-        loop.append(el('summary', `Improve loop · ${journal.length}/${budget?.iterations ?? '?'} iterations`));
+        const {node: loopNode, body: loop} = section(`Improve loop · ${journal.length}/${budget?.iterations ?? '?'} iterations`);
         for (const j of journal) {
           const mark = {improved: '▲', worse: '▼', same: '■'}[j.verdict] ?? '·';
           const after = j.after ? ` · verified ${j.after.verified.length}/${j.after.steps}` + (j.after.examples ? ` · examples ${j.after.examples[0]}/${j.after.examples[1]}` : '') : '';
@@ -236,11 +237,11 @@ function createPanel() {
         }
         // Changes since the last iteration that no iteration measured.
         if (outside.length) loop.append(el('div', `⚠ ${outside.length} change(s) since #${journal.at(-1).n} made outside the loop, not measured: ${outside.join('; ')}`, {className: 'aw-contract-warning'}));
-        parts.push(loop);
+        parts.push(loopNode);
       }
-      const full = el('details');
-      full.append(el('summary', 'Full contract'), el('pre', result.text));
-      parts.push(full);
+      const full = section('Full contract', {open: false});
+      full.body.append(el('pre', result.text));
+      parts.push(full.node);
       body.replaceChildren(...parts);
     } catch (error) {
       status.textContent = error.message;

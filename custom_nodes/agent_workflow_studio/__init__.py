@@ -47,8 +47,10 @@ async def comfy_entrypoint() -> AgentWorkflowStudioExtension:
     from .pi_chat import install_pi_chat_routes
     from .project_repo import install_project_routes
     from .routes import install_routes
+    from .studio_defaults import apply_to_default_user
     from .workflow_api import install_api_routes
 
+    apply_to_default_user()
     install_routes()
     install_pi_chat_routes()
     install_project_routes()

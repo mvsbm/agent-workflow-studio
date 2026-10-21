@@ -9,11 +9,12 @@ from typing import Any
 
 from comfy_api.latest import io
 
-from .agent_tools import NAME, protections, run_folder, run_tool
+from .agent_tools import NAME, protections, run_folder, run_tool, value_problems
 from .data_preview import data_files, flow_tables
+from .datasets import is_ref
 from .node_progress import node_id_for, report_node_progress
 from .project_repo import ProjectRepo, projects_root
-from .table_nodes import Customers, Decisions, Pairs
+from .standards import custom, dataset_sockets, port_socket
 
 
 class AgentToolNode(io.ComfyNode):
@@ -45,7 +46,8 @@ class AgentToolNode(io.ComfyNode):
                 ),
                 io.MultiType.Input(
                     "data",
-                    types=[io.Dict, Pairs, Decisions, Customers],
+                    # Any dataset the standard registers (a new domain's classes included).
+                    types=[io.Dict, *(custom(s) for s in dataset_sockets())],
                     display_name="Data input",
                     optional=True,
                     tooltip="Connect a DICT; its keys are passed to the tool as inputs.",
@@ -82,7 +84,21 @@ class AgentToolNode(io.ComfyNode):
             raise ValueError("Agent tools run only inside a saved workflow with a project history.")
         repo = ProjectRepo(projects_root(), workflow["id"])
         code, manifest = repo.load_tool(tool)
-        inputs = {**(data if isinstance(data, dict) else {}), **({"text": text} if text else {})}
+        if is_ref(data):
+            # A dataset arrives whole, as the reference, under the tool's input of its class (or
+            # "data"); its run folders stay readable for the sandbox.
+            port = next(
+                (
+                    p["name"]
+                    for p in manifest.get("inputs") or []
+                    if port_socket(p["kind"]) == port_socket(data["class"])
+                ),
+                "data",
+            )
+            inputs = {port: data, "_run_folders": list(data.get("_run_folders") or [])}
+        else:
+            inputs = {**(data if isinstance(data, dict) else {})}
+        inputs |= {"text": text} if text else {}
         # The user's decisions from the Review tab, so tools can learn from and measure against them.
         if labels := repo.load_labels():
             inputs["review_labels"] = labels
@@ -102,10 +118,18 @@ class AgentToolNode(io.ComfyNode):
         node_id = node_id_for(cls)
         report_node_progress(node_id, f"Agent tool {tool}: running. {protections()}")
         folder = run_folder(Path(folder_paths.get_output_directory()), repo.id, tool)
+        # A typed tool (manifest version 2) keeps to its declared ports, like a node's sockets.
+        typed = manifest.get("version") == 2
+        if typed and (missing := value_problems("input", inputs, manifest["inputs"])):
+            raise ValueError(
+                f"Tool {tool}: " + "; ".join(missing) + ". Connect it through `data` or `text`."
+            )
         started = time.time()
         status, outputs, error = "succeeded", None, None
         try:
             outputs = run_tool(code, inputs, folder, read_dir=read_dir, upstream=upstream)
+            if typed and (wrong := value_problems("output", outputs, manifest["outputs"])):
+                raise RuntimeError(f"Tool {tool} broke its declared ports: " + "; ".join(wrong))
             outputs["_run_folders"] = [*map(str, upstream), str(folder.resolve())]
         except RuntimeError as exc:
             status, error = "failed", str(exc)[:500]

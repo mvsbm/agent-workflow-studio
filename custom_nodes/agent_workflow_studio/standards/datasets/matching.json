@@ -1,0 +1,62 @@
+{
+ "$comment": "Dataset classes of the record-matching domain (entity resolution): what its nodes produce and consume. A workflow names its own datasets of these classes in its design (e.g. a record_clusters dataset named customers).",
+ "domain": "matching",
+ "description": "Record matching (entity resolution, deduplication): candidate pairs, the decisions on them, and the clusters they form.",
+ "classes": {
+  "record_pairs": {
+   "description": "Candidate pairs of records, compared field by field (one level per field), not decided yet.",
+   "socket": "RECORD_PAIRS",
+   "aliases": ["PAIRS"],
+   "format": "jsonl",
+   "file": "pairs.jsonl",
+   "row": {
+    "type": "object",
+    "required": ["id", "left", "right"],
+    "properties": {
+     "id": {"type": "string", "description": "Stable pair id (from the two record ids)."},
+     "left": {"type": "string"},
+     "right": {"type": "string"},
+     "found_by": {"type": "string"},
+     "a": {"type": "object", "description": "The left record's shown fields."},
+     "b": {"type": "object", "description": "The right record's shown fields."}
+    },
+    "additionalProperties": {"description": "One compared level per field: exact, similar, different, missing, …"}
+   }
+  },
+  "pair_decisions": {
+   "description": "Decided pairs: match or different, with the rule or score band that decided and why.",
+   "socket": "PAIR_DECISIONS",
+   "aliases": ["DECISIONS"],
+   "format": "csv",
+   "file": "decisions.csv",
+   "row": {
+    "type": "object",
+    "required": ["id", "left", "right", "decision"],
+    "properties": {
+     "id": {"type": "string"},
+     "left": {"type": "string"},
+     "right": {"type": "string"},
+     "decision": {"type": "string"},
+     "branch": {"type": "string"},
+     "score": {"type": "string"},
+     "why": {"type": "string"}
+    }
+   }
+  },
+  "record_clusters": {
+   "description": "Records grouped into clusters (one entity each), built strongest-first from the decisions, refusing merges decided different.",
+   "socket": "RECORD_CLUSTERS",
+   "aliases": ["CUSTOMERS"],
+   "format": "csv",
+   "file": "clusters.csv",
+   "row": {
+    "type": "object",
+    "required": ["record", "cluster"],
+    "properties": {
+     "record": {"type": "string", "description": "The record (mention) id."},
+     "cluster": {"type": "string", "description": "The cluster it belongs to."}
+    }
+   }
+  }
+ }
+}

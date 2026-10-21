@@ -156,6 +156,8 @@ app.registerExtension({
       const line = [].concat(output?.aws_headline ?? output?.text?.[0]?.split('\n')[0] ?? [])[0];
       // What the run showed is kept on the node (it survives a reload) without becoming an undo step.
       if (output?.aws_wires || line) quietly(app, () => { this.properties = {...this.properties, aws_wires: output?.aws_wires, aws_headline: line?.slice(0, 600)}; });
+      // The datasets it gave, by output slot (class, name, file, rows): the Data tab lists them.
+      if (output?.aws_datasets) quietly(app, () => { this.properties = {...this.properties, aws_datasets: output.aws_datasets}; });
       if (!output?.aws_tables && !output?.aws_flow && !output?.aws_tree) return;
       quietly(app, () => { this.properties = {...this.properties, aws_tables: output.aws_tables, aws_flow: output.aws_flow, aws_tree: output.aws_tree}; });
       render(ensureView(this), output.aws_tables, output.aws_flow, output.aws_tree);

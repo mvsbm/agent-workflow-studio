@@ -157,6 +157,22 @@ class WorkflowApiTests(unittest.TestCase):
             ],
         )
 
+    def test_a_table_or_file_output_keeps_its_type_in_the_openapi(self) -> None:
+        from custom_nodes.agent_workflow_studio.workflow_api import _output_schema
+
+        contract = {
+            "promises": {
+                "outputs": [
+                    {"name": "totals", "kind": "csv", "from": "sum.table"},
+                    {"name": "report", "kind": "file", "from": "write.path"},
+                ]
+            }
+        }
+        self.assertEqual(
+            _output_schema("totals", contract)["required"], ["columns", "rows"]
+        )  # was untyped
+        self.assertEqual(_output_schema("report", contract)["type"], "string")
+
     def test_openapi_describes_the_call(self) -> None:
         doc = openapi(SPEC)
         body = doc["paths"]["/agent-workflow-studio/api/greet/run"]["post"]["requestBody"]

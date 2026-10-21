@@ -8,12 +8,12 @@ test('a stage card tells what each inner node did', () => {
   const rules = {type: 'AgentWorkflowDecisionRules', properties: {aws_flow: [{total: 9, branches: [{label: 'a', decision: 'match', count: 2}, {label: 'b', decision: 'review', count: 3}, {label: 'c', decision: 'match', count: 4}]}]}};
   const guard = {type: 'AgentWorkflowClusterGuard', properties: {aws_tree: [{label: 'Candidate pairs', count: 9, children: [
     {label: 'Merges', count: 6, children: [{label: 'accepted', count: 5}, {label: 'blocked by the guard', count: 1}]},
-    {label: 'Customers: 4 (largest 3 records)', count: 7, children: []}]}]}};
+    {label: 'Clusters: 4 (largest 3 records)', count: 7, children: []}]}]}};
   const exportNode = {type: 'AgentWorkflowNayoseExport', properties: {aws_tables: [{title: 'claims export', rows: [['rows', '1808'], ['file', 'input/nayose_bench/claims.csv']]}]}};
   assert.deepEqual(stageSummary([tool, rules, guard, exportNode]), [
     'mentions.csv 13,575 → pairs.jsonl 94,254',
     'match 6 · review 3',
-    'Customers: 4 (largest 3 records)',
+    'Clusters: 4 (largest 3 records)',
     '1 merge blocked',
   ]);
   assert.deepEqual(stageSummary([exportNode]), ['claims.csv 1,808']);
@@ -41,6 +41,14 @@ test('design badges: a stage serves titled requests; inner nodes are numbered in
   assert.equal(designLabels(check, stage)[0].text, 'verifies the stage');
   assert.deepEqual(designLabels({type: 'X', properties: {}}, null), []); // top level, not a stage
   assert.equal(requestLabel({id: 'R2', title: 'You check uncertain pairs'}), 'R2 · You check uncertain pairs');
+});
+
+test('workflow code shows on its stage card and on its node, naming the tool', () => {
+  const tool = {type: 'AgentWorkflowAgentTool', pos: [0, 0], widgets: [{name: 'tool', value: 'score_pairs'}], properties: {aws_realizes: ['does']}};
+  const stage = {properties: {aws_stage_order: 7, aws_step: {covers: ['R1']}}, subgraph: {nodes: [tool]}};
+  assert.deepEqual(designLabels(stage, null, [{id: 'R1', title: 'One id'}]).map(l => [l.text, l.kind]),
+    [['serves R1 · One id', 'request'], ['workflow code', 'code']]);
+  assert.deepEqual(designLabels(tool, stage).map(l => l.text), ['7.1 · does', 'workflow code · score_pairs']);
 });
 
 test('a stage shows each part of its step with the nodes realizing it, and why each node exists', () => {

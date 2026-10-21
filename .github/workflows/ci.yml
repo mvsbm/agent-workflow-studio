@@ -3,14 +3,20 @@ name: CI
 # The studio's own tests: lint, then the pinned ComfyUI installed by install.sh with the unit, web and
 # browser end-to-end suites (fake Pi; no provider calls, no credentials). Each workflow the studio
 # builds has its own CI inside the studio (pipeline.py); real-agent evals stay manual (tests/eval).
+# One run per change: a branch with a pull request is built through it; push builds main only.
 on:
   pull_request:
   push:
-    branches: [main, 'refactor/**', 'feat/**']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# Package downloads ride out a slow index (a PyPI timeout failed a run): longer timeout, more retries.
+env:
+  UV_HTTP_TIMEOUT: '120'
+  UV_HTTP_RETRIES: '6'
 
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
@@ -38,10 +44,39 @@ jobs:
             node --experimental-vm-modules --no-warnings -e "new (require('vm').SourceTextModule)(require('fs').readFileSync(process.argv[1], 'utf8'))" "$module"
           done
 
-  test:
-    needs: lint
+  # Unit and web tests, and three shards of the browser tests, side by side (each installs the
+  # pinned ComfyUI; uv's download cache is shared).
+  unit:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 20
+    steps:
+      - name: Install into the runner's temp directory (runner.temp exists only inside steps)
+        run: echo "AGENT_WORKFLOW_STUDIO_HOME=$RUNNER_TEMP/aws" >> "$GITHUB_ENV"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: '0.9.27'
+          enable-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '26'
+      - name: Install the pinned ComfyUI, this package and the pinned Pi CLI (CPU)
+        run: |
+          ./install.sh
+          echo "$AGENT_WORKFLOW_STUDIO_HOME/pi/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Unit and web tests
+        run: scripts/test.sh
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [platform, chat, data]  # scripts/e2e.sh: platform checks, then tests/e2e/run.py SHARDS
+    name: e2e (${{ matrix.part }})
     steps:
       - name: Install into the runner's temp directory (runner.temp exists only inside steps)
         run: |
@@ -61,8 +96,6 @@ jobs:
         run: |
           ./install.sh
           echo "$AGENT_WORKFLOW_STUDIO_HOME/pi/node_modules/.bin" >> "$GITHUB_PATH"
-      - name: Unit and web tests
-        run: scripts/test.sh
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/ms-playwright
@@ -72,11 +105,11 @@ jobs:
           npm ci --no-audit --no-fund
           npx --no-install playwright-core install --with-deps chromium
       - name: Browser end-to-end tests (isolated ComfyUI, fake Pi)
-        run: mkdir -p "$E2E_KEEP" && scripts/e2e.sh
+        run: mkdir -p "$E2E_KEEP" && scripts/e2e.sh ${{ matrix.part }}
       - name: Keep the screenshots of a failed run
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: e2e-artifacts
+          name: e2e-artifacts-${{ matrix.part }}
           path: ${{ runner.temp }}/e2e
           if-no-files-found: ignore

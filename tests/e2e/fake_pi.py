@@ -341,14 +341,16 @@ def tool_workflow():
             "expected_sha256": None,
         },
     )
-    ports = [{"name": "text", "kind": "text"}]
+    ports = [{"name": "text", "kind": "STRING"}]
     approved = tool(
         "tool_propose",
         {
             "name": "shout",
             "description": "Uppercase and add an exclamation mark.",
+            "why_not_a_node": "Fake Pi: shows how an approved tool runs as a node.",
             "inputs": ports,
             "outputs": ports,
+            "examples": [{"inputs": {"text": "hi"}, "expect": {"text": "HI!"}}],
         },
     )
     if not approved.get("approved"):

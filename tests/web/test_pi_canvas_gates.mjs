@@ -82,6 +82,8 @@ import {inStudioScope} from '../../custom_nodes/agent_workflow_studio/web/pi_can
 
 test("the agent's scope: the studio's nodes and ComfyUI's text and utility nodes, without media", () => {
   assert.equal(inStudioScope({python_module: 'custom_nodes.agent_workflow_studio', category: 'agent_workflow_studio/table'}), true);
+  // Another pack whose name only starts like the studio's is not the studio.
+  assert.equal(inStudioScope({python_module: 'custom_nodes.agent_workflow_studio_extra', category: 'image', output: ['IMAGE']}), false);
   assert.equal(inStudioScope({category: 'text', input: {required: {string_a: ['STRING']}}, output: ['STRING']}), true);
   assert.equal(inStudioScope({category: 'utilities/primitive', input: {required: {value: ['INT']}}, output: ['INT']}), true);
   assert.equal(inStudioScope({category: 'utilities', input: {required: {image: ['IMAGE']}}, output: ['BOUNDING_BOX']}), false);

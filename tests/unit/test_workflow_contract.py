@@ -116,6 +116,23 @@ class ContractTests(unittest.TestCase):
         self.assertIs(validate_for_approval(CONTRACT), CONTRACT)
         self.assertEqual(validate_for_approval({**CONTRACT, "contract": "2"}), CONTRACT)
 
+    def test_every_type_is_written_by_its_registered_name(self) -> None:
+        # Old and casual names resolve (the type standard's aliases); unregistered ones are refused.
+        old = copy.deepcopy(CONTRACT)
+        old["promises"]["inputs"][0]["kind"] = "String"
+        old["steps"][0]["gives"]["label"] = "DICT"
+        old["steps"][1]["takes"] = {**old["steps"][1].get("takes", {})}
+        stored = validate_contract(old)
+        self.assertEqual(stored["promises"]["inputs"][0]["kind"], "text")
+        self.assertEqual(stored["steps"][0]["gives"]["label"], "DICT")
+        bad = copy.deepcopy(CONTRACT)
+        bad["promises"]["outputs"][0]["kind"] = "hologram"
+        bad["steps"][0]["gives"]["label"] = "CUSTOMER_LIST"
+        with self.assertRaises(ValueError) as caught:
+            validate_contract(bad)
+        self.assertIn("kind 'hologram', which is not a registered type", str(caught.exception))
+        self.assertIn("CUSTOMER_LIST is not a registered type", str(caught.exception))
+
     def test_rejects_inconsistent_contracts(self) -> None:
         cases = {
             "unknown request": changed(lambda c: c["steps"][0]["covers"].append("R9")),

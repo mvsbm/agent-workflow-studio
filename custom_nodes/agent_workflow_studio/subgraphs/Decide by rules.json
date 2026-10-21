@@ -5,7 +5,7 @@
  "nodes": [
   {
    "id": 1,
-   "type": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+   "type": "ee95f17b-3cdf-4c16-be9a-cfaeeb41487e",
    "pos": [
     0,
     0
@@ -22,7 +22,7 @@
      "localized_name": "Pairs",
      "name": "data",
      "shape": 7,
-     "type": "PAIRS,DICT",
+     "type": "RECORD_PAIRS,DICT",
      "link": null
     }
    ],
@@ -30,19 +30,19 @@
     {
      "localized_name": "matched",
      "name": "matched",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": []
     },
     {
      "localized_name": "different",
      "name": "different",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": []
     },
     {
      "localized_name": "unsettled",
      "name": "unsettled",
-     "type": "PAIRS",
+     "type": "RECORD_PAIRS",
      "links": []
     }
    ],
@@ -62,7 +62,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+    "id": "ee95f17b-3cdf-4c16-be9a-cfaeeb41487e",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -93,9 +93,9 @@
     },
     "inputs": [
      {
-      "id": "376ae074-424f-4018-8a71-566327d3e46d",
+      "id": "731430ad-5189-415b-ae33-d6d24e07fdc5",
       "name": "data",
-      "type": "PAIRS,DICT",
+      "type": "RECORD_PAIRS,DICT",
       "linkIds": [
        91
       ],
@@ -109,9 +109,9 @@
     ],
     "outputs": [
      {
-      "id": "f0c0ef9c-d15f-40c5-8074-91f8baf51cd8",
+      "id": "5254ae8b-3a59-438a-b06c-c58961286246",
       "name": "matched",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        55
       ],
@@ -122,9 +122,9 @@
       ]
      },
      {
-      "id": "83c447dc-0000-4982-9f20-6971b3b08858",
+      "id": "52cba286-b102-4db4-a88d-8cf20e70ca49",
       "name": "different",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        56
       ],
@@ -135,9 +135,9 @@
       ]
      },
      {
-      "id": "c3742d08-9979-4fdd-8028-d401d833ddf7",
+      "id": "9a9b6187-185b-4371-9d00-1ff933f20d33",
       "name": "unsettled",
-      "type": "PAIRS",
+      "type": "RECORD_PAIRS",
       "linkIds": [
        51
       ],
@@ -169,7 +169,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 91
        },
        {
@@ -204,7 +204,7 @@
        {
         "localized_name": "decisions",
         "name": "decisions",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": null
        },
        {
@@ -216,7 +216,7 @@
        {
         "localized_name": "matched",
         "name": "matched",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          55,
          97
@@ -225,7 +225,7 @@
        {
         "localized_name": "different",
         "name": "different",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          56
         ]
@@ -233,16 +233,14 @@
        {
         "localized_name": "unsettled",
         "name": "unsettled",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          51
         ]
        }
       ],
       "title": "Certain matches and non-matches",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowDecisionRules"
-      },
+      "properties": {},
       "widgets_values": [
        "pairs.jsonl",
        "# Certainties only; everything else is passed on to probabilistic matching.\nrules:\n  - name: Different sex\n    when: {sex: different}\n    then: different\n  - name: Family member sharing a phone (different given name)\n    when: {kana_given: different, phone: same}\n    then: different\n  - name: Family member at the same address (different given name)\n    when: {kana_given: different, address: [exact, similar]}\n    then: different\n  - name: Same name, conflicting birth date (a namesake)\n    when: {birth: conflict}\n    then: different\n  - name: Maiden name (same given name and birth, surname changed)\n    when: {kana_given: exact, birth: exact, kana_surname: different}\n    then: match\n  - name: Same policy and same reading\n    when: {policy_ref: same, kana: exact}\n    then: match\n  - name: Same phone and same reading\n    when: {phone: same, kana: exact}\n    then: match\n",
@@ -307,9 +305,7 @@
       ],
       "outputs": [],
       "title": "Check · matched",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowCheck"
-      },
+      "properties": {},
       "widgets_values": [
        "rows_at_least",
        "7000",
@@ -332,7 +328,7 @@
       "origin_slot": 0,
       "target_id": 37,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 55,
@@ -340,7 +336,7 @@
       "origin_slot": 2,
       "target_id": -20,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 56,
@@ -348,7 +344,7 @@
       "origin_slot": 3,
       "target_id": -20,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 51,
@@ -356,7 +352,7 @@
       "origin_slot": 4,
       "target_id": -20,
       "target_slot": 2,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 97,
@@ -364,7 +360,7 @@
       "origin_slot": 2,
       "target_id": 59,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      }
     ],
     "extra": {},

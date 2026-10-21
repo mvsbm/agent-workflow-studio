@@ -16,9 +16,11 @@ from comfy_api.latest import io
 from .data_preview import counts_table, read_rows, table
 from .nayose_bench import generate as bench
 from .nayose_bench.score import score as score_result
+from .standards import custom
 
-People = io.Custom("NAYOSE_PEOPLE")
-Facts = io.Custom("NAYOSE_FACTS")
+# The synthetic-data domain's dataset classes (standards/datasets/synthetic.json), passed in memory.
+SyntheticPeople = custom("synthetic_people")
+SyntheticActivity = custom("synthetic_activity")
 
 
 def benchmark_dirs(folder: str) -> tuple[Path, Path]:
@@ -66,7 +68,7 @@ class NayosePeople(io.ComfyNode):
                 ),
             ],
             outputs=[
-                People.Output(
+                SyntheticPeople.Output(
                     display_name="people",
                     tooltip="Simulated people and companies with their life histories.",
                 )
@@ -115,7 +117,9 @@ class NayoseActivity(io.ComfyNode):
             "and beneficiary; claims by holders and family; premium and payout bank registrations. "
             "Update rate: how often a customer's change reaches a policy at all.",
             inputs=[
-                People.Input("people", display_name="People", tooltip="From Nayose · 1 People."),
+                SyntheticPeople.Input(
+                    "people", display_name="People", tooltip="From Nayose · 1 People."
+                ),
                 io.Float.Input(
                     "update_rate",
                     display_name="Update rate",
@@ -136,7 +140,7 @@ class NayoseActivity(io.ComfyNode):
                 ),
             ],
             outputs=[
-                Facts.Output(
+                SyntheticActivity.Output(
                     display_name="facts", tooltip="Clean policies, claims and bank registrations."
                 )
             ],
@@ -201,7 +205,7 @@ class NayoseExport(io.ComfyNode):
             "(mainframe kana and 〓, OCR on paper forms, call-centre homophones, bank-format kana...). "
             "Writes the dirty file to ComfyUI's input folder and its answer key under output/nayose_benchmark.",
             inputs=[
-                Facts.Input(
+                SyntheticActivity.Input(
                     "facts", display_name="Facts", tooltip="From Nayose · 2 Insurance activity."
                 ),
                 io.Combo.Input(
@@ -449,7 +453,14 @@ class PreviewTable(io.ComfyNode):
 
     @classmethod
     def execute(cls, file: str, rows: int, data: Any = None) -> io.NodeOutput:
-        path = find_file(file.strip(), data)
+        from .datasets import dataset_file, is_ref
+
+        # A dataset given with no file named: the dataset itself; else that file in its lineage.
+        path = (
+            dataset_file(data)
+            if is_ref(data) and not file.strip()
+            else find_file(file.strip(), data)
+        )
         records = read_rows(path)
         return io.NodeOutput(
             ui={"aws_tables": [table(f"{path.name} · {len(records):,} rows", records, rows)]}

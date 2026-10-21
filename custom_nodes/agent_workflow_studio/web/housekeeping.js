@@ -1,8 +1,16 @@
-// Old run outputs, kept for a set number of days (a native ComfyUI setting) and cleaned at startup;
+// The studio's housekeeping. Old run outputs, kept for a set number of days (a native ComfyUI setting) and cleaned at startup;
 // "Clean up old run outputs…" in the menu shows what it frees first. Runs never overwrite, so this
 // is what keeps the output folder from growing without end. The newest of each kind always stays.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
+
+// A new or last-closed tab starts empty, not as ComfyUI's image-generation example (this studio has
+// no image models): ComfyUI hands its default graph to extensions as comfyAPI.defaultGraph.
+const {defaultGraph, blankGraph} = window.comfyAPI?.defaultGraph ?? {};
+if (defaultGraph && blankGraph) {
+  for (const key of Object.keys(defaultGraph)) delete defaultGraph[key];
+  Object.assign(defaultGraph, structuredClone(blankGraph));
+}
 
 const SETTING = 'AgentWorkflowStudio.KeepOutputsDays';
 // Nothing is deleted automatically until the user has seen a clean-up and confirmed it once.

@@ -2,6 +2,7 @@
 // Kept independent of DOM/Comfy imports for small runnable regression checks.
 import {analyzeGraph, findConverterPaths} from './graph_analysis.js';
 import {outputNode, refreshApp, setSignature} from './publish.js';
+import {typeOfKind} from './standards_core.js';
 // Widgets that may hold secrets: hidden from the agent and never set by it. Names like
 // max_tokens or credential_source are ordinary settings, not secrets.
 const secret = /(?:password|passwd|api.?key|secret|authorization|bearer|(?:^|_)token$)/i;
@@ -46,7 +47,8 @@ export function quietly(app, write) {
  *  can still add it by hand); the agent neither finds nor adds it. */
 const MEDIA = /^(IMAGE|LATENT|MASK|MODEL|VAE|CLIP|CLIP_VISION|CLIP_VISION_OUTPUT|CONDITIONING|CONTROL_NET|STYLE_MODEL|UPSCALE_MODEL|VIDEO|AUDIO|BOUNDING_BOX|NOISE|SAMPLER|SIGMAS|GUIDER|MESH|VOXEL)$/;
 export function inStudioScope(def) {
-  if (String(def?.python_module ?? '').startsWith('custom_nodes.agent_workflow_studio')) return true;
+  // The studio's own pack (exactly it or a module of it; not another pack whose name only starts so).
+  if (/^custom_nodes\.agent_workflow_studio(\.|$)/.test(String(def?.python_module ?? ''))) return true;
   if (!/^(text|utilities)(\/|$)/.test(def?.category ?? '')) return false;
   const types = [...Object.values({...def.input?.required, ...def.input?.optional}).map(spec => spec?.[0]), ...(def.output ?? [])];
   return !types.some(type => typeof type === 'string' && MEDIA.test(type));
@@ -58,7 +60,7 @@ const outOfScope = name => Error(`${name} is outside this studio's scope (data a
 export function promoteWidget(stage, node, name) {
   const sg = stage.subgraph, input = node.inputs?.find(i => i.widget?.name === name);
   if (!input) throw Error(`${node.title ?? node.type} has no setting "${name}" to put on the stage card.`);
-  if (input.link != null) return null;  // already wired (or promoted)
+  if (node.isInputConnected(node.inputs.indexOf(input))) return null;  // already wired (or promoted)
   const label = sg.inputs.some(i => i.name === name) ? `${name}_${node.id}` : name;
   sg.addInput(label, input.type);
   // The card shows the setting as the node does ("Match at"), not its internal name.
@@ -71,11 +73,21 @@ export function promoteWidget(stage, node, name) {
 export const stageNode = (graph, step) => nodes(graph).find(node => node.properties?.aws_stage === step);
 
 /** Pack nodes into one stage subgraph for a contract step, titled "N · Step name". */
-export function packIntoStage(graph, members, step, number) {
+export function packIntoStage(graph, members, step, number, gives = {}) {
   const before = new Set(nodes(graph));
   graph.convertToSubgraph(new Set(members));
   const stage = nodes(graph).find(node => !before.has(node) && node.isSubgraphNode?.());
   if (!stage) throw Error(`Could not make a stage for step ${step}.`);
+  // ComfyUI names a new stage's ports after the inner outputs; the design names them (a dataset's
+  // name in this workflow, e.g. customers for Cluster guard's clusters): each output whose type
+  // matches exactly one declared port takes that port's name.
+  stage.subgraph.outputs.forEach((output, i) => {
+    const named = Object.entries(gives).filter(([, type]) => type === output.type);
+    if (named.length !== 1 || output.name === named[0][0]) return;
+    output.name = named[0][0];
+    output.label = undefined;
+    if (stage.outputs?.[i]) Object.assign(stage.outputs[i], {name: named[0][0], label: undefined});
+  });
   stage.title = stage.subgraph.name = `${number} · ${humanize(step)}`;
   stage.properties = {...stage.properties, aws_stage: step, aws_stage_order: number};
   stage.setSize([320, 240]); // a stage card's size (room for its design sentence), so the layout right after packing is final
@@ -96,10 +108,13 @@ export function stageNumbers(steps) {
 
 // A promised input's kind as a socket type, and the node that holds it at the top level.
 // A data folder (claim check) gets the Data folder node: a folder list and an Upload button, also in App mode.
-const INPUT_KINDS = {number: ['FLOAT', 'PrimitiveFloat'], integer: ['INT', 'PrimitiveInt'], count: ['INT', 'PrimitiveInt'], boolean: ['BOOLEAN', 'PrimitiveBoolean'], folder: ['STRING', 'AgentWorkflowDataFolder']};
+// A promised input's socket and its App-mode input node, from the type standard (standards.js).
 // The widget an input node takes its value in.
 const valueWidget = node => (node.type === 'AgentWorkflowDataFolder' ? 'folder' : 'value');
-const inputKind = kind => INPUT_KINDS[String(kind).toLowerCase()] ?? ['STRING', 'PrimitiveString'];
+const inputKind = kind => {
+  const type = typeOfKind(String(kind).toLowerCase());
+  return [type?.socket ?? 'STRING', type?.app_input ?? 'PrimitiveString'];
+};
 
 const portType = (steps, source, promises) => {
   if (source.startsWith('input.')) return inputKind(promises?.inputs?.find(i => i.name === source.slice(6))?.kind)[0];
@@ -123,6 +138,12 @@ export function observedFields(subgraph, port) {
   return sample?.columns ?? null;
 }
 
+/** The dataset a stage's output port carried on the last run (class, name, file, rows), if any. */
+export function outputDataset(subgraph, port) {
+  const feeder = feederOf(subgraph, port);
+  return (feeder?.node?.properties?.aws_datasets ?? []).find(([slot]) => slot === feeder.slot)?.[1] ?? null;
+}
+
 /** Point every Check watching an output port at what now feeds that port. */
 function rewatch(subgraph, port) {
   const feeder = feederOf(subgraph, port);
@@ -131,6 +152,9 @@ function rewatch(subgraph, port) {
 }
 
 const linkIn = (graph, id) => (id == null ? null : graph.links?.get?.(id) ?? graph.links?.[id]);
+// The link into a node's input slot. A stage (SubgraphNode) overrides getInputLink with the link
+// inside it, so the base LGraphNode one is called: the wire into the card on this graph.
+const inputLink = (node, slot) => (node?.inputs?.[slot] ? window.LiteGraph.LGraphNode.prototype.getInputLink.call(node, slot) : null);
 
 // Plain copies: a link's fields are getters, which a spread ({...link}) would not copy.
 const allLinks = graph => [...(graph.links?.values?.() ?? Object.values(graph.links ?? {}))].filter(Boolean)
@@ -174,7 +198,7 @@ export function adoptIntoStage(graph, stage, adopted) {
 
 /** Scaffolding (a Stub's wires, a Check's input) is replaced freely; the user's own wires are not. */
 function scaffoldLink(graph, target, slot) {
-  const link = linkIn(graph, target.inputs?.[slot]?.link);
+  const link = inputLink(target, slot);
   return target.type === 'AgentWorkflowCheck' || graph.getNodeById?.(link?.origin_id)?.type === 'AgentWorkflowStub';
 }
 
@@ -214,7 +238,7 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
     // Existing work the step takes over (the user's nodes from before the contract), wiring kept.
     const adopted = (step.adopts ?? []).map(id => graph.getNodeById(id)).filter(node => node && !node.properties?.aws_stage && !node.properties?.aws_given);
     if (!stage && adopted.length) {
-      stage = packIntoStage(graph, adopted, step.id, numbers[step.id]);
+      stage = packIntoStage(graph, adopted, step.id, numbers[step.id], step.gives);
       if ((step.adopts ?? []).length > adopted.length) notes.push(`${stage.title}: some adopted nodes were not found at the top level.`);
     } else if (stage && adopted.length) {
       const titles = adopted.map(n => n.title).join(', ');
@@ -332,7 +356,7 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
   const stages = steps.map(step => {
     const stage = stageNode(graph, step.id), sg = stage.subgraph;
     return {step: step.id, title: stage.title, design: stage.properties.aws_design,
-      takes: sg.inputs.map((p, i) => `${p.name}: ${p.type}${stage.inputs[i]?.link != null ? ' (wired)' : ' (connect at the top level)'}`),
+      takes: sg.inputs.map((p, i) => `${p.name}: ${p.type}${stage.isInputConnected(i) ? ' (wired)' : ' (connect at the top level)'}`),
       gives: sg.outputs.map(p => `${p.name}: ${p.type}`),
       inside: nodes(sg).map(n => (n.type === 'AgentWorkflowCheck' ? `Check on ${n.properties?.aws_watches}` : n.type === 'AgentWorkflowStub' ? 'Stub (input → outputs)' : n.title))};
   });
@@ -609,7 +633,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       try {
         if (op.to === 'output' || op.from === 'input') return false;
         const to = resolve(op.to, op, {}), slot = inputSlot(to, op.input), where = scope(op.stage);
-        const from = resolve(op.from, op, {}), existing = linkIn(where, to?.inputs?.[slot]?.link);
+        const from = resolve(op.from, op, {}), existing = inputLink(to, slot);
         if (!existing || (existing.origin_id === from?.id && existing.origin_slot === outputSlot(from, op.output))) return false;
         return !scaffoldLink(where, to, slot);
       } catch { return false; }
@@ -676,7 +700,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             const to = resolve(op.to, op, added), port = where.inputs.findIndex(p => p.name === op.output), slot = inputSlot(to, op.input);
             if (port < 0) throw Error(`Stage ${op.stage} has no input port ${op.output}; its ports: ${where.inputs.map(p => p.name).join(', ') || 'none'}.`);
             if (!to?.inputs?.[slot]) throw Error('Invalid connection target.');
-            if (to.inputs[slot].link != null && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
+            if (to.isInputConnected(slot) && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
             if (!where.inputNode.slots[port].connect(to.inputs[slot], to)) throw Error('Native port types do not connect.');
           } else if (op.stage != null && op.to === 'output') {
             const from = resolve(op.from, op, added), port = where.outputs.findIndex(p => p.name === op.input), slot = outputSlot(from, op.output);
@@ -690,7 +714,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
             const slot = inputSlot(to,op.input);
             if (!Number.isInteger(slot) || slot < 0 || !to.inputs?.[slot]) throw Error('Invalid connection target.');
             if (op.stage == null) guard(design, from, out, to, slot);
-            const existing = linkIn(where, to.inputs[slot].link);
+            const existing = inputLink(to, slot);
             if (existing && existing.origin_id === from.id && existing.origin_slot === out) continue; // already wired
             if (existing && !destructive && !scaffoldLink(where, to, slot)) throw Error('Replacing an occupied input needs fresh approval.');
             if (!from.connect(out,to,slot)) throw Error('Native port types do not connect.');
@@ -777,7 +801,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
   // One node as the agent reads it; a stage also lists its ports and the nodes and wires inside.
   const describe = node => ({id:node.id,class_type:node.type,title:node.title,mode:node.mode,
     ...(node.properties?.aws_given ? {given:true} : {}),
-    inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:input.link})),
+    inputs:(node.inputs??[]).map((input,index) => ({index,name:input.name,type:input.type,link:inputLink(node, index)?.id ?? null})),
     outputs:(node.outputs??[]).map((output,index) => ({index,name:output.name,type:output.type})),
     widgets:(node.widgets??[]).filter(w => !['button','aws_table_view','aws_plan_view','aws_stage_card'].includes(w.type)).map(w => ({name:w.name,value:secret.test(w.name)?'[redacted]':(['string','number','boolean'].includes(typeof w.value)?w.value:null)})),
     ...(node.properties?.aws_stage ? {stage:{step:node.properties.aws_stage, ...(node.properties.aws_orphaned ? {orphaned:true} : {}),

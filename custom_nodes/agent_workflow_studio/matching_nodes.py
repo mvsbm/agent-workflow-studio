@@ -7,7 +7,7 @@
   them into the Decision rules YAML, with thresholds from target probabilities.
 * **LLM suggestions** asks a *local* model about the pairs in the review band only, and puts its
   suggestion and reason next to each pair in the Review tab. It never decides.
-* **Cluster guard** builds customers from the match decisions, strongest first, and refuses a
+* **Cluster guard** builds clusters from the match decisions, strongest first, and refuses a
   merge that would put together two records already decided to be different people (or exceed
   a size cap). It shows the whole decision tree: how every pair flowed through the stages.
 
@@ -32,8 +32,9 @@ import yaml
 from comfy_api.latest import io
 
 from .data_preview import table
+from .datasets import dataset_file, lineage_file, ref, subset_file, ui_datasets
 from .decision_rules import load_spec, pair_id, read_pairs
-from .table_nodes import Customers, Decisions, Pairs
+from .table_nodes import PairDecisions, RecordClusters, RecordPairs
 
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -220,7 +221,7 @@ class LearnWeights(io.ComfyNode):
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Pairs, io.Dict],
+                    types=[RecordPairs, io.Dict],
                     display_name="Pairs",
                     optional=True,
                     tooltip="Connect the tool that wrote the compared pairs.",
@@ -237,6 +238,9 @@ class LearnWeights(io.ComfyNode):
                     multiline=True,
                     default="",
                     tooltip="Decision rules YAML: hard rules are kept, its score fields are re-learned and its points are the starting guess.",
+                    # Rarely edited (learning replaces its points): behind the node's native
+                    # "Show advanced inputs", so the card shows the learned result first.
+                    advanced=True,
                 ),
                 io.Float.Input(
                     "match_probability",
@@ -262,7 +266,7 @@ class LearnWeights(io.ComfyNode):
                     display_name="rules",
                     tooltip="The YAML with learned points; connect to Decision rules' Rules.",
                 ),
-                Pairs.Output(
+                RecordPairs.Output(
                     display_name="data",
                     tooltip="Passes the pairs on (run folders) to Decision rules.",
                 ),
@@ -291,7 +295,7 @@ class LearnWeights(io.ComfyNode):
                 "Starting rules need a `score` section naming the fields to learn (any starting points)."
             )
         repo = workflow_repo(cls)
-        rows = read_pairs(upstream_file(pairs_file.strip(), data))
+        rows = read_pairs(lineage_file(data, "record_pairs", pairs_file.strip()))
         fields = list(spec["score"])
         result = learn_weights(rows, fields, repo.load_labels(), spec["score"])
         learned = {
@@ -436,7 +440,7 @@ class LLMSuggestions(io.ComfyNode):
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Pairs, Decisions, io.Dict],
+                    types=[RecordPairs, PairDecisions, io.Dict],
                     display_name="Decisions",
                     tooltip="Connect Decision rules' decisions.",
                 ),
@@ -475,7 +479,7 @@ class LLMSuggestions(io.ComfyNode):
                 ),
             ],
             outputs=[
-                Pairs.Output(
+                RecordPairs.Output(
                     display_name="suggestions",
                     tooltip="Counts and run folders (suggestions.csv) for Cluster guard.",
                 )
@@ -494,14 +498,12 @@ class LLMSuggestions(io.ComfyNode):
     ) -> io.NodeOutput:
         check_local(endpoint)
         repo = workflow_repo(cls)
-        # An unsettled branch (its own file), or all decisions of the stage before.
+        # An unsettled branch (its subset of decided rows), or all decisions of the stage before.
         decisions = read_csv(
-            upstream_file((data or {}).get("pairs_subset") or "decisions.csv", data)
+            subset_file(data) or lineage_file(data, "pair_decisions", "decisions.csv")
         )
-        pairs = {
-            pair_id(row, i): row
-            for i, row in enumerate(read_pairs(upstream_file(pairs_file.strip(), data)))
-        }
+        pairs_path = lineage_file(data, "record_pairs", pairs_file.strip())
+        pairs = {pair_id(row, i): row for i, row in enumerate(read_pairs(pairs_path))}
         review = {
             d["id"]: d
             for d in decisions
@@ -589,12 +591,21 @@ class LLMSuggestions(io.ComfyNode):
             ],
             "aws_wires": [f"{len(rows):,} suggestions"],
         }
-        result = {
-            "same": counts["same"],
-            "different": counts["different"],
-            "unsure": counts["unsure"],
-            "_run_folders": chain(data, folder),
-        }
+        # The same pairs handed on (by reference, the branch's subset kept), now with suggestions
+        # beside them in this run's folder (suggestions.csv) for Your review decisions.
+        result = ref(
+            "record_pairs",
+            "suggested",
+            pairs_path,
+            len(rows),
+            subset=subset_file(data),
+            upstream=data,
+            run_folders=chain(data, folder),
+            same=counts["same"],
+            different=counts["different"],
+            unsure=counts["unsure"],
+        )
+        ui["aws_datasets"] = ui_datasets((0, result))
         return io.NodeOutput(result, ui=ui)
 
 
@@ -647,12 +658,12 @@ def guard_clusters(decisions: list[dict], max_size: int) -> dict:
             )
             continue
         if max_size and len(members[a]) + len(members[b]) > max_size:
-            blocked.append({**d, "reason": f"customer would exceed {max_size} records"})
+            blocked.append({**d, "reason": f"cluster would exceed {max_size} records"})
             continue
         parent[small] = large
         members[large] |= members.pop(small)
         merged.append(d)
-        joins.append(d)  # this merge joined two groups: the chain that explains a customer
+        joins.append(d)  # this merge joined two groups: the chain that explains a cluster
     clusters = {}
     for root, group in members.items():
         for mention in group:
@@ -661,8 +672,8 @@ def guard_clusters(decisions: list[dict], max_size: int) -> dict:
 
 
 def stable_ids(clusters: dict, previous: dict) -> tuple[dict, dict]:
-    """Customer ids that survive a re-run: each customer keeps the previous id most of its records
-    had (larger customers choose first); only new customers get new ids. Returns (root -> id, diff)."""
+    """Cluster ids that survive a re-run: each cluster keeps the previous id most of its records
+    had (larger clusters choose first); only new clusters get new ids. Returns (root -> id, diff)."""
     members = defaultdict(list)
     for mention, root in clusters.items():
         members[root].append(mention)
@@ -688,9 +699,9 @@ def stable_ids(clusters: dict, previous: dict) -> tuple[dict, dict]:
     return ids, diff
 
 
-def explain_customers(guarded: dict, ids: dict, values: dict) -> dict:
-    """Per customer: its records, the merges that joined them (strongest first) and the merges
-    refused into it, so anyone can see why these records are one customer."""
+def explain_clusters(guarded: dict, ids: dict, values: dict) -> dict:
+    """Per cluster: its records, the merges that joined them (strongest first) and the merges
+    refused into it, so anyone can see why these records are one cluster."""
     clusters = guarded["clusters"]
     out = defaultdict(lambda: {"records": [], "joined_by": [], "kept_apart": []})
     for mention, root in sorted(clusters.items()):
@@ -784,7 +795,7 @@ def decision_tree(decisions: list[dict], suggestions: dict, labels: dict, guarde
                 ],
             },
             {
-                "label": f"Customers: {len(set(clusters.values())):,} (largest {max(Counter(clusters.values()).values(), default=0)} records)",
+                "label": f"Clusters: {len(set(clusters.values())):,} (largest {max(Counter(clusters.values()).values(), default=0)} records)",
                 "count": len(clusters),
                 "children": [
                     {"label": f"{size} record{'s' * (size > 1)}", "count": n * size}
@@ -802,17 +813,17 @@ class ClusterGuard(io.ComfyNode):
             node_id="AgentWorkflowClusterGuard",
             display_name="Cluster guard",
             category="agent_workflow_studio/matching",
-            search_aliases=["cluster", "customers", "union find", "chaining", "nayose tree"],
+            search_aliases=["cluster", "clusters", "union find", "chaining", "nayose tree"],
             description=(
-                "Builds customers from the match decisions, strongest first, and refuses any merge that would join "
+                "Builds clusters from the match decisions, strongest first, and refuses any merge that would join "
                 "records already decided to be different people (by a rule or by you) or exceed a size cap — so one "
                 "wrong link cannot chain hundreds of records. Shows the whole decision tree with counts and every "
-                "blocked merge with its reason. Writes clusters.csv (mention, customer)."
+                "blocked merge with its reason. Writes clusters.csv (record, cluster): a record_clusters dataset."
             ),
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Decisions, io.Dict],
+                    types=[PairDecisions, io.Dict],
                     display_name="All decisions",
                     optional=True,
                     tooltip="Decision rules' decisions (all pairs), or connect the branches below instead.",
@@ -820,7 +831,7 @@ class ClusterGuard(io.ComfyNode):
                 *(
                     io.MultiType.Input(
                         f"{kind}_{i}",
-                        types=[Decisions, io.Dict],
+                        types=[PairDecisions, io.Dict],
                         display_name=f"{kind.capitalize()} {i}",
                         optional=True,
                         tooltip=f"A stage's {kind} branch (Decision rules, Your review decisions).",
@@ -830,7 +841,7 @@ class ClusterGuard(io.ComfyNode):
                 ),
                 io.Int.Input(
                     "max_size",
-                    display_name="Max records per customer",
+                    display_name="Max records per cluster",
                     default=60,
                     min=0,
                     max=100000,
@@ -838,8 +849,8 @@ class ClusterGuard(io.ComfyNode):
                 ),
             ],
             outputs=[
-                Customers.Output(
-                    display_name="customers",
+                RecordClusters.Output(
+                    display_name="clusters",
                     tooltip="Counts and run folders (clusters.csv) for the tool that writes the result.",
                 )
             ],
@@ -854,13 +865,14 @@ class ClusterGuard(io.ComfyNode):
     @classmethod
     def execute(cls, max_size: int, data: Any = None, **branches: Any) -> io.NodeOutput:
         repo = workflow_repo(cls)
-        decisions = read_csv(upstream_file("decisions.csv", data)) if data else []
-        # Branches from several stages converge here; each row remembers the stage that decided it.
+        decisions = read_csv(lineage_file(data, "pair_decisions", "decisions.csv")) if data else []
+        # Branches from several stages converge here (pair_decisions datasets, each its own file);
+        # each row remembers the stage that decided it.
         for name, branch in sorted(branches.items()):
             if isinstance(branch, dict):
                 decisions += [
                     {**row, "stage": branch.get("stage") or name}
-                    for row in read_csv(upstream_file(branch.get("file", ""), branch))
+                    for row in read_csv(dataset_file(branch, branch.get("file", "")))
                 ]
         if not decisions:
             raise ValueError(
@@ -876,13 +888,20 @@ class ClusterGuard(io.ComfyNode):
         guarded = guard_clusters(decisions, max_size)
         folder = own_folder(repo, "cluster_guard")
         clusters = guarded["clusters"]
-        # The last run's ids, so a customer keeps its id when the data or the rules change.
+        # The last run's ids, so a cluster keeps its id when the data or the rules change.
         earlier = sorted(
             f for f in folder.parent.glob("cluster_guard-*/clusters.csv") if f.parent != folder
         )
-        previous = {r["mention"]: r["customer"] for r in read_csv(earlier[-1])} if earlier else {}
+        previous = (
+            {
+                r.get("record", r.get("mention")): r.get("cluster", r.get("customer"))
+                for r in read_csv(earlier[-1])
+            }
+            if earlier
+            else {}
+        )
         ids, since = stable_ids(clusters, previous)
-        # The records' values for the Customers tab, from the compared pairs (when upstream).
+        # The records' values for the Clusters tab, from the compared pairs (when upstream).
         values = {}
         try:
             for row in read_pairs(upstream_file("pairs.jsonl", data)):
@@ -891,14 +910,14 @@ class ClusterGuard(io.ComfyNode):
                         values.setdefault(row.get(side), row[record])
         except ValueError:
             pass
-        (folder / "customers.json").write_text(
-            json.dumps(explain_customers(guarded, ids, values), ensure_ascii=False),
+        (folder / "clusters.json").write_text(
+            json.dumps(explain_clusters(guarded, ids, values), ensure_ascii=False),
             encoding="utf-8",
         )
         write_csv(
             folder / "clusters.csv",
-            [{"mention": m, "customer": ids[r]} for m, r in sorted(clusters.items())],
-            ["mention", "customer"],
+            [{"record": m, "cluster": ids[r]} for m, r in sorted(clusters.items())],
+            ["record", "cluster"],
         )
         write_csv(
             folder / "blocked.csv",
@@ -907,18 +926,18 @@ class ClusterGuard(io.ComfyNode):
         )
         tree = decision_tree(decisions, suggestions, repo.load_labels(), guarded)
         sizes = Counter(clusters.values())
-        biggest = [{"customer": ids[r], "records": n} for r, n in sizes.most_common(10)]
+        biggest = [{"cluster": ids[r], "records": n} for r, n in sizes.most_common(10)]
         # A short text summary too, so a contract gate can check this node directly.
         largest = sizes.most_common(1)[0][1] if sizes else 0
         summary = (
-            f"CLUSTER GUARD · {len(sizes):,} customers · largest {largest} records · "
+            f"CLUSTER GUARD · {len(sizes):,} clusters · largest {largest} records · "
             f"{len(guarded['merged']):,} merges accepted · {len(guarded['blocked']):,} blocked"
         )
         ui = {
             "text": (summary,),
-            "aws_wires": [f"{len(sizes):,} customers"],
+            "aws_wires": [f"{len(sizes):,} clusters"],
             "aws_headline": (
-                f"{len(sizes):,} customers · {len(guarded['merged']):,} merges · "
+                f"{len(sizes):,} clusters · {len(guarded['merged']):,} merges · "
                 f"{len(guarded['blocked']):,} blocked"
                 + (
                     f"\nSince the last run: {since['kept']:,} kept their id · {since['new']:,} new · "
@@ -930,15 +949,21 @@ class ClusterGuard(io.ComfyNode):
             "aws_tree": [tree],
             "aws_tables": [
                 table("Blocked merges (why)", guarded["blocked"], 20),
-                table("Largest customers", biggest, 10),
+                table("Largest clusters", biggest, 10),
             ],
         }
-        result = {
-            "customers": len(sizes),
-            "blocked": len(guarded["blocked"]),
-            "file": "clusters.csv",
-            "_run_folders": chain(data, folder),
-        }
+        # A record_clusters dataset; the workflow's design names it (e.g. customers).
+        result = ref(
+            "record_clusters",
+            "clusters",
+            folder / "clusters.csv",
+            len(clusters),
+            upstream=data,
+            run_folders=chain(data, folder),
+            clusters=len(sizes),
+            blocked=len(guarded["blocked"]),
+        )
+        ui["aws_datasets"] = ui_datasets((0, result))
         return io.NodeOutput(result, ui=ui)
 
 
@@ -963,19 +988,19 @@ class ReviewDecisions(io.ComfyNode):
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Pairs, io.Dict],
+                    types=[RecordPairs, io.Dict],
                     display_name="Unsettled",
                     tooltip="A stage's unsettled branch (Decision rules or LLM suggestions).",
                 )
             ],
             outputs=[
-                Decisions.Output(
+                PairDecisions.Output(
                     display_name="matched", tooltip="Pairs you decided are the same person."
                 ),
-                Decisions.Output(
+                PairDecisions.Output(
                     display_name="different", tooltip="Pairs you decided are different people."
                 ),
-                Pairs.Output(display_name="open", tooltip="Pairs you have not decided yet."),
+                RecordPairs.Output(display_name="open", tooltip="Pairs you have not decided yet."),
             ],
             hidden=[io.Hidden.extra_pnginfo, io.Hidden.prompt, io.Hidden.unique_id],
             is_output_node=True,
@@ -988,7 +1013,8 @@ class ReviewDecisions(io.ComfyNode):
     @classmethod
     def execute(cls, data: Any) -> io.NodeOutput:
         repo = workflow_repo(cls)
-        rows = read_csv(upstream_file((data or {}).get("pairs_subset") or "decisions.csv", data))
+        # The pairs left open upstream (a branch's subset of decided rows), or all decisions before.
+        rows = read_csv(subset_file(data) or lineage_file(data, "pair_decisions", "decisions.csv"))
         rows = [r for r in rows if r["decision"] in ("review", "undecided")]
         labels = repo.load_labels()
         split = {"matched": [], "different": [], "open": []}
@@ -1019,14 +1045,21 @@ class ReviewDecisions(io.ComfyNode):
         for name, part in split.items():
             write_csv(folder / f"{name}.csv", part, columns)
         stage, chain_ = own_title(cls, "Your review decisions"), chain(data, folder)
+        # Your decisions as pair_decisions datasets; the pairs still open as the pairs given,
+        # limited to those (a record_pairs subset).
         outs = {
-            name: {
-                "_run_folders": chain_,
-                "file": f"{name}.csv",
-                "stage": stage,
-                "count": len(part),
-                **({"pairs_subset": "open.csv"} if name == "open" else {}),
-            }
+            name: ref(
+                "record_pairs" if name == "open" else "pair_decisions",
+                name,
+                lineage_file(data, "record_pairs", "pairs.jsonl")
+                if name == "open"
+                else folder / f"{name}.csv",
+                len(part),
+                subset=folder / "open.csv" if name == "open" else None,
+                upstream=data,
+                run_folders=chain_,
+                stage=stage,
+            )
             for name, part in split.items()
         }
         facts = [
@@ -1058,6 +1091,9 @@ class ReviewDecisions(io.ComfyNode):
                 table("Still open", split["open"], 10),
             ],
         }
+        ui["aws_datasets"] = ui_datasets(
+            (0, outs["matched"]), (1, outs["different"]), (2, outs["open"])
+        )
         return io.NodeOutput(outs["matched"], outs["different"], outs["open"], ui=ui)
 
 

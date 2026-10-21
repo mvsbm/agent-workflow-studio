@@ -39,7 +39,7 @@ class ArchitectureTests(unittest.TestCase):
     def test_unfinished_work_is_completeness_and_release_not_structure(self) -> None:
         wf = workflow(
             [{"id": 1, "type": "s1", "properties": {"aws_stage": "match"}}],
-            [stage("s1", "1 · Match", ["AgentWorkflowAgentTool"], ports=("*",))],
+            [stage("s1", "1 · Match", ["AgentWorkflowFuzzyNode"], ports=("*",))],
         )
         kinds = {v["rule"]: v["kind"] for v in check(wf)}
         self.assertEqual(
@@ -51,6 +51,13 @@ class ArchitectureTests(unittest.TestCase):
                 "no_fuzzy_steps": RELEASE,
             },
         )
+
+    def test_workflow_code_is_not_a_model_deciding(self) -> None:
+        wf = workflow(
+            [{"id": 1, "type": "s1", "properties": {"aws_stage": "match"}}],
+            [stage("s1", "1 · Match", ["AgentWorkflowAgentTool"], ports=("*",))],
+        )
+        self.assertNotIn("no_fuzzy_steps", {v["rule"] for v in check(wf)})
 
     def test_loose_nodes_and_unknown_stages_are_structural(self) -> None:
         wf = workflow(

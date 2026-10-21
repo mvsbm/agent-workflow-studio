@@ -13,7 +13,9 @@
 /* The layer a version changed: contract and design are your approvals, LLD the agent's builds. */
 .aw-versions-layer { padding: 0 6px; border-radius: 6px; line-height: 18px; white-space: nowrap; background: var(--secondary-background, #313235); color: var(--base-foreground, #fff); }
 .aw-versions-layer:empty { display: none; }
-.aw-layer-contract, .aw-layer-design { color: #8fb4e3; }
-.aw-layer-lld { color: #7fc08f; }
-.aw-layer-checks, .aw-layer-release { color: #6fcf8a; }
-.aw-layer-run, .aw-layer-loop, .aw-layer-review { color: var(--warning-background, #d9a441); }
+.aw-layer-contract, .aw-layer-design { color: color-mix(in srgb, #3b82d6 70%, var(--base-foreground, #fff)); }
+.aw-layer-lld { color: color-mix(in srgb, #2f9e5a 70%, var(--base-foreground, #fff)); }
+.aw-layer-checks, .aw-layer-release { color: color-mix(in srgb, #2f9e5a 70%, var(--base-foreground, #fff)); }
+.aw-layer-run, .aw-layer-loop, .aw-layer-review { color: color-mix(in srgb, #c98a1a 70%, var(--base-foreground, #fff)); }
+.aw-code-add { color: color-mix(in srgb, #2f9e5a 75%, var(--base-foreground, #fff)); }
+.aw-code-del { color: color-mix(in srgb, #d04545 75%, var(--base-foreground, #fff)); }

@@ -3,8 +3,8 @@
 // each one. A declared field the run did not carry is marked; so is data no entity names.
 import {app} from '../../scripts/app.js';
 import {api} from '../../scripts/api.js';
-import {registerWorkflowTab} from './workflow_drawer.js';
-import {observedFields} from './pi_canvas.js';
+import {iconButton, registerWorkflowTab, searchBox, section} from './workflow_drawer.js';
+import {observedFields, outputDataset} from './pi_canvas.js';
 
 const rootGraph = () => app.rootGraph ?? app.graph;
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), {textContent: text ?? '', ...props});
@@ -13,7 +13,7 @@ function flows(graph) {
   // entity (port name) -> who gives it (with the fields seen) and who takes it
   const out = {};
   for (const stage of graph.nodes.filter(n => n.properties?.aws_stage)) {
-    for (const port of stage.subgraph.outputs ?? []) (out[port.name] ??= {gives: [], takes: []}).gives.push({stage: stage.title, type: port.type, seen: observedFields(stage.subgraph, port.name)});
+    for (const port of stage.subgraph.outputs ?? []) (out[port.name] ??= {gives: [], takes: []}).gives.push({stage: stage.title, type: port.type, seen: observedFields(stage.subgraph, port.name), dataset: outputDataset(stage.subgraph, port.name)});
     // An input numbered for several sources (matched_1, matched_2, …) takes that entity.
     for (const port of stage.subgraph.inputs ?? []) {
       const entity = port.name.replace(/_\d+$/, '');
@@ -24,10 +24,12 @@ function flows(graph) {
   return out;
 }
 
+// One entity as a section like a node's in the Parameters tab: its name and key, what it is, its fields.
 function entityCard(name, declared, flow) {
-  const card = el('article', null, {className: 'aw-data-entity'});
   const key = declared?.key?.length ? ` · key ${declared.key.join(', ')}` : '';
-  card.append(el('strong', `${name}${key}`), el('div', declared?.description ?? 'not named in the design', {className: declared ? 'aw-data-desc' : 'aw-data-warn'}));
+  const {node, body: card} = section(`${name}${key}`, {sub: declared?.description ?? 'not named in the design'});
+  node.classList.add('aw-data-entity');
+  if (!declared) node.querySelector('.aw-section-sub').classList.add('aw-data-warn');
   const seen = new Set(flow?.gives.flatMap(g => g.seen ?? []) ?? []);
   const fields = [...new Set([...(declared?.fields ?? []), ...seen])];
   if (fields.length) {
@@ -39,8 +41,13 @@ function entityCard(name, declared, flow) {
     }
     card.append(list);
   }
-  if (flow) card.append(el('small', `given by ${flow.gives.map(g => `${g.stage} (${g.type})`).join(', ') || '—'} · taken by ${flow.takes.join(', ') || '—'}`));
-  return card;
+  if (flow) card.append(el('div', `given by ${flow.gives.map(g => `${g.stage} (${g.type})`).join(', ') || '—'} · taken by ${flow.takes.join(', ') || '—'}`, {className: 'aw-section-sub'}));
+  // The dataset behind it on the last run, by reference: its class (the type standard), where it is, its size.
+  for (const d of (flow?.gives ?? []).map(g => g.dataset).filter(Boolean)) {
+    const rows = d.row_count != null ? ` · ${d.row_count.toLocaleString()} rows` : '';
+    card.append(el('div', `dataset of class ${d.class}${rows} · ${d.subset ? `a subset of ${d.file}` : d.file}`, {className: 'aw-data-dataset', title: d.subset ? `Rows of ${d.file} listed in ${d.subset}` : d.file}));
+  }
+  return node;
 }
 
 function nodeAt(graph, id) {
@@ -99,18 +106,17 @@ async function followRecord(query, out) {
 }
 
 function createPanel() {
-  const root = el('section', null, {className: 'aw-data'});
-  const header = el('header');
-  const refresh = el('button', 'Refresh', {type: 'button', className: 'p-button p-component p-button-sm'});
-  header.append(el('h2', 'Data'), refresh);
-  const status = el('p', null, {role: 'status'});
+  const root = el('section', null, {className: 'aw-data aw-tab'});
+  const refresh = iconButton('pi pi-refresh', 'Refresh');
+  // Follow a record: type an id, name or phone and press Enter.
+  const follow = el('form', null, {className: 'aw-tab-bar'});
+  const {box, input: query} = searchBox('Follow a record: id, name, phone…', 'Follow a record through the last run');
+  follow.append(box, refresh);
+  const status = el('p', null, {className: 'aw-status', role: 'status'});
   const list = el('div', null, {className: 'aw-data-list'});
-  const follow = el('form', null, {className: 'aw-data-search'});
-  const query = el('input', null, {type: 'search', placeholder: 'Follow a record: an id, name or phone', ariaLabel: 'Follow a record through the last run'});
-  const trail = el('div');
-  follow.append(query, el('button', 'Follow', {type: 'submit', className: 'p-button p-component p-button-sm'}));
+  const trail = el('div', null, {className: 'aw-data-trail'});
   follow.addEventListener('submit', event => { event.preventDefault(); if (query.value.trim()) followRecord(query.value.trim(), trail); });
-  root.append(header, follow, trail, status, list);
+  root.append(follow, trail, status, list);
   root.load = async () => {
     const graph = rootGraph();
     if (typeof graph?.id !== 'string') return void (status.textContent = 'Open a workflow to see its data.');
@@ -129,14 +135,13 @@ function createPanel() {
 app.registerExtension({
   name: 'AgentWorkflowStudio.Data',
   setup() {
-    document.head.append(el('style', `.aw-data { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
-      .aw-data header { display: flex; justify-content: space-between; align-items: center; }
-      .aw-data-list { display: flex; flex-direction: column; gap: 8px; }
-      .aw-data-entity { border: 1px solid var(--border-color, #555); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
-      .aw-data-search { display: flex; gap: 6px; } .aw-data-search input { flex: 1; min-width: 0; }
+    // The native pieces (sections, search box) are in workflow_drawer.css.
+    document.head.append(el('style', `.aw-data-trail:not(:empty) { padding: 0 16px 12px; font-size: 13px; }
       .aw-data-follow { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-      .aw-data-desc { opacity: 0.85; } .aw-data-warn { color: #d9822b; }
-      .aw-data-fields { display: flex; flex-wrap: wrap; gap: 4px 10px; font-family: monospace; font-size: 12px; }`));
+      .aw-data-desc { color: var(--muted-foreground, #8a8a8a); } .aw-data-warn { color: color-mix(in srgb, #c98a1a 70%, var(--base-foreground, #fff)); }
+      .aw-data-fields { display: flex; flex-wrap: wrap; gap: 4px; font-size: 12px; }
+      .aw-data-dataset { font-size: 12px; color: color-mix(in srgb, #3b82d6 70%, var(--base-foreground, #fff)); overflow-wrap: anywhere; }
+      .aw-data-entity .aw-data-fields > span { padding: 0 6px; line-height: 20px; border-radius: 6px; background: var(--secondary-background, #313235); }`));
     let panel;
     api.addEventListener('execution_success', () => panel?.isConnected && panel.load());
     registerWorkflowTab({

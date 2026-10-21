@@ -32,7 +32,8 @@ from typing import Any
 import yaml
 from comfy_api.latest import io
 
-from .table_nodes import Decisions, Pairs
+from .datasets import dataset_file, ref, subset_file, subset_ids, ui_datasets
+from .table_nodes import PairDecisions, RecordPairs
 
 DECISIONS = ("match", "review", "different")
 # Outcomes in decisions.csv: a stage with rules only leaves the rest undecided for the next stage.
@@ -296,7 +297,7 @@ class DecisionRules(io.ComfyNode):
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Pairs, io.Dict],
+                    types=[RecordPairs, io.Dict],
                     display_name="Pairs",
                     optional=True,
                     tooltip="Connect the Agent Tool that wrote the compared pairs (or give a path under output/).",
@@ -324,21 +325,21 @@ class DecisionRules(io.ComfyNode):
                 ),
             ],
             outputs=[
-                Decisions.Output(
+                PairDecisions.Output(
                     display_name="decisions",
                     tooltip="Counts, plus run folders so the next tool can read decisions.csv.",
                 ),
                 io.String.Output(display_name="summary", tooltip="The decision flow as text."),
                 # The branches, so the graph shows where pairs go: decided ones leave the cascade.
-                Decisions.Output(
+                PairDecisions.Output(
                     display_name="matched",
                     tooltip="Pairs decided to be the same: connect to Cluster guard.",
                 ),
-                Decisions.Output(
+                PairDecisions.Output(
                     display_name="different",
                     tooltip="Pairs decided to be different: connect to Cluster guard.",
                 ),
-                Pairs.Output(
+                RecordPairs.Output(
                     display_name="unsettled",
                     tooltip="Pairs not decided here (undecided or to review): connect to the next stage.",
                 ),
@@ -369,16 +370,13 @@ class DecisionRules(io.ComfyNode):
                 "Decision rules run only inside a saved workflow with a project history."
             )
         repo = ProjectRepo(projects_root(), workflow["id"])
-        path = find_file(pairs_file.strip(), data)
+        # The pairs it is given (a record_pairs dataset: exactly that file, and its subset if a
+        # branch); a value from before dataset references names its file in its run folders.
+        path = dataset_file(data, pairs_file.strip())
         rows = read_pairs(path)
-        subset = (data or {}).get("pairs_subset") if isinstance(data, dict) else None
+        subset = subset_file(data)
         if subset:  # fed an earlier stage's unsettled branch: judge only those pairs
-            wanted = {
-                r["id"]
-                for r in csv.DictReader(
-                    find_file(subset, data).read_text(encoding="utf-8").splitlines()
-                )
-            }
+            wanted = subset_ids(data)
             rows = [row for i, row in enumerate(rows) if pair_id(row, i) in wanted]
         try:  # an earlier Decision rules stage upstream: keep what it decided, judge the rest
             earlier = (
@@ -715,22 +713,34 @@ class DecisionRules(io.ComfyNode):
             # Shown in the Rules box when the rules come in over a link (e.g. from Learn weights).
             "aws_rules": (rules,),
         }
-        result = {
+        # Datasets by reference: every decision (pair_decisions), and each branch. A decided branch
+        # is its own file; the unsettled branch is the pairs it was given, limited to those left.
+        chain = [*((data or {}).get("_run_folders") or []), str(folder.resolve())]
+        result = ref(
+            "pair_decisions",
+            "decisions",
+            folder / "decisions.csv",
+            len(decided),
+            upstream=data,
+            run_folders=chain,
             **{d: counts[d] for d in OUTCOMES},
-            "file": "decisions.csv",
-            "_run_folders": [*((data or {}).get("_run_folders") or []), str(folder.resolve())],
-        }
-        chain = result["_run_folders"]
+        )
         outs = {
-            name: {
-                "_run_folders": chain,
-                "file": f"{name}.csv",
-                "stage": stage,
-                "count": sum(d["decision"] in o for d in decided),
-                **({"pairs_subset": "unsettled.csv"} if name == "unsettled" else {}),
-            }
+            name: ref(
+                "record_pairs" if name == "unsettled" else "pair_decisions",
+                name,
+                path if name == "unsettled" else folder / f"{name}.csv",
+                sum(d["decision"] in o for d in decided),
+                subset=folder / "unsettled.csv" if name == "unsettled" else None,
+                upstream=data,
+                run_folders=chain,
+                stage=stage,
+            )
             for name, o in branches.items()
         }
+        ui["aws_datasets"] = ui_datasets(
+            (0, result), (2, outs["matched"]), (3, outs["different"]), (4, outs["unsettled"])
+        )
         return io.NodeOutput(
             result, summary, outs["matched"], outs["different"], outs["unsettled"], ui=ui
         )

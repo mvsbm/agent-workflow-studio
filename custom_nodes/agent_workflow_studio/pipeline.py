@@ -2,12 +2,13 @@
 
     static       the design holds on the graph as it is: no drift from the contract, every stage's
                  LLD rules (ports wired, parts realized, no orphan nodes), structure, App = promises
+    unit         the workflow's own code: each tool its Agent Tool nodes run passes its examples
     integration  each stage's Checks passed on a run of exactly this graph (the HLD)
     acceptance   the contract's examples passed through the API on exactly this graph (the contract)
     regression   nothing that passed in the last published version fails now
 
 A run is green when every level passed; publishing needs a green run of exactly this graph. All the
-tests live in the workflow itself (examples in its contract, Checks in its stages), so they are
+tests live in the workflow itself (examples in its contract and its tools, Checks in its stages), so they are
 versioned with it. Pure: the route in workflow_api.py stores each run as a version of the workflow.
 """
 
@@ -22,6 +23,7 @@ from .workflow_contract import report
 
 LABELS = {
     "static": "design",
+    "unit": "tool tests",
     "integration": "stage Checks",
     "acceptance": "examples",
     "regression": "no regression",
@@ -41,8 +43,15 @@ def api_lint(signature: dict | None, workflow: dict) -> list[str]:
     return openapi_lint(openapi({"name": "preview", "signature": signature, "workflow": workflow}))
 
 
-def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict | None) -> dict:
-    """One CI run of the workflow in `evidence` (the browser's: its graph, prompt and latest run)."""
+def run(
+    contract: dict,
+    evidence: dict,
+    acceptance: list[dict],
+    published: dict | None,
+    tools: list[dict] | None = None,
+) -> dict:
+    """One CI run of the workflow in `evidence` (the browser's: its graph, prompt and latest run);
+    `tools` are its tools' test results (agent_tools.test_tools), run by the caller."""
     workflow, current = evidence.get("workflow") or {}, prompt_hash(evidence.get("prompt") or {})
     status = report(contract, evidence, acceptance[-1] if acceptance else None)
 
@@ -55,6 +64,21 @@ def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict 
         *(f"API: {p}" for p in api_lint(evidence.get("signature"), workflow)),
     ]
     stages = [stage("static", "failed" if problems else "passed", list(dict.fromkeys(problems)))]
+    # Unit: the workflow's own code, each tool against its examples (none: every step is a node).
+    broken = [
+        f"{t['tool']}: {'; '.join(t['problems'][:2])}" for t in tools or [] if not t["passed"]
+    ]
+    stages.append(
+        stage("unit", "failed", broken)
+        if broken
+        else stage(
+            "unit",
+            "passed",
+            [f"{len(tools)} tool(s) pass their examples."]
+            if tools
+            else ["No workflow code: every step uses the studio's nodes."],
+        )
+    )
 
     # Steps whose gate a person confirms have no Check: their stage is verified by the user, not here.
     checked = {s["id"] for s in contract["steps"] if (s.get("gate") or {}).get("check")}
@@ -116,5 +140,6 @@ def run(contract: dict, evidence: dict, acceptance: list[dict], published: dict 
         "stages": stages,
         "green": all(s["status"] == "passed" for s in stages),
         "checks": passed,
+        "tools": tools or [],
         "summary": " · ".join(f"{MARK[s['status']]} {s['label']}" for s in stages),
     }

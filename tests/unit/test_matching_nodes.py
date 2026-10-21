@@ -12,7 +12,7 @@ from custom_nodes.agent_workflow_studio.matching_nodes import (
     ask_local,
     check_local,
     decision_tree,
-    explain_customers,
+    explain_clusters,
     guard_clusters,
     learn_weights,
     stable_ids,
@@ -124,7 +124,7 @@ class ClusterGuardTests(unittest.TestCase):
         ]
         guarded = guard_clusters(decisions, 0)
         ids = {root: f"C{i}" for i, root in enumerate(sorted(set(guarded["clusters"].values())), 1)}
-        out = explain_customers(guarded, ids, {"a": {"name": "山田 太郎"}})
+        out = explain_clusters(guarded, ids, {"a": {"name": "山田 太郎"}})
         ab = out[ids[guarded["clusters"]["a"]]]
         self.assertEqual([r["id"] for r in ab["records"]], ["a", "b"])
         self.assertEqual(ab["records"][0]["name"], "山田 太郎")
@@ -141,7 +141,7 @@ class ClusterGuardTests(unittest.TestCase):
         ]
         self.assertEqual(guard_clusters(decisions, 0)["blocked"], [])
         self.assertEqual(
-            guard_clusters(decisions, 2)["blocked"][0]["reason"], "customer would exceed 2 records"
+            guard_clusters(decisions, 2)["blocked"][0]["reason"], "cluster would exceed 2 records"
         )
 
     def test_tree_counts_every_pair(self) -> None:

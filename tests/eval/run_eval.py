@@ -74,6 +74,13 @@ def score(task: dict, r: dict) -> tuple[bool, list[str]]:
             failures.append(f"does not explain: {label}")
     if task.get("expect_data_input") and not (r.get("contract") or {}).get("data_inputs"):
         failures.append("the API takes its data as text, not as an uploaded folder or file")
+    # Workflow code: a tool the user approved, whose own tests passed in the workflow's Run checks.
+    if task.get("expect_tool"):
+        versions = r.get("versions", [])
+        if not any(v.startswith("user: Tool approved: ") for v in versions):
+            failures.append("no approved tool")
+        if not any("Checks · " in v and "✓ tool tests" in v for v in versions):
+            failures.append("its tool tests did not pass in Run checks")
     if task.get("expect_no_nodes") and r.get("node_ids"):
         failures.append("changed the canvas when asked not to")
     if not task.get("no_run") and "success" not in r.get("run_statuses", []):

@@ -114,7 +114,7 @@ function createPanel() {
   function summary(note = '') {
     const parts = [];
     if (review?.pairs?.length) parts.push(`Pairs: ${decided('pairs')} of ${review.pairs.length} decided`);
-    if (review?.groups?.length) parts.push(`Customers: ${decided('groups')} of ${review.groups.length} checked`);
+    if (review?.groups?.length) parts.push(`Groups: ${decided('groups')} of ${review.groups.length} checked`);
     // A review merged from several decision stages is titled by its sections, shown as they are.
     status.textContent = [review?.sections?.length ? '' : review?.title, ...parts, note].filter(Boolean).join(' · ');
     status.title = `Latest run: ${run}`;
