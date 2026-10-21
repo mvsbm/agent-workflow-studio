@@ -49,6 +49,18 @@ def matrix() -> dict[str, list[str]]:
 
 
 class TraceabilityTests(unittest.TestCase):
+    def test_every_browser_test_runs_in_a_ci_shard(self) -> None:
+        # A test that names a requirement but sits in no shard (tests/e2e/run.py) would never run.
+        listed = set(
+            re.findall(r'"([a-z_]+\.cjs)"', (REPO / "tests/e2e/run.py").read_text(encoding="utf-8"))
+        )
+        tests = {
+            p.name
+            for p in (REPO / "tests/e2e").glob("*.cjs")
+            if MARKER.search(p.read_text(encoding="utf-8"))
+        }
+        self.assertEqual(sorted(tests - listed - {"capabilities.cjs"}), [])
+
     def test_every_requirement_is_verified(self) -> None:
         verified = matrix()
         unverified = [

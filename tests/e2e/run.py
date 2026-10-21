@@ -10,27 +10,41 @@ from pathlib import Path
 from fixture import REPO, ComfyFixture
 
 HERE = Path(__file__).resolve().parent
-TESTS = os.environ.get("E2E_ONLY", "").split() or [
-    "build_and_run.cjs",
-    "llm_record.cjs",
-    "fuzzy_node.cjs",
-    "agent_tool.cjs",
-    "review_panel.cjs",
-    "decision_rules.cjs",
-    "matching_cascade.cjs",
-    "api.cjs",
-    "design.cjs",
-    "data_api.cjs",
-    "workflow_tabs.cjs",
-    "studio_shell.cjs",
-]
+# Shards that run side by side in CI (E2E_SHARD); together they are every test.
+SHARDS = {
+    # The agent's chat with the fake Pi: build, records, fuzzy steps, tools and their graduation.
+    "chat": [
+        "build_and_run.cjs",
+        "llm_record.cjs",
+        "fuzzy_node.cjs",
+        "agent_tool.cjs",
+        "graduation.cjs",
+    ],
+    # The workflow's data and tabs: review, decisions, matching, the API, design, data, the shell.
+    "data": [
+        "review_panel.cjs",
+        "decision_rules.cjs",
+        "matching_cascade.cjs",
+        "api.cjs",
+        "design.cjs",
+        "data_api.cjs",
+        "workflow_tabs.cjs",
+        "studio_shell.cjs",
+    ],
+}
+TESTS = (
+    os.environ.get("E2E_ONLY", "").split()
+    or SHARDS.get(os.environ.get("E2E_SHARD", ""))
+    or [test for shard in SHARDS.values() for test in shard]
+)
 
 
 def main() -> int:
     addons = os.environ.get("FAKE_PI_ADDONS", "1")
     env = {"AGENT_WORKFLOW_STUDIO_PI_CLI": str(HERE / "fake_pi.py"), "FAKE_PI_ADDONS": addons}
     failures = 0
-    with ComfyFixture(env) as comfy:
+    # The graduation test's node (written from a tool's brief) loads beside the studio's.
+    with ComfyFixture(env, packs=(HERE / "graduation_pack",)) as comfy:
         artifacts = comfy.root / "artifacts"
         artifacts.mkdir()
         for test in TESTS:

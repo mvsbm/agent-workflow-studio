@@ -47,7 +47,8 @@ export function quietly(app, write) {
  *  can still add it by hand); the agent neither finds nor adds it. */
 const MEDIA = /^(IMAGE|LATENT|MASK|MODEL|VAE|CLIP|CLIP_VISION|CLIP_VISION_OUTPUT|CONDITIONING|CONTROL_NET|STYLE_MODEL|UPSCALE_MODEL|VIDEO|AUDIO|BOUNDING_BOX|NOISE|SAMPLER|SIGMAS|GUIDER|MESH|VOXEL)$/;
 export function inStudioScope(def) {
-  if (String(def?.python_module ?? '').startsWith('custom_nodes.agent_workflow_studio')) return true;
+  // The studio's own pack (exactly it or a module of it; not another pack whose name only starts so).
+  if (/^custom_nodes\.agent_workflow_studio(\.|$)/.test(String(def?.python_module ?? ''))) return true;
   if (!/^(text|utilities)(\/|$)/.test(def?.category ?? '')) return false;
   const types = [...Object.values({...def.input?.required, ...def.input?.optional}).map(spec => spec?.[0]), ...(def.output ?? [])];
   return !types.some(type => typeof type === 'string' && MEDIA.test(type));

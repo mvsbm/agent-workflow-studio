@@ -35,7 +35,26 @@ def socket_code(kind: str) -> str:
     return f'custom("{spec.name}")' if spec else "?"
 
 
-def brief(name: str, code: str, manifest: dict, workflow: str) -> str:
+def stages_running(workflow: dict | None, name: str) -> list[str]:
+    """The stages of a saved workflow whose Agent Tool node runs tool `name` ("title (step id)")."""
+    definitions = {
+        d.get("id"): d for d in ((workflow or {}).get("definitions") or {}).get("subgraphs", [])
+    }
+    found = []
+    for node in (workflow or {}).get("nodes") or []:
+        step = (node.get("properties") or {}).get("aws_stage")
+        inner = (definitions.get(node.get("type")) or {}).get("nodes") or []
+        if step and any(
+            n.get("type") == "AgentWorkflowAgentTool"
+            and (n.get("widgets_values") or [""])[0] == name
+            for n in inner
+        ):
+            title = node.get("title") or definitions[node["type"]].get("name") or step
+            found.append(f"{title} (step `{step}`)")
+    return found
+
+
+def brief(name: str, code: str, manifest: dict, workflow: str, stages: list[str] = ()) -> str:
     """The graduation brief for one approved tool, as Markdown."""
 
     def ports(side: str) -> str:
@@ -86,8 +105,12 @@ def brief(name: str, code: str, manifest: dict, workflow: str) -> str:
             "3. `tests/unit`: one test per example above, with a `Verifies:` line.",
             "4. Regenerate the Info-tab docs (`python -m custom_nodes.agent_workflow_studio.node_docs`).",
             "5. Open a PR; merge on green CI.",
-            f"6. In `{workflow}`, have the agent replace the Agent Tool node `{name}` with the new node "
-            "(same port names), then Run checks: the workflow's tests must stay green.",
+            f"6. In `{workflow}`, have the agent rebuild each stage that runs `{name}` with "
+            "comfy_build_step, the new node where the Agent Tool node was (same port names, same "
+            "parts of the step realized): "
+            + (", ".join(stages) or "no stage runs it in the latest version")
+            + ". Then Run checks: the workflow's tests must stay green (its tool tests level then "
+            "says the workflow has no code of its own).",
             "",
             "## Approved code",
             "",

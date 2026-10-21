@@ -542,12 +542,19 @@ def install_project_routes() -> None:
     @routes.get(prefix + "/tools/{name}/graduation")
     async def graduation_brief(request):
         """The brief for turning an approved tool into a reviewed studio node (Markdown)."""
-        from .graduation import brief
+        from .graduation import brief, stages_running
 
         name = request.match_info["name"]
         return await call(
             request,
-            lambda repo: {"brief": brief(name, *repo.load_tool(name), repo.id)},
+            lambda repo: {
+                "brief": brief(
+                    name,
+                    *repo.load_tool(name),
+                    repo.id,
+                    stages_running(repo.show(repo.head()) if repo.head() else None, name),
+                )
+            },
         )
 
     @routes.post(prefix + "/commits")

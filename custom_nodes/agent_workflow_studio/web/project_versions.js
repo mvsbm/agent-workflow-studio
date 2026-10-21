@@ -97,6 +97,9 @@ function createPanel() {
   const bar = el('div', null, {className: 'aw-tab-bar'});
   bar.append(status, refresh);
   root.append(bar, list);
+  // Each version's row, kept across reloads (by commit), so a version you opened stays open and a
+  // reload never swaps the row you are clicking; rows are only added or moved when versions change.
+  let rows = new Map(), rowsFor = null;
 
   async function load() {
     if (typeof workflowId() !== 'string') {
@@ -109,7 +112,14 @@ function createPanel() {
       status.textContent = commits.length
         ? `${commits.length} version${commits.length > 1 ? 's' : ''} of this workflow. Agent edits and saves are recorded automatically.`
         : 'No versions yet: nothing has been saved or changed by the agent since this workflow was opened. Save it (Ctrl/⌘ + S) to record the first version; after that, every save and agent edit is a version you can restore.';
-      list.replaceChildren(...commits.map((commit, index) => item(commit, index === 0)));
+      if (rowsFor !== workflowId()) [rows, rowsFor] = [new Map(), workflowId()];
+      const next = commits.map((commit, index) => {
+        const kept = rows.get(commit.sha);
+        const row = kept && kept.dataset.latest === String(index === 0) ? kept : item(commit, index === 0);
+        rows.set(commit.sha, row);
+        return row;
+      });
+      if (next.length !== list.children.length || next.some((row, i) => list.children[i] !== row)) list.replaceChildren(...next);
     } catch (error) {
       status.textContent = error.message;
     }
@@ -117,6 +127,7 @@ function createPanel() {
 
   function item(commit, latest) {
     const row = el('li', null, {className: `aw-section aw-versions-item aw-versions-${commit.author}`});
+    row.dataset.latest = String(latest);
     // A section head like a node's in the Parameters tab: who and which layer, then what it did.
     const toggle = el('button', null, {type: 'button', className: 'aw-section-head aw-versions-toggle'});
     toggle.setAttribute('aria-expanded', 'false');
