@@ -182,6 +182,11 @@ def _loose(value: object) -> str:
     return " ".join(str(value).split()).lower()
 
 
+def _cells(value: object) -> str:
+    """Cell values in order, whatever separates them: "North,1500; South,800" = "North 1500, South 800"."""
+    return " " + re.sub(r"[\s,;|]+", " ", str(value)).strip().lower() + " "
+
+
 def run_error(history: dict | None) -> str:
     """Why a run failed, from ComfyUI's history: the node and its error message."""
     if not history:
@@ -222,7 +227,7 @@ def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
                 if got is not None
                 else everything
             )
-            ok = _loose(want) in found or _loose(want) in _loose(rows_text(got))
+            ok = _loose(want) in found or _cells(want) in _cells(rows_text(got))
         if not ok:
             misses.append(
                 f"{key}: expected {want!r}, got {str(got)[:120] if got is not None else 'nothing'}"

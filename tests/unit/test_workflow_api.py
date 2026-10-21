@@ -126,7 +126,13 @@ class WorkflowApiTests(unittest.TestCase):
         self.assertEqual(
             compare_example({"report": "North 1500, South 800"}, {"report": table}, {}), []
         )
+        self.assertEqual(
+            compare_example({"report": "North,1500; South,800"}, {"report": table}, {}), []
+        )  # however the example separates the cells
         self.assertTrue(compare_example({"report": "North 900"}, {"report": table}, {}))
+        self.assertTrue(
+            compare_example({"report": "North 15"}, {"report": table}, {})
+        )  # whole cells
         failed = {
             "status": {
                 "status_str": "error",
