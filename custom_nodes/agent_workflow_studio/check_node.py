@@ -252,13 +252,21 @@ class ApiOutput(io.ComfyNode):
         )
 
 
+NOT_DATA = {"3d", "clipspace", "examples"}
+
+
 def input_folders() -> list[str]:
     """The folders in ComfyUI's input folder (where callers and the upload button put data)."""
     import folder_paths
 
     root = Path(folder_paths.get_input_directory())
+    # Not the user's data: ComfyUI's own (3d, clipspace) and the examples' sample folders.
     found = (
-        sorted(p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
+        sorted(
+            p.name
+            for p in root.iterdir()
+            if p.is_dir() and not p.name.startswith(".") and p.name not in NOT_DATA
+        )
         if root.is_dir()
         else []
     )
@@ -290,16 +298,32 @@ class DataFolder(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, folder: str) -> io.NodeOutput:
-        import folder_paths
+    def validate_inputs(cls, folder: str) -> bool | str:
+        # Any folder that exists in the input folder, also one made after the list was read or one
+        # deeper than the list shows (an example's sample data): ComfyUI then skips its list check.
+        return (
+            True
+            if found_folder(folder)
+            else (
+                f"No folder {folder!r} in ComfyUI's input folder: choose one, or upload files first."
+            )
+        )
 
-        root = Path(folder_paths.get_input_directory()).resolve()
-        path = (root / folder).resolve()
-        if not folder or root not in path.parents or not path.is_dir():
+    @classmethod
+    def execute(cls, folder: str) -> io.NodeOutput:
+        if not found_folder(folder):
             raise ValueError(
                 "Choose a folder inside ComfyUI's input folder, or upload files first."
             )
         return io.NodeOutput(folder)
+
+
+def found_folder(folder: str) -> bool:
+    import folder_paths
+
+    root = Path(folder_paths.get_input_directory()).resolve()
+    path = (root / (folder or "")).resolve()
+    return bool(folder) and root in path.parents and path.is_dir()
 
 
 NODES = [Check, ApiOutput, DataFolder]

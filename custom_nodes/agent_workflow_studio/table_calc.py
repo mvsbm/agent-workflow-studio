@@ -6,6 +6,7 @@ is readable settings on the canvas rather than agent-written code.
 from __future__ import annotations
 
 import ast
+import math
 import unicodedata
 from collections import defaultdict
 from typing import Any
@@ -123,6 +124,74 @@ class RemoveDuplicates(io.ComfyNode):
                 t,
                 out,
                 {"key": ", ".join(cols), "dropped": f"{len(t['rows']) - len(kept):,}"},
+            ),
+        )
+
+
+class SortRows(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="AgentWorkflowSortRows",
+            display_name="Sort rows",
+            category=CATEGORY,
+            search_aliases=["sort", "order by", "rank", "largest first", "top"],
+            description="Orders the rows by one or more columns: numbers as numbers, text as text, blanks last.",
+            inputs=[
+                Table.Input("table", display_name="Table", tooltip="Rows to order."),
+                io.String.Input(
+                    "by",
+                    display_name="Sort by",
+                    default="",
+                    tooltip="Columns to sort by, comma-separated; the first decides, the next breaks ties.",
+                ),
+                io.Combo.Input(
+                    "order",
+                    options=["largest first", "smallest first"],
+                    display_name="Order",
+                    tooltip="Largest first (descending, Z→A) or smallest first (ascending, A→Z).",
+                ),
+            ],
+            outputs=[Table.Output(display_name="table")],
+            is_output_node=True,
+        )
+
+    @classmethod
+    def execute(cls, table: Any, by: str, order: str) -> io.NodeOutput:
+        t = check_table(table)
+        cols = columns_of(by)
+        if not cols:
+            raise ValueError("Sort by: name at least one column.")
+        need_columns(t, cols)
+        down = order == "largest first"
+
+        def key(value: Any) -> tuple:
+            text = "" if value is None else str(value).strip()
+            try:
+                number = float(text.replace(",", ""))
+            except ValueError:
+                number = math.nan
+            if math.isfinite(number):  # "nan" and "inf" sort as text
+                return (0, -number if down else number, "")
+            return (1, 0, text) if text else (2, 0, "")
+
+        rows = list(t["rows"])
+        for column in reversed(cols):  # stable sorts, last column first: the first column decides
+            groups: dict[int, list] = {0: [], 1: [], 2: []}  # numbers, text, blanks
+            for row in rows:
+                k = key(row.get(column))
+                groups[k[0]].append((k, row))
+            rows = [
+                *(r for _, r in sorted(groups[0], key=lambda p: p[0][1])),
+                *(r for _, r in sorted(groups[1], key=lambda p: p[0][2], reverse=down)),
+                *(r for _, r in groups[2]),
+            ]
+        out = make(t["name"], rows, t["columns"])
+        first = rows[0].get(cols[0]) if rows else "—"
+        return io.NodeOutput(
+            out,
+            ui=report(
+                "Sort rows", t, out, {"by": f"{', '.join(cols)} ({order})", "first": str(first)}
             ),
         )
 
@@ -473,4 +542,4 @@ class DataChecks(io.ComfyNode):
         return io.NodeOutput(out, ui=report("Data checks", t, out, notes))
 
 
-NODES = [ParseNumbers, RemoveDuplicates, ComputeColumn, Summarize, DataChecks]
+NODES = [ParseNumbers, RemoveDuplicates, SortRows, ComputeColumn, Summarize, DataChecks]

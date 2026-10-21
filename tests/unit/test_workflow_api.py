@@ -12,8 +12,10 @@ from custom_nodes.agent_workflow_studio.workflow_api import (
     collect_files,
     collect_outputs,
     compare_example,
+    example_inputs,
     next_version,
     openapi,
+    run_error,
 )
 
 SPEC = {
@@ -114,6 +116,68 @@ class WorkflowApiTests(unittest.TestCase):
             compare_example({"rows": "rows 3"}, data, outputs), [], "found anywhere in the results"
         )
         self.assertEqual(len(compare_example({"greeting": "goodbye"}, data, outputs)), 1)
+
+    def test_a_table_is_matched_as_a_person_writes_it_and_a_failed_run_says_why(self) -> None:
+        table = {
+            "columns": ["region", "revenue"],
+            "rows": [{"region": "North", "revenue": 1500.0}, {"region": "South", "revenue": 800}],
+            "total_rows": 2,
+        }
+        self.assertEqual(
+            compare_example({"report": "North 1500, South 800"}, {"report": table}, {}), []
+        )
+        self.assertTrue(compare_example({"report": "North 900"}, {"report": table}, {}))
+        failed = {
+            "status": {
+                "status_str": "error",
+                "messages": [
+                    [
+                        "execution_error",
+                        {
+                            "node_type": "AgentWorkflowSummarize",
+                            "exception_message": "orders has no column region",
+                        },
+                    ]
+                ],
+            }
+        }
+        self.assertEqual(
+            run_error(failed), ": AgentWorkflowSummarize said orders has no column region"
+        )
+        self.assertEqual(run_error(None), ": it did not finish in time")
+
+    def test_an_example_runs_on_its_own_sample_files(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        example = {
+            "id": "E2",
+            "given": {"orders": "empty", "note": "x"},
+            "files": {"empty/orders.csv": "order_id,region,amount\n"},
+            "expect": {},
+        }
+        with tempfile.TemporaryDirectory() as root:
+            given = example_inputs(example, "wf1", Path(root))
+            # Written under input/examples/<workflow>/<example>/, and the folder it names points there.
+            self.assertEqual(given, {"orders": "examples/wf1/E2/empty", "note": "x"})
+            self.assertEqual(
+                (Path(root) / given["orders"] / "orders.csv").read_text(),
+                "order_id,region,amount\n",
+            )
+            self.assertEqual(
+                example_inputs({**example, "files": {}}, "wf1", Path(root)), example["given"]
+            )
+            with self.assertRaisesRegex(ValueError, "must stay inside its folder"):
+                example_inputs({**example, "files": {"../../x.csv": "a"}}, "wf1", Path(root))
+            # The Data folder takes it although its list shows top-level folders only.
+            from unittest.mock import patch
+
+            from custom_nodes.agent_workflow_studio.check_node import DataFolder
+
+            with patch("folder_paths.get_input_directory", return_value=root):
+                self.assertIs(DataFolder.validate_inputs(given["orders"]), True)
+                self.assertIn("No folder", DataFolder.validate_inputs("examples/wf1/E9"))
+                self.assertIn("No folder", DataFolder.validate_inputs("../outside"))
 
     def test_versions_say_what_changed(self) -> None:
         sig = SPEC["signature"]

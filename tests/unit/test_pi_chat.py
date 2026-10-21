@@ -4,6 +4,7 @@
 
 import asyncio
 import base64
+import copy
 import json
 import queue
 import tempfile
@@ -433,7 +434,32 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             approval = canvas.await_args_list[0].args
             self.assertEqual(approval[0], "contract_approve")
             self.assertIn("PURPOSE: Label customer reviews", approval[1]["text"])
+            # The card leads with a few lines: the name, each request, what goes in and out.
+            self.assertTrue(
+                approval[1]["summary"].startswith("Review labels\nR1 · Label each review")
+            )
+            self.assertIn("You give: ", approval[1]["summary"])
             self.assertEqual(canvas.await_args_list[1].args[0], "intent")
+            # The same contract again (an agent re-proposing on "run it") asks the user nothing.
+            canvas.reset_mock()
+            again = await self.session.agent_action(
+                "contract_propose", {"contract": intent_of(CONTRACT)}
+            )
+            self.assertEqual((again["approved"], again["unchanged"]), (True, True))
+            canvas.assert_not_awaited()
+            # An amendment leads with what changed since the user approved it.
+            amended = intent_of(CONTRACT)
+            amended["not_now"] = [*amended["not_now"], "Emoji in labels"]
+            await self.session.agent_action("contract_propose", {"contract": amended})
+            card = canvas.await_args_list[0].args[1]
+            self.assertTrue(
+                card["summary"].startswith(
+                    "Changed since you approved it:\n+ • Emoji in labels\n\n"
+                ),
+                card["summary"],
+            )
+            await self.session.agent_action("contract_propose", {"contract": intent_of(CONTRACT)})
+            canvas.reset_mock()
             # A malformed design gets every problem and a correct example in one answer.
             with self.assertRaisesRegex(
                 ValueError, r"Invalid contract at .*Expected shape, e\.g\. \{\"design\""
@@ -458,6 +484,11 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             card = canvas.await_args_list[0].args[1]
             self.assertEqual(card["title"], "Approve this design?")
             self.assertTrue(card["text"].startswith(f"FOR: {CONTRACT['purpose']}\n\nDESIGN ("))
+            self.assertTrue(
+                card["summary"].startswith(
+                    "2 steps, each checked by its own Check:\n1 · Classify — "
+                )
+            )
             # Approval builds the skeleton: the approved steps become the stages.
             skeleton = canvas.await_args_list[1].args
             self.assertEqual(skeleton[0], "skeleton")
@@ -470,6 +501,24 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(any(line.startswith("✗") for line in result["design_review"]))
             self.assertEqual(result["skeleton"]["created"], ["classify", "tidy"])
+            canvas.reset_mock()
+            same = await self.session.agent_action(
+                "design_propose", {"design": design_of(self.session.contract)}
+            )
+            self.assertTrue(same["unchanged"])
+            canvas.assert_not_awaited()  # no card, no new skeleton
+            # An amended contract keeps the approved design's step behind each promised output.
+            approved = (copy.deepcopy(self.session.contract), dict(self.session.approved))
+            amended = intent_of(self.session.contract)
+            amended["not_now"] = [*amended["not_now"], "Emoji in labels"]
+            await self.session.agent_action("contract_propose", {"contract": amended})
+            self.session.contract, self.session.approved = approved  # the rest goes on from before
+            stored = next(c.args[1] for c in canvas.await_args_list if c.args[0] == "intent")
+            self.assertEqual(
+                [o.get("from") for o in stored["intent"]["promises"]["outputs"]],
+                [o["from"] for o in CONTRACT["promises"]["outputs"]],
+            )
+            canvas.reset_mock()
             # Inside a stage, nodes come only from its LLD, checked against the step before compiling.
             with self.assertRaisesRegex(ValueError, "comfy_build_step"):
                 await self.session.agent_action(
@@ -493,8 +542,9 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(compiled["nodes"]["llm"]["realizes"], ["takes review", "does"])
         log = self.session.repo.log()
         self.assertEqual(
-            [(e["author"], e["message"]) for e in log[:2]],
+            [(e["author"], e["message"]) for e in log[:3]],
             [
+                ("user", f"Contract approved: {CONTRACT['purpose']}"),  # the amendment
                 ("user", "Design approved: 2 steps"),
                 ("user", f"Contract approved: {CONTRACT['purpose']}"),
             ],

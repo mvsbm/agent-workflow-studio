@@ -1,6 +1,6 @@
 """Contract, HLD and LLD, stored natively in the ComfyUI workflow (the single source of truth).
 
-- Contract (intent): `extra.aws_contract`: purpose, requests, examples, promises, not_now,
+- Contract (intent): `extra.aws_contract`: title, purpose, requests, examples, promises, not_now,
   open_questions and the decisions the user made. Its promised inputs/outputs are the App's
   (`extra.linearData`).
 - HLD (the abstracted workflow): the top-level stage nodes. Each stage carries its step in
@@ -26,7 +26,16 @@ SCAFFOLD = {
     "Note",
     "MarkdownNote",
 }
-INTENT = ("contract", "purpose", "requests", "examples", "promises", "not_now", "open_questions")
+INTENT = (
+    "contract",
+    "title",
+    "purpose",
+    "requests",
+    "examples",
+    "promises",
+    "not_now",
+    "open_questions",
+)
 
 
 def split(contract: dict) -> tuple[dict, dict, dict[str, dict]]:

@@ -208,8 +208,18 @@ class ReadTable(io.ComfyNode):
             raw.decode("utf-8-sig")
         except UnicodeDecodeError:
             encoding = "Shift_JIS (cp932)"
-        decode(raw)  # raises for anything else
-        out = make(path.stem, read_rows(path))
+        text = decode(raw)  # raises for anything else
+        # A CSV's header names its columns, also when it has no rows (a quiet month's export).
+        header = (
+            next(
+                csv.reader(text.splitlines()[:1], delimiter="\t" if path.suffix == ".tsv" else ","),
+                [],
+            )
+            if path.suffix not in (".jsonl", ".json")
+            else []
+        )
+        rows = read_rows(path)
+        out = make(path.stem, rows, [c for c in header if c] or None)
         return io.NodeOutput(
             out, ui=report("Read table", None, out, {"file": path.name, "encoding": encoding})
         )
@@ -276,10 +286,65 @@ class WriteTable(io.ComfyNode):
         rel = str(path.relative_to(root))
         ui = report("Write table", t, out, {"file": f"output/{rel}"})
         ui["aws_files"] = [rel]  # an API call returns it as a download
+        parent = str(Path(rel).parent)
+        # ComfyUI's own file record: the chat offers it as a download (/view), as for an API output.
+        ui["files"] = [
+            {"filename": path.name, "subfolder": "" if parent == "." else parent, "type": "output"}
+        ]
         return io.NodeOutput(rel, ui=ui)
 
 
 # --- shape ------------------------------------------------------------------------------------
+class TableFromResult(io.ComfyNode):
+    """A code tool's table, for the table nodes: its result holds every declared output by name."""
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="AgentWorkflowTableFromResult",
+            display_name="Table from tool result",
+            category=CATEGORY,
+            search_aliases=["tool table", "result to table", "dict to table", "convert"],
+            description="Takes one table out of an Agent Tool's result, so table nodes can use it.",
+            inputs=[
+                io.Dict.Input(
+                    "result", display_name="Tool result", tooltip="An Agent Tool's result."
+                ),
+                io.String.Input(
+                    "output",
+                    display_name="Output",
+                    default="",
+                    tooltip="The tool's output name; empty: its only table.",
+                ),
+            ],
+            outputs=[Table.Output(display_name="table")],
+            is_output_node=True,
+        )
+
+    @classmethod
+    def execute(cls, result: dict, output: str) -> io.NodeOutput:
+        tables = {
+            k: v
+            for k, v in (result or {}).items()
+            if isinstance(v, dict) and isinstance(v.get("rows"), list)
+        }
+        name = output.strip()
+        if name:
+            if name not in tables:
+                raise ValueError(
+                    f"The tool result has no table {name!r}; it has {', '.join(tables) or 'none'}."
+                )
+        elif len(tables) == 1:
+            name = next(iter(tables))
+        else:
+            raise ValueError(
+                f"Name the output to take; the result has tables {', '.join(tables) or 'none'}."
+            )
+        t = tables[name]
+        out = make(t.get("name") or name, t["rows"], t.get("columns"))
+        return io.NodeOutput(out, ui=report("Table from tool result", None, out, {"output": name}))
+
+
 class StackRoles(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -1398,6 +1463,7 @@ NODES = [
     ReadTable,
     WriteTable,
     StackRoles,
+    TableFromResult,
     Concatenate,
     FilterRows,
     JoinTables,

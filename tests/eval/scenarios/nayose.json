@@ -27,7 +27,7 @@
  },
  {
   "id": "nayose_visible",
-  "template": "Studio - Nayose benchmark.json",
+  "template": "Studio - Record matching benchmark.json",
   "dataset": "nayose_bench",
   "timeout_minutes": 35,
   "expect_pairwise_f1": 0.85,

@@ -78,9 +78,9 @@ class PiStructuredAgentTests(unittest.TestCase):
                 *(
                     f"AgentWorkflow{name}"
                     for name in (
-                        "Stub SplitName ReadTable WriteTable StackRoles Concatenate FilterRows JoinTables NormalizeText "
+                        "Stub SplitName ReadTable WriteTable StackRoles TableFromResult Concatenate FilterRows JoinTables NormalizeText "
                         "MapValues ParseDates ExtractDigits FindCandidates CompareFields AttachGroups FindSimilar RerankPairs "
-                        "ParseNumbers RemoveDuplicates ComputeColumn Summarize DataChecks "
+                        "ParseNumbers RemoveDuplicates SortRows ComputeColumn Summarize DataChecks "
                         "GenerateRecords DamageValues CompareToTruth"
                     ).split()
                 ),

@@ -12,7 +12,7 @@ const path = require('node:path');
 const base = process.env.BASE;
 const artifacts = process.env.ARTIFACTS;
 const output = process.env.OUTPUT;
-const REFERENCE = 'custom_nodes/agent_workflow_studio/example_workflows/Studio - Nayose reference.json';
+const REFERENCE = 'custom_nodes/agent_workflow_studio/example_workflows/Studio - Record matching reference.json';
 const R1 = 'serves R1 · One customer id per person';
 
 // What the reference's two Decision rules stages write (decision_rules.py), cut down to a pair each.

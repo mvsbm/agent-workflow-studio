@@ -189,3 +189,11 @@ validated before it is used, and typed model answers are checked without echoing
 the studio's own nodes and ComfyUI's text and utility nodes; image, video, audio and model nodes
 stay installed for people but out of the agent's reach. Paid cloud API nodes are not loaded and the
 frontend makes no internet calls. ✅
+
+**R40 · A newcomer can start, follow and keep their work.** A first visit opens the agent on an
+empty canvas with example requests; the agent's chat speaks the user's words (what it is doing, not
+its tool names; connection details one click away); approvals lead with a short summary, the full
+text one click away; a file is attached in the chat into ComfyUI's input folder; the canvas shows
+the whole workflow after each build; contract examples bring their own sample files, so they run
+before the user's data exists; an approved contract names and saves the workflow, and App mode
+labels its inputs in the contract's words. ✅

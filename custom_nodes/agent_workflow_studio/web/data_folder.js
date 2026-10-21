@@ -20,6 +20,13 @@ export async function uploadFolder(files, folder) {
 
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '').replace(/^(\d{8})/, '$1_');
 
+/** The folder a workflow's files go into: named after the workflow once it has a name, else dated. */
+export function workflowFolder() {
+  const workflow = app.extensionManager?.workflow?.activeWorkflow;
+  const name = workflow && !workflow.isTemporary ? String(workflow.filename ?? '') : '';
+  return name.toLowerCase().replace(/[^a-z0-9_.-]+/g, '_').replace(/^[_.]+|_+$/g, '') || `upload_${stamp()}`;
+}
+
 function addUpload(node) {
   const picker = Object.assign(document.createElement('input'), {type: 'file', multiple: true, hidden: true});
   const button = Object.assign(document.createElement('button'), {type: 'button', className: 'p-button p-component p-button-sm', textContent: 'Upload files…'});
@@ -28,9 +35,13 @@ function addUpload(node) {
   picker.addEventListener('change', async () => {
     if (!picker.files.length) return;
     const toast = app.extensionManager?.toast;
-    const name = (await app.extensionManager?.dialog?.prompt?.({title: 'New data folder', message: 'Name of the folder the files go into', defaultValue: `upload_${stamp()}`})) ?? `upload_${stamp()}`;
-    const folder = String(name).trim().replace(/[^A-Za-z0-9_.-]+/g, '_');
+    const dialog = app.extensionManager?.dialog;
+    const suggested = workflowFolder();
+    const name = dialog?.prompt ? await dialog.prompt({title: 'Upload into a data folder', message: "The folder in ComfyUI's input folder the files go into", defaultValue: suggested}) : suggested;
+    const folder = String(name ?? '').trim().replace(/[^A-Za-z0-9_.-]+/g, '_');
     if (!folder) return;
+    const existing = node.widgets?.find(w => w.name === 'folder')?.options?.values ?? [];
+    if (existing.includes(folder) && dialog?.confirm && !await dialog.confirm({title: `${folder} already exists`, message: 'Files with the same names in it will be replaced. Upload anyway?', type: 'overwrite'})) return;
     try {
       await uploadFolder([...picker.files], folder);
       await app.refreshComboInNodes?.();  // the folder list, re-read from the node's schema

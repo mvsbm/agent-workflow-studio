@@ -62,4 +62,7 @@ test('converter paths between types', () => {
   assert.deepEqual(findConverterPaths(defs, 'IMAGE', 'MASK'), [[{class_type: 'ImageToMask', output: 0, gives: 'MASK'}]]);
   assert.deepEqual(findConverterPaths(defs, 'MASK', 'MASK', {maxSteps: 2}).map(p => p.map(s => s.class_type)), [['MaskToImage', 'ImageToMask']]);
   assert.deepEqual(findConverterPaths(defs, 'LATENT', 'IMAGE'), [], 'VAEDecode needs two connected inputs, so it is not a simple converter');
+  // A code tool's result (DICT) reaches a table input through the studio's converter.
+  const tool = {AgentWorkflowTableFromResult: {input: {required: {result: ['DICT', {}], output: ['STRING', {default: ''}]}}, output: ['TABLE']}};
+  assert.deepEqual(findConverterPaths(tool, 'DICT', 'TABLE').map(p => p.map(s => s.class_type)), [['AgentWorkflowTableFromResult']]);
 });

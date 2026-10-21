@@ -45,6 +45,7 @@ from .workflow_contract import (
     render,
     report,
     review,
+    summary,
     validate_for_approval,
     validate_intent,
     wiring,
@@ -83,11 +84,29 @@ CONTRACT_ACTIONS = {
 }
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
+
+
 # Minimal correct shapes, shown when a proposal's shape is wrong (a model fixes a shape best by example).
+def changes(before: str | None, after: str) -> str:
+    """What an amendment changes, against the text the user approved: the lines a card leads with."""
+    if not before:
+        return ""
+    import difflib
+
+    lines = [
+        f"{'−' if line[0] == '-' else '+'} {line[1:].strip()}"
+        for line in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0)
+        if line[:1] in "+-" and not line.startswith(("+++", "---")) and line[1:].strip()
+    ]
+    more = f"\n… and {len(lines) - 6} more (see the full text)" if len(lines) > 6 else ""
+    return "Changed since you approved it:\n" + "\n".join(lines[:6]) + more + "\n\n"
+
+
 CONTRACT_SHAPE = (
-    '{"contract": {"contract": 2, "purpose": "…", "requests": [{"id": "R1", "title": "…", "you_said": "…", '
-    '"we_understood": "When …, the workflow …", "priority": "must"}], "examples": [{"id": "E1", "covers": '
-    '["R1"], "given": {"orders": "orders_sample"}, "expect": {"totals": "north"}}], "promises": {"inputs": '
+    '{"contract": {"contract": 2, "title": "…", "purpose": "…", "requests": [{"id": "R1", "title": "…", '
+    '"you_said": "…", "we_understood": "When …, the workflow …", "priority": "must"}], "examples": [{"id": '
+    '"E1", "covers": ["R1"], "given": {"orders": "orders_sample"}, "files": {"orders_sample/orders.csv": '
+    '"region,amount\\nnorth,10\\n"}, "expect": {"totals": "north"}}], "promises": {"inputs": '
     '[{"name": "orders", "kind": "folder", "description": "…", "example": "orders_sample"}], "outputs": '
     '[{"name": "totals", "kind": "table", "description": "…"}]}, "decisions": [], "not_now": [], '
     '"open_questions": []}}'
@@ -249,6 +268,8 @@ class PiChatSession:
         # The approved plan lives in the workflow's project history, beside the workspaces.
         self.repo = ProjectRepo(Path(workspace_root).parent / "agent-projects", workflow_id)
         self.contract = self.repo.load_contract()
+        # The text the user last approved, per layer: a re-proposal is compared with it.
+        self.approved: dict[str, str] = {}
         self.loop_pending: dict | None = None  # the improve-loop iteration in progress
         self.socket = socket
         self.id = secrets.token_urlsafe(24)
@@ -824,9 +845,11 @@ class PiChatSession:
             return "contract"
         return "build" if self.contract["steps"] else "design"
 
-    async def approve(self, title: str, text: str) -> bool:
+    async def approve(self, title: str, text: str, short: str = "") -> bool:
         # Approval is the user's click in the browser, never the agent's own tool call.
-        answer = await self.canvas_action("contract_approve", {"title": title, "text": text})
+        answer = await self.canvas_action(
+            "contract_approve", {"title": title, "text": text, "summary": short}
+        )
         return bool(answer.get("approved"))
 
     async def commit(self, message: str) -> str:
@@ -856,17 +879,31 @@ class PiChatSession:
         if design and design["steps"]:
             # An amended contract must still fit the approved design (else amend the design too).
             validate_for_approval(join(intent, design))
-        if not await self.approve("Approve this contract?", render(join(intent, {"steps": []}))):
+        proposed = join(intent, {"steps": []})
+        text = render(proposed)
+        before = self.approved.get("contract") or (
+            self.contract and render(join(intent_of(self.contract), {"steps": []}))
+        )
+        if text == before:
+            # The same contract again (e.g. on "run it"): nothing new for the user to approve.
+            return {"approved": True, "unchanged": True, "next": "Nothing changed; carry on."}
+        if not await self.approve(
+            "Approve this contract?", text, changes(before, text) + summary(proposed)
+        ):
             return {
                 "approved": False,
                 "message": "The user did not approve the contract; ask what to change.",
             }
-        await self.canvas_action("intent", {"intent": intent})
+        self.approved["contract"] = text
+        # Stored as the workflow keeps it: an amendment keeps the approved design's step behind each output.
+        kept = split(join(intent, design))[0] if design and design["steps"] else intent
+        stored = await self.canvas_action("intent", {"intent": kept})
         sha = await self.commit(f"Contract approved: {intent['purpose']}")
         self.contract = join(intent, design or {"steps": []})
         return {
             "approved": True,
             "version": sha[:8],
+            **({"saved_as": stored["saved_as"]} if stored.get("saved_as") else {}),
             "next": "Design it: find the nodes (comfy_node_catalog), then propose the high-level design "
             "with comfy_propose_design (steps with typed ports, gates, data entities, and which step "
             "gives each promised output).",
@@ -910,12 +947,21 @@ class PiChatSession:
         # The user approved the contract already: the card leads with the design, not the same text again.
         text = render(contract)
         text = f"FOR: {contract['purpose']}\n\n{text[text.index('DESIGN (') :]}"
-        if not await self.approve("Approve this design?", text):
+        before = self.approved.get("design")
+        if before is None and self.contract and self.contract["steps"]:
+            before = render(self.contract)
+            before = f"FOR: {self.contract['purpose']}\n\n{before[before.index('DESIGN (') :]}"
+        if text == before:
+            return {"approved": True, "unchanged": True, "next": "Nothing changed; carry on."}
+        if not await self.approve(
+            "Approve this design?", text, changes(before, text) + summary(contract)
+        ):
             return {
                 "approved": False,
                 "message": "The user did not approve the design; ask what to change.",
             }
         self.contract = contract
+        self.approved["design"] = text
         # The approved design becomes the canvas: a typed, wired stage per step, the API's inputs and
         # outputs at the top level (the App), each step stored on its stage.
         intent, meta, _ = split(contract)
@@ -1106,7 +1152,8 @@ class PiChatSession:
             name, description, manifest["inputs"], manifest["outputs"], code, tests, why
         )
         answer = await self.canvas_action(
-            "tool_approve", {"title": f"Approve tool {name}?", "text": text}
+            "tool_approve",
+            {"title": f"Approve tool {name}?", "text": text, "summary": text.split("\nSAFETY:")[0]},
         )
         if not answer.get("approved"):
             return {

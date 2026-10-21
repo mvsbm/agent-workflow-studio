@@ -37,6 +37,9 @@ MEDIA_EXTENSIONS = [
 DEFAULTS = {
     "Comfy.Extension.Disabled": MEDIA_EXTENSIONS,
     "Comfy.NodeBadge.NodeSourceBadgeMode": "None",
+    # A first visit opens the agent on an empty canvas (pi_chat.js), not the Templates dialog;
+    # the templates stay in the Templates sidebar.
+    "Comfy.TutorialCompleted": True,
 }
 
 

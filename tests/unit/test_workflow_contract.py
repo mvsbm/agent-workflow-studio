@@ -22,6 +22,7 @@ from custom_nodes.agent_workflow_studio.workflow_contract import (
 
 CONTRACT = {
     "contract": 2,
+    "title": "Review labels",
     "purpose": "Label customer reviews so support can triage them.",
     "requests": [
         {
@@ -179,6 +180,28 @@ class ContractTests(unittest.TestCase):
                     saved, schema, "run write_agent_schemas() after changing the contract schema"
                 )
 
+    def test_a_contract_has_a_name_and_examples_bring_their_own_samples(self) -> None:
+        from custom_nodes.agent_workflow_studio.workflow_contract import (
+            join,
+            summary,
+            validate_intent,
+        )
+
+        intent = {k: copy.deepcopy(v) for k, v in CONTRACT.items() if k != "steps"}
+        intent["promises"]["outputs"][0].pop("from")
+        with self.assertRaisesRegex(ValueError, "^Give the workflow a short title"):
+            validate_intent({k: v for k, v in intent.items() if k != "title"})
+        intent["examples"][0]["files"] = {"reviews/../x.csv": "a"}
+        with self.assertRaisesRegex(ValueError, "must stay inside its folder"):
+            validate_intent(intent)
+        intent["examples"][0]["files"] = {"reviews/r.csv": "text\nGreat!\n"}
+        validate_intent(intent)
+        shown = join(intent, {"steps": []})
+        self.assertIn(
+            "sample reviews/r.csv (2 lines):\n        text\n        Great!", render(shown)
+        )
+        self.assertIn("\nChecked by 1 example on 1 sample file\n", summary(shown))
+
     def test_the_contract_is_intent_and_the_design_joins_it(self) -> None:
         from custom_nodes.agent_workflow_studio.workflow_contract import join, validate_intent
 
@@ -272,7 +295,7 @@ class ContractTests(unittest.TestCase):
 
     def test_plain_preview(self) -> None:
         text = render(CONTRACT, [{"step": "classify", "state": "verified"}])
-        self.assertTrue(text.startswith("PURPOSE: Label customer reviews"))
+        self.assertTrue(text.startswith("NAME: Review labels\nPURPOSE: Label customer reviews"))
         self.assertIn(
             "R1 · Label each review (must) you said: “tell me if reviews are good or bad”", text
         )

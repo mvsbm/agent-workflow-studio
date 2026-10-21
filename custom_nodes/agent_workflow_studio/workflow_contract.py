@@ -216,6 +216,17 @@ def validate_intent(intent: object) -> dict:
         )
     if str(intent.get("contract")) == "2":
         intent["contract"] = 2  # some models send the marker as text
+    if not intent.get("title"):
+        problems.append(
+            "Give the workflow a short title in the user's words (e.g. Monthly sales by region): "
+            "it becomes the workflow's name."
+        )
+    for e in intent.get("examples") or []:
+        for path in (e.get("files") or {}) if isinstance(e, dict) else ():
+            if ".." in path.split("/") or "." in path.split("/"):
+                problems.append(
+                    f"Example {e.get('id')}: sample file path {path!r} must stay inside its folder."
+                )
     if untitled := [
         str((r or {}).get("id"))
         for r in intent.get("requests") or []
@@ -225,7 +236,7 @@ def validate_intent(intent: object) -> dict:
             f"Give each request a short title (a few words the user will see on the canvas): {', '.join(untitled)}."
         )
     # The rest checked as if those were fixed, so their problems come in the same answer.
-    shown = {k: v for k, v in intent.items() if k not in DESIGN_KEYS}
+    shown = {"title": "…", **{k: v for k, v in intent.items() if k not in DESIGN_KEYS}}
     if isinstance(intent.get("promises"), dict) and isinstance(outputs, list):
         bare = [
             {k: v for k, v in o.items() if k != "from"} if isinstance(o, dict) else o
@@ -273,7 +284,7 @@ def agent_schemas() -> dict[str, dict]:
     )
     for key in DESIGN_KEYS:
         intent["properties"].pop(key, None)
-    intent["required"] = [r for r in intent["required"] if r not in DESIGN_KEYS]
+    intent["required"] = [r for r in intent["required"] if r not in DESIGN_KEYS] + ["title"]
     intent["properties"]["promises"]["properties"]["outputs"]["items"]["properties"].pop(
         "from", None
     )
@@ -788,7 +799,8 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
     """Plain-language view: what a non-technical reader approves; technical bits last."""
     approach = {"fixed": "fixed steps", "ai_planned": "AI-planned", "ai_judgment": "AI judgment"}
     status = {s["step"]: s["state"] for s in states or []}
-    lines = [f"PURPOSE: {contract['purpose']}", "", "WHAT YOU ASKED FOR:"]
+    lines = [f"NAME: {contract['title']}"] if contract.get("title") else []
+    lines += [f"PURPOSE: {contract['purpose']}", "", "WHAT YOU ASKED FOR:"]
     for r in contract["requests"]:
         lines += [
             f"  {r['id']} · {title_of(r)} ({r['priority']}) you said: “{r['you_said']}”",
@@ -800,6 +812,11 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
             lines.append(
                 f"  {e['id']} given {json.dumps(e['given'], ensure_ascii=False)} → expect {json.dumps(e['expect'], ensure_ascii=False)}"
             )
+            for path, text in (e.get("files") or {}).items():
+                rows = text.strip().splitlines()
+                lines += [f"      sample {path} ({len(rows)} lines):"] + [
+                    f"        {row}" for row in rows[:6]
+                ]
     promises = contract["promises"]
     for label, ports in (("YOU PROVIDE", promises["inputs"]), ("YOU GET", promises["outputs"])):
         if ports:
@@ -846,6 +863,50 @@ def render(contract: dict, states: list[dict] | None = None) -> str:
     return "\n".join(lines + _closing(contract))
 
 
+def summary(contract: dict) -> str:
+    """The few lines an approval card leads with (render() is the full text under it): the contract
+    alone, or with steps, the design."""
+    if contract["steps"]:
+        designs = {d["id"]: d for d in hld(contract)}
+        lines = [f"{len(contract['steps'])} steps, each checked by its own Check:"]
+        for step in contract["steps"]:
+            gives = ", ".join(f"{k} ({v.lower()})" for k, v in step.get("gives", {}).items())
+            lines.append(
+                f"{designs[step['id']]['title']} — {step['purpose'].rstrip('. ')}"
+                + (f" → {gives}" if gives else "")
+            )
+        failed = [item for ok, item in review(contract) if not ok]
+        lines.append(
+            f"Design review: {'all passed' if not failed else f'{len(failed)} to look at'}"
+        )
+        return "\n".join(lines)
+    promises = contract["promises"]
+
+    def ports(side: str) -> str:
+        return ", ".join(f"{p['name']} ({p['kind']})" for p in promises[side])
+
+    samples = sum(len(e.get("files") or {}) for e in contract["examples"])
+    lines = [
+        contract.get("title") or contract["purpose"],
+        *(f"{r['id']} · {title_of(r)}" for r in contract["requests"]),
+    ]
+    lines += [
+        f"{label}: {ports(side)}"
+        for label, side in (("You give", "inputs"), ("You get", "outputs"))
+        if promises[side]
+    ]
+    if contract["examples"]:
+        lines.append(
+            f"Checked by {len(contract['examples'])} example{'s' * (len(contract['examples']) > 1)}"
+            + (f" on {samples} sample file{'s' * (samples > 1)}" if samples else "")
+        )
+    if contract["not_now"]:
+        lines.append(
+            f"Not now: {len(contract['not_now'])} thing{'s' * (len(contract['not_now']) > 1)}"
+        )
+    return "\n".join(lines)
+
+
 def _closing(contract: dict) -> list[str]:
     """Decisions, not-now and open questions: the end of every rendering."""
     lines = []
@@ -887,6 +948,7 @@ __all__ = [
     "TRANSITIONS",
     "derive_states",
     "render",
+    "summary",
     "alignment",
     "blocking",
     "hld",
