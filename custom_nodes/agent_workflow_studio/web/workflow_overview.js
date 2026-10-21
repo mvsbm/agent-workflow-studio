@@ -24,6 +24,8 @@ function render(host) {
   if (!tab) return;
   shownFor = graphId();
   shownIn = host;
+  // A new showing: a tab's earlier render still loading (its awTicket older) must not write here.
+  host.awTicket = (host.awTicket ?? 0) + 1;
   tab.render(host);
 }
 

@@ -114,10 +114,10 @@ async function matrix(container, ticket) {
 }
 
 async function render(container) {
-  const ticket = (container.awTicket = (container.awTicket ?? 0) + 1);
+  const ticket = container.awTicket;  // stamped by the panel when this showing began
   const selected = Object.values(app.canvas?.selected_nodes ?? {});
   if (!root()?.extra?.aws_contract) return container.replaceChildren(el('p', 'No contract yet: ask the agent to plan this workflow. Its requests, stages and nodes are traced here once they exist.'));
-  if (!selected.length) return matrix(container, ticket).catch(error => container.replaceChildren(el('p', `Could not read the design: ${error.message}`)));
+  if (!selected.length) return matrix(container, ticket).catch(error => container.awTicket === ticket && container.replaceChildren(el('p', `Could not read the design: ${error.message}`)));
   const boxes = selected.map(node => {
     const stage = stageOf(node);
     if (!stage) return el('p', `${node.title ?? node.type} is not part of a stage.`);

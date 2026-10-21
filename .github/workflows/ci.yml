@@ -13,6 +13,11 @@ on:
 permissions:
   contents: read
 
+# Package downloads ride out a slow index (a PyPI timeout failed a run): longer timeout, more retries.
+env:
+  UV_HTTP_TIMEOUT: '120'
+  UV_HTTP_RETRIES: '6'
+
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true

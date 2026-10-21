@@ -104,6 +104,8 @@ function show() {
   heading.textContent = workflowName();
   heading.title = `Panels of this workflow (${shownFor ?? 'not saved'})`;
   showStrip();
+  // A new showing: a tab's earlier render still loading (its awTicket older) must not write here.
+  body.awTicket = (body.awTicket ?? 0) + 1;
   tab.render(body);
 }
 
