@@ -73,6 +73,12 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       return canvas.graph.nodes.every(n => { const [x, y] = canvas.ds.convertOffsetToCanvas(n.pos), [r, b] = canvas.ds.convertOffsetToCanvas([n.pos[0] + n.size[0], n.pos[1] + n.size[1]]);
         return x >= Math.max(0, chat.right - box.left) && y >= 0 && r <= box.width && b <= box.height; });
     }, null, {timeout: 15000});
+    // Zoomed out, a stage not run yet still says what it is for.
+    const glances = await page.evaluate(async () => {
+      const {headline} = await import('/extensions/agent_workflow_studio/glance.js');
+      return window.comfyAPI.app.app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(headline);
+    });
+    assert.ok(glances.includes('Join hello and world into one greeting.'), glances.join(' | '));
 
     // The bridge asks before a native Run; approve it.
     const run = page.getByRole('group', {name: 'Run the current ComfyUI workflow?'});
