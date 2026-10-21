@@ -130,6 +130,30 @@ def missing_data(spec: dict, values: dict, input_dir: Path) -> list[str]:
     return missing
 
 
+def example_inputs(example: dict, workflow_id: str, input_dir: Path) -> dict:
+    """An example's given values, its sample files written for its run under
+    input/examples/<workflow>/<example>/; a given value naming one (or its folder) is pointed there."""
+    files = example.get("files") or {}
+    if not files:
+        return dict(example["given"])
+    base = input_dir.resolve()
+    home = (base / "examples" / workflow_id / example["id"]).resolve()
+    for rel, text in files.items():
+        path = (home / rel).resolve()
+        if not path.is_relative_to(home):
+            raise ValueError(
+                f"Example {example['id']}: sample file {rel!r} must stay inside its folder."
+            )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    named = {"/".join(rel.split("/")[: i + 1]) for rel in files for i in range(rel.count("/") + 1)}
+    prefix = home.relative_to(base).as_posix()
+    return {
+        k: f"{prefix}/{v.strip('/')}" if isinstance(v, str) and v.strip("/") in named else v
+        for k, v in example["given"].items()
+    }
+
+
 def collect_outputs(spec: dict, outputs: dict) -> dict:
     """Each signature output: the results of the output nodes inside it, by node path."""
     result = {}
@@ -158,6 +182,36 @@ def _loose(value: object) -> str:
     return " ".join(str(value).split()).lower()
 
 
+def _cells(value: object) -> str:
+    """Cell values in order, whatever separates them: "North,1500; South,800" = "North 1500, South 800"."""
+    return " " + re.sub(r"[\s,;|]+", " ", str(value)).strip().lower() + " "
+
+
+def run_error(history: dict | None) -> str:
+    """Why a run failed, from ComfyUI's history: the node and its error message."""
+    if not history:
+        return ": it did not finish in time"
+    for kind, detail in (history.get("status") or {}).get("messages") or []:
+        if kind == "execution_error" and isinstance(detail, dict):
+            node = detail.get("node_type") or detail.get("node_id") or "a node"
+            return f": {node} said {str(detail.get('exception_message', '')).strip()[:300]}"
+    return ""
+
+
+def rows_text(value: object) -> str:
+    """A table as a person writes it in an example: "North 1500, South 800" (numbers plain)."""
+    rows = value.get("rows") if isinstance(value, dict) else None
+    if not isinstance(rows, list):
+        return ""
+
+    def plain(v: object) -> str:
+        return str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)
+
+    return ", ".join(
+        " ".join(plain(v) for v in row.values()) for row in rows if isinstance(row, dict)
+    )
+
+
 def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
     """What an example expected and the run did not deliver (empty: it passed). An expected value
     is found in the promised output of that name, or else anywhere in the output stages' results."""
@@ -173,7 +227,7 @@ def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
                 if got is not None
                 else everything
             )
-            ok = _loose(want) in found
+            ok = _loose(want) in found or _cells(want) in _cells(rows_text(got))
         if not ok:
             misses.append(
                 f"{key}: expected {want!r}, got {str(got)[:120] if got is not None else 'nothing'}"
@@ -691,20 +745,35 @@ def install_api_routes() -> None:
             check_spec({**spec, "name": "acceptance"})
             names = {i["name"] for i in spec["signature"].get("inputs", [])}
             results = []
+            input_dir = Path(folder_paths.get_input_directory())
             for example in examples:
-                given = {k: v for k, v in example["given"].items() if k in names}
-                prompt_id, history = await run_prompt(
-                    bind_inputs(spec, given), spec["workflow"], 900
-                )
-                outputs = (history or {}).get("outputs") or {}
-                ok = bool(history) and history["status"].get("status_str") == "success"
-                misses = (
-                    compare_example(
-                        example["expect"], collect_data(outputs), collect_outputs(spec, outputs)
+                given = {
+                    k: v
+                    for k, v in example_inputs(example, repo.id, input_dir).items()
+                    if k in names
+                }
+                # A file it needs that is not there: say which, rather than a failed run.
+                if missing := missing_data(spec, given, input_dir):
+                    prompt_id, misses = (
+                        None,
+                        [
+                            f"{m.split(';')[0]}; give the example its sample file (files) or upload it"
+                            for m in missing
+                        ],
                     )
-                    if ok
-                    else ["the run did not succeed"]
-                )
+                else:
+                    prompt_id, history = await run_prompt(
+                        bind_inputs(spec, given), spec["workflow"], 900
+                    )
+                    outputs = (history or {}).get("outputs") or {}
+                    ok = bool(history) and history["status"].get("status_str") == "success"
+                    misses = (
+                        compare_example(
+                            example["expect"], collect_data(outputs), collect_outputs(spec, outputs)
+                        )
+                        if ok
+                        else [f"the run did not succeed{run_error(history)}"]
+                    )
                 results.append(
                     {
                         "example": example["id"],

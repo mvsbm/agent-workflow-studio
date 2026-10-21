@@ -1,4 +1,4 @@
-// Builds example_workflows/Studio - Nayose benchmark.json in an isolated ComfyUI: the data generator as a
+// Builds example_workflows/Studio - Record matching benchmark.json in an isolated ComfyUI: the data generator as a
 // subgraph (people → activity → three legacy exports), a Score node, and a how-to note; run once so
 // every stage's tables are saved in the template. Usage: scripts/build_templates.sh
 const {chromium} = require('playwright-core');
@@ -6,8 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const base = process.env.BASE;
-const target = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows', 'Studio - Nayose benchmark.json');
-const NOTE = `# Nayose benchmark: everything on this canvas
+const target = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows', 'Studio - Record matching benchmark.json');
+const NOTE = `# Record matching benchmark: everything on this canvas
 
 1. **Synthetic data** (double-click to open): people and their life histories → clean insurance activity → three legacy exports, each damaged its own way. Every stage shows its data as tables. Change *households*, *update rate*, *damage* or *seed* and press **Run**.
 2. **Ask Pi** (Pi tab): *Build a near state of the art Japanese nayose workflow for the exports in the input folder nayose_bench (README.txt explains them). Give every person mention a customer ID, save nayose_result.csv (system,record_id,role,customer_id), build it so the graph mirrors the architecture (one cleansing lane per source system merging into candidates, then a matching cascade — deterministic, probabilistic, my review — whose decided pairs go straight to consolidation) from visible nodes (no hidden code where a node exists) so I can see and edit the logic, and let me review uncertain matches.* You approve its design (one sentence per stage); then watch the stages fill in and run. Check **Contract** (status, to-dos, API), **Data** (the entities), **Versions**, **Review** and **Customers**.

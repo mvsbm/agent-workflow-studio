@@ -29,7 +29,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
       app.graph.clear();
       app.extensionManager.workflow.activeWorkflow.changeTracker.checkState();
     }));
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
+    await page.evaluate(() => { const manager = window.comfyAPI.app.app.extensionManager; if (manager.sidebarTab.activeSidebarTabId !== 'pi-chat') void manager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
     const message = page.getByRole('textbox', {name: 'Message the agent'});
     await message.waitFor({timeout: 30000});
     await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message the agent"]')?.disabled, null, {timeout: 60000});
@@ -46,8 +46,13 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     assert.match(contractText, /PURPOSE: Show the text hello world\./);
     assert.match(contractText, /R1 · Show hello world \(must\) you said: “build a hello world workflow”/);
     assert.doesNotMatch(contractText, /Stage:/);
+    // The card leads with a few lines to decide on; the full contract is one click away.
+    assert.equal(await contract.locator('.aw-pi-summary').innerText(), 'Hello world\nR1 · Show hello world\nYou get: text (text)\nChecked by 1 example');
+    assert.equal(await contract.locator('.aw-pi-full').evaluate(d => d.open), false);
     await page.screenshot({path: path.join(artifacts, 'approve-contract.png')});
     await contract.getByRole('button', {name: 'Allow'}).click();
+    // Approved, the unsaved workflow is saved under the contract's title, the native way.
+    await page.waitForFunction(() => { const w = window.comfyAPI.app.app.extensionManager.workflow.activeWorkflow; return w.filename === 'Hello world' && !w.isTemporary; }, null, {timeout: 30000});
     const plan = page.getByRole('group', {name: 'Approve this design?'});
     await plan.waitFor({timeout: 60000});
     const planText = await plan.textContent();
@@ -62,6 +67,18 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
 
     // Structural edits are checked automatically and the user sees the result.
     await page.getByText(/Graph check: .* 0 problem\(s\)\./).first().waitFor({timeout: 60000});
+    // After a build the whole workflow is in view (ComfyUI's own Fit view, beside the open chat).
+    await page.waitForFunction(() => {
+      const canvas = window.comfyAPI.app.app.canvas, box = canvas.canvas.getBoundingClientRect(), chat = document.querySelector('.aw-pi-chat').getBoundingClientRect();
+      return canvas.graph.nodes.every(n => { const [x, y] = canvas.ds.convertOffsetToCanvas(n.pos), [r, b] = canvas.ds.convertOffsetToCanvas([n.pos[0] + n.size[0], n.pos[1] + n.size[1]]);
+        return x >= Math.max(0, chat.right - box.left) && y >= 0 && r <= box.width && b <= box.height; });
+    }, null, {timeout: 15000});
+    // Zoomed out, a stage not run yet still says what it is for.
+    const glances = await page.evaluate(async () => {
+      const {headline} = await import('/extensions/agent_workflow_studio/glance.js');
+      return window.comfyAPI.app.app.rootGraph.nodes.filter(n => n.properties?.aws_stage).map(headline);
+    });
+    assert.ok(glances.includes('Join hello and world into one greeting.'), glances.join(' | '));
 
     // The bridge asks before a native Run; approve it.
     const run = page.getByRole('group', {name: 'Run the current ComfyUI workflow?'});
@@ -179,17 +196,14 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
 
     // Versions: the agent's batch is a commit; saving the user's change (the undo) is another.
     page.on('dialog', dialog => dialog.accept());
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.SaveWorkflow'); });
-    const filename = page.locator('[role=dialog] input').first();
-    await filename.waitFor({timeout: 10000});
-    await filename.fill('versions-e2e');
-    await filename.press('Enter');
+    // Saved under the contract's title when it was approved, so Save asks no name.
+    await page.evaluate(() => window.comfyAPI.app.app.extensionManager.command.execute('Comfy.SaveWorkflow'));
     await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-versions'));
     const versions = page.locator('.aw-versions-item');
     const count = n => page.waitForFunction(n => document.querySelectorAll('.aw-versions-item').length === n, n, {timeout: 15000});
-    await count(10);
+    await count(11);
     const messages = await page.locator('.aw-versions-message').allTextContents();
-    assert.match(messages[0], /^Save versions-e2e/);
+    assert.match(messages[0], /^Save Hello world/);
     assert.equal(messages[1], 'Roll back API hello-e2e to 1.0.0');  // a release event, in the history
     messages.splice(1, 1);
     assert.equal(messages[1], 'Publish API hello-e2e');
@@ -202,14 +216,15 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     // One version per approval: the contract and its design live in the workflow.
     assert.equal(messages[7], 'Design approved: 2 steps');
     assert.equal(messages[8], 'Contract approved: Show the text hello world.');
-    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'You', 'You', 'You', 'Agent', 'Agent', 'Agent', 'Agent', 'You', 'You']);
+    assert.equal(messages[9], 'Save Hello world');  // the approval named and saved it
+    assert.deepEqual(await page.locator('.aw-versions-author').allTextContents(), ['You', 'You', 'You', 'You', 'Agent', 'Agent', 'Agent', 'Agent', 'You', 'You', 'You']);
 
     // Restore the agent's version from the panel: canvas comes back, and the restore is a new version.
     await versions.nth(6).locator('.aw-versions-toggle').click();
     await versions.nth(6).getByText(/^\+1 node/).waitFor({timeout: 10000});
     await versions.nth(6).getByRole('button', {name: 'Restore this version'}).click();
     await page.waitForFunction(() => window.comfyAPI.app.app.graph.nodes.flatMap(n => n.subgraph?.nodes ?? []).length >= 4, null, {timeout: 10000});
-    await count(11);
+    await count(12);
     assert.match(await page.locator('.aw-versions-message').first().textContent(), /^Restore [0-9a-f]{8}$/);
     await page.screenshot({path: path.join(artifacts, 'versions.png')});
     await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Comfy.Undo'); });

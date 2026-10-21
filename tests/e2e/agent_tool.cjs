@@ -21,7 +21,7 @@ const artifacts = process.env.ARTIFACTS;
     await page.waitForFunction(() => window.comfyAPI?.app?.app?.extensionManager?.workflow?.activeWorkflow?.changeTracker, null, {timeout: 60000});
     await page.waitForTimeout(1000);
     await page.evaluate(() => { const app = window.comfyAPI.app.app; app.graph.clear(); app.extensionManager.workflow.activeWorkflow.changeTracker.checkState(); });
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
+    await page.evaluate(() => { const manager = window.comfyAPI.app.app.extensionManager; if (manager.sidebarTab.activeSidebarTabId !== 'pi-chat') void manager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
     const message = page.getByRole('textbox', {name: 'Message the agent'});
     await message.waitFor({timeout: 30000});
     await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message the agent"]')?.disabled, null, {timeout: 60000});

@@ -1,4 +1,4 @@
-"""Calculation nodes: numbers from messy text, duplicates by key, safe formulas, group-by totals."""
+"""Calculation nodes: numbers from messy text, duplicates by key, sorting, safe formulas, group-by totals."""
 
 # Verifies: R4
 
@@ -9,6 +9,7 @@ from custom_nodes.agent_workflow_studio.table_calc import (
     DataChecks,
     ParseNumbers,
     RemoveDuplicates,
+    SortRows,
     Summarize,
     compile_expression,
     evaluate,
@@ -38,6 +39,28 @@ class TableCalcTests(unittest.TestCase):
             [(r["qty"], r["price"]) for r in out["rows"]],
             [(1, 1200), (2, 3500), (2, 3500), (3, 100)],
         )
+
+    def test_rows_sort_largest_first_numbers_as_numbers_blanks_last(self) -> None:
+        totals = make(
+            "totals",
+            [
+                {"region": "East", "total": "900"},
+                {"region": "North", "total": ""},
+                {"region": "South", "total": "1,500"},
+                {"region": "West", "total": "90"},
+                {"region": "Mid", "total": "900"},
+            ],
+        )
+        down = SortRows.execute(totals, "total, region", "largest first").args[0]
+        self.assertEqual(
+            [r["region"] for r in down["rows"]], ["South", "Mid", "East", "West", "North"]
+        )
+        up = SortRows.execute(totals, "total", "smallest first").args[0]
+        self.assertEqual(
+            [r["region"] for r in up["rows"]], ["West", "East", "Mid", "South", "North"]
+        )
+        with self.assertRaisesRegex(ValueError, "name at least one column"):
+            SortRows.execute(totals, "", "largest first")
 
     def test_duplicates_are_dropped_by_key(self) -> None:
         out = RemoveDuplicates.execute(ORDERS, "id").args[0]

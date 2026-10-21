@@ -89,7 +89,7 @@ cd agent-workflow-studio
 ./run-local.sh    # http://127.0.0.1:8188
 ```
 
-The nayose workflows ship with the package and appear in ComfyUI's own **Templates** browser (under this node pack): **Studio - Nayose benchmark** (the synthetic exports and the hidden-key score) and **Studio - Nayose reference** (the whole matching pipeline built from the studio's own nodes only, no workflow code, published as an API that takes your exports). They always match the installed version. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
+The nayose workflows ship with the package and appear in ComfyUI's own **Templates** browser (under this node pack): **Studio - Record matching benchmark** (the synthetic exports and the hidden-key score) and **Studio - Record matching reference** (the whole matching pipeline built from the studio's own nodes only, no workflow code, published as an API that takes your exports). They always match the installed version. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
 ComfyUI is set up as a data and text studio, with its own switches (`studio_defaults.py`, filled in only where you have not chosen): a new tab starts empty instead of ComfyUI's image example; the Templates browser lists only this pack's templates; ComfyUI's image, 3D and audio editors are off (Settings → Extension turns any back on); and `run-local.sh` loads only this node pack (`--whitelist-custom-nodes`).
 

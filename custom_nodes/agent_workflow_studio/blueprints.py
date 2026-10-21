@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REFERENCE = HERE / "example_workflows" / "Studio - Nayose reference.json"
+REFERENCE = HERE / "example_workflows" / "Studio - Record matching reference.json"
 OUT = HERE / "subgraphs"
 # Blueprint name → (the reference stage it comes from, what it is for).
 PATTERNS = {

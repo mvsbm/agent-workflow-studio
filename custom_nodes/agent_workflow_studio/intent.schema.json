@@ -8,6 +8,13 @@
     "2"
    ]
   },
+  "title": {
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 60,
+   "pattern": "^[^/\\\\:*?\"<>|]+$",
+   "description": "The workflow's name in the user's words, a few words (e.g. Monthly sales by region): its file name, tab and App title."
+  },
   "purpose": {
    "type": "string",
    "minLength": 1,
@@ -103,6 +110,18 @@
      "note": {
       "type": "string",
       "maxLength": 200
+     },
+     "files": {
+      "type": "object",
+      "maxProperties": 4,
+      "description": "Small sample files this example runs on: path -> its text (e.g. {\"orders/orders.csv\": \"order_id,region,amount\\n1,North,1000\\n\"}). A file or folder input in given names one of these paths (or its folder, e.g. \"orders\"); the studio writes them to the input folder for the run. Use them instead of naming files the user has not uploaded.",
+      "propertyNames": {
+       "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+){0,2}$"
+      },
+      "additionalProperties": {
+       "type": "string",
+       "maxLength": 20000
+      }
      }
     },
     "required": [
@@ -345,7 +364,8 @@
   "promises",
   "decisions",
   "not_now",
-  "open_questions"
+  "open_questions",
+  "title"
  ],
  "additionalProperties": false
 }

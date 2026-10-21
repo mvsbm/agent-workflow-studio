@@ -94,7 +94,7 @@ const artifacts = process.env.ARTIFACTS;
     assert.ok(result.listing.apis.some(a => a.name === 'greet-e2e' && a.inputs[0] === 'value'));
     // The studio's workflows come from the package, in ComfyUI's own Templates browser.
     const templates = await page.evaluate(async () => (await (await fetch('/workflow_templates')).json()).agent_workflow_studio);
-    assert.deepEqual([...templates].sort(), ['Studio - Nayose benchmark', 'Studio - Nayose reference']);
+    assert.deepEqual([...templates].sort(), ['Studio - Record matching benchmark', 'Studio - Record matching reference']);
     // Old run outputs: a native setting and a menu command; a dry run of an empty output removes nothing.
     const housekeeping = await page.evaluate(async () => {
       const app = window.comfyAPI.app.app;

@@ -86,6 +86,7 @@ def tool(action, args):
 
 CONTRACT = {
     "contract": 2,
+    "title": "Hello world",
     "purpose": "Show the text hello world.",
     "requests": [
         {
@@ -283,6 +284,7 @@ def structured_answer(record):
 
 TOOL_CONTRACT = {
     "contract": 2,
+    "title": "Shouted greeting",
     "purpose": "Shout the greeting with an agent tool.",
     "requests": [
         {

@@ -345,8 +345,10 @@ export function buildSkeleton(graph, steps, {promises, design, intent, meta} = {
   const outputs = [...new Set((promises?.outputs ?? []).filter(o => o.from).map(o => outputNode(graph, o.from)?.id).filter(id => id != null))];
   const settable = node => node.properties?.aws_input_widget ?? valueWidget(node);
   // A Data folder's Upload button goes to App mode too (it is UI only: not part of the API).
-  const appInputs = Object.values(inputs).filter(node => node.widgets?.some(w => w.name === settable(node))).flatMap(node =>
-    [{node: node.id, widget: settable(node)}, ...(node.widgets.some(w => w.name === 'upload') ? [{node: node.id, widget: 'upload'}] : [])]);
+  // Labelled in the contract's words (its description, else its name), so App mode reads as the user's.
+  const label = name => { const p = (promises?.inputs ?? []).find(i => i.name === name), text = p?.description || name.replace(/_/g, ' '); return text.charAt(0).toUpperCase() + text.slice(1); };
+  const appInputs = Object.entries(inputs).filter(([, node]) => node.widgets?.some(w => w.name === settable(node))).flatMap(([name, node]) =>
+    [{node: node.id, widget: settable(node), description: label(name)}, ...(node.widgets.some(w => w.name === 'upload') ? [{node: node.id, widget: 'upload', description: `Upload: ${label(name).charAt(0).toLowerCase()}${label(name).slice(1)}`}] : [])]);
   if (outputs.length) setSignature(graph, appInputs, outputs);
   // The contract's intent and the design's shared parts (data entities, decisions, step order)
   // are stored in the workflow itself: the workflow is the single source of truth.
@@ -367,6 +369,44 @@ const inputSlot = (node, name) => typeof name === 'number' ? name : node.inputs?
 
 /** A tidy layout, positions only: data flows left to right in columns by depth; a node that
  *  feeds nothing and reads one node (a preview) sits under that node; notes go above. */
+/** An unsaved workflow, once its contract is approved, is saved under the contract's title the native
+ *  way (the workflow store's rename and save: its tab, the Workflows sidebar and App mode show it).
+ *  A name already taken gets " (2)". Returns the path, or null when it was already saved. */
+export async function nameWorkflow(app, api, title) {
+  const store = app.extensionManager?.workflow, workflow = store?.activeWorkflow;
+  const base = String(title ?? '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!workflow?.isTemporary || !base || !store.renameWorkflow || !store.saveWorkflow) return null;
+  const taken = async path => store.getWorkflowByPath?.(path) || (await api.fetchApi(`/userdata/${encodeURIComponent(path)}`)).ok;
+  let path = `workflows/${base}.json`;
+  for (let n = 2; await taken(path) && n < 100; n++) path = `workflows/${base} (${n}).json`;
+  await store.renameWorkflow(workflow, path);
+  await store.saveWorkflow(workflow);
+  return path;
+}
+
+/** After the agent changed the workflow's shape, show all of it: ComfyUI's own animated fit, into the
+ *  part of the canvas no panel covers (the chat on the left, the toolbar, the properties panel), and
+ *  never zoomed in past 100%. Not when the user is inside a stage (their view is theirs). */
+export function frameWorkflow(app) {
+  (globalThis.requestAnimationFrame ?? setTimeout)(() => {
+    const canvas = app.canvas, items = app.rootGraph?.nodes ?? [];
+    if (canvas?.graph !== app.rootGraph || !items.length || !canvas.ds?.animateToBounds) return;
+    const box = canvas.canvas.getBoundingClientRect(), rect = selector => document.querySelector(selector)?.getBoundingClientRect();
+    const left = Math.max(0, (rect('.aw-pi-chat')?.right ?? box.left) - box.left) + 24;
+    const top = Math.max(0, (rect('[aria-label="Toggle properties panel"]')?.bottom ?? box.top + 80) - box.top) + 24;
+    const right = (rect('[data-testid="properties-panel"]')?.left ?? box.right) - box.left - 24;
+    const bottom = box.height - 24;
+    const title = globalThis.LiteGraph?.NODE_TITLE_HEIGHT ?? 30;  // a node drawn yet or not: its position and size
+    const bounds = items.map(n => [n.pos[0], n.pos[1] - title, n.size[0], n.size[1] + title]).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[0] + b[2]), Math.max(a[3], b[1] + b[3])], [Infinity, Infinity, -Infinity, -Infinity]);  // [left, top, right, bottom]
+    const [x, y, w, h] = [bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]];
+    const width = right - left, height = bottom - top;
+    if (width <= 0 || height <= 0) return;
+    // animateToBounds zooms to `zoom` of the viewport: at most what shows the workflow at 100%.
+    const zoom = Math.min(0.95, 1 / Math.min(width / Math.max(w, 300), height / Math.max(h, 300)));
+    canvas.ds.animateToBounds([x, y, w, h], () => canvas.setDirty(true, true), {viewport: [left, top, width, height], zoom});
+  });
+}
+
 export function arrangeGraph(graph, {gapX = 200, gapY = 110} = {}) { // gapX leaves room for wire labels
   const isNote = node => /Note$/.test(node.type ?? '');
   const flow = nodes(graph).filter(node => !isNote(node));
@@ -580,7 +620,13 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
   let definitions, latestPrompt, submitted = false;
   // Node keys stay valid for the whole chat, so later batches can reference earlier nodes.
   const keys = Object.create(null);
-  const catalog = async () => definitions ??= await api.getNodeDefs();
+  // Node definitions, re-read when older than a few seconds: a folder or file uploaded since (a choice
+  // in a list such as the Data folder's) is then a valid choice for the agent too.
+  let definitionsRead = 0;
+  const catalog = async () => {
+    if (!definitions || Date.now() - definitionsRead > 5000) { definitions = await api.getNodeDefs(); definitionsRead = Date.now(); }
+    return definitions;
+  };
   const agentCatalog = async () => Object.fromEntries(Object.entries(await catalog()).filter(([, def]) => inStudioScope(def)));
   // Wait (up to a minute) for this chat's run to finish, so the agent need not poll.
   const waitForRun = async () => {
@@ -758,7 +804,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       Object.assign(keys, added);
       // Keep the canvas readable without the agent computing coordinates: re-lay out after
       // structural edits (and on request); the whole batch is still one undo step.
-      if (operations.some(op => ['add', 'connect', 'remove', 'arrange'].includes(op.op))) arrangeGraph(app.graph);
+      if (operations.some(op => ['add', 'connect', 'remove', 'arrange'].includes(op.op))) { arrangeGraph(app.graph); frameWorkflow(app); }
       app.graph.setDirtyCanvas(true,true);
       return {added: Object.fromEntries(Object.entries(added).map(([key, {id}]) => [key, id])), message:'Applied native canvas edits. This tool did not submit a run; native Auto Queue settings still apply.'};
     } catch (error) {
@@ -836,7 +882,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       // The approved contract (intent) is stored in the workflow itself.
       app.graph.extra = {...app.graph.extra, aws_contract: args.intent};
       app.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.();
-      return {stored: true};
+      return {stored: true, saved_as: await nameWorkflow(app, api, args.intent?.title)};
     }
     if (action === 'examples') {
       // The agent runs the whole CI (examples, then the pipeline); it never publishes.
@@ -856,7 +902,7 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
     if (action === 'skeleton') {
       if (!Array.isArray(args.steps)) throw Error('Give the approved steps.');
       app.canvas.emitBeforeChange();
-      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design, intent: args.intent, meta: args.meta}); app.graph.setDirtyCanvas(true, true); return result; } finally { app.canvas.emitAfterChange(); refreshApp(); }
+      try { const result = buildSkeleton(app.graph, args.steps, {promises: args.promises, design: args.design, intent: args.intent, meta: args.meta}); app.graph.setDirtyCanvas(true, true); frameWorkflow(app); return result; } finally { app.canvas.emitAfterChange(); refreshApp(); }
     }
     if (action === 'run') {
       // Compare what would execute, not layout: node sizes can settle after a render.
@@ -883,8 +929,8 @@ export function createCanvasBridge(app, api, {confirm, autoApproveRun = () => fa
       if (typeof args.from_type !== 'string' || typeof args.to_type !== 'string') throw Error('Give from_type and to_type.');
       return {paths: findConverterPaths(await agentCatalog(), args.from_type, args.to_type)};
     }
-    if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? '')) === true};
-    if (action === 'tool_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this tool?'), String(args.text ?? '')) === true};
+    if (action === 'contract_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this workflow contract?'), String(args.text ?? ''), String(args.summary ?? '')) === true};
+    if (action === 'tool_approve') return {approved: await confirm?.(String(args.title ?? 'Approve this tool?'), String(args.text ?? ''), String(args.summary ?? '')) === true};
     if (action === 'contract_evidence') return contractEvidence(app, api);
     if (action === 'gates') {
       if (!latestPrompt) throw Error('Run the workflow first; gates are checked against the latest run.');

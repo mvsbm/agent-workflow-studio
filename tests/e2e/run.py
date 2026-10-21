@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 SHARDS = {
     # The agent's chat with the fake Pi: build, records, fuzzy steps, tools and their graduation.
     "chat": [
+        "first_run.cjs",
         "build_and_run.cjs",
         "llm_record.cjs",
         "fuzzy_node.cjs",

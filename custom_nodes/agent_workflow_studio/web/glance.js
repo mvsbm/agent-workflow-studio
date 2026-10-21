@@ -20,9 +20,10 @@ export function wireLabel(graph, id, slot, depth = 0) {
   return node.properties?.aws_wires?.[slot] ?? '';
 }
 
-/** One line for the zoomed-out view: the node's headline, else its first summary line. */
+/** One line for the zoomed-out view: the node's headline, else its first summary line; a stage
+ *  not run yet says what it is for (its step's purpose), so a freshly built workflow reads. */
 export function headline(node) {
-  if (node.isSubgraphNode?.()) return node.properties?.aws_card?.lines?.[0] ?? '';
+  if (node.isSubgraphNode?.()) return node.properties?.aws_card?.lines?.[0] ?? node.properties?.aws_step?.purpose ?? '';
   return node.properties?.aws_headline ?? '';
 }
 

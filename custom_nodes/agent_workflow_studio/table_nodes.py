@@ -168,6 +168,25 @@ def output_root() -> Path:
 
 
 # --- read and write ---------------------------------------------------------------------------
+DATA_FILES = (".csv", ".tsv", ".jsonl", ".json")
+
+
+def one_data_file(base: Path, folder: str) -> str:
+    """The name of the one data file in an input folder (File left empty), or why there is none."""
+    where = (base / folder).resolve()
+    if base not in where.parents or not where.is_dir():
+        raise ValueError(f"No folder {folder!r} in ComfyUI's input folder.")
+    found = sorted(
+        p.name for p in where.iterdir() if p.is_file() and p.suffix.lower() in DATA_FILES
+    )
+    if len(found) != 1:
+        raise ValueError(
+            f"Folder {folder!r} holds {len(found)} data files ({', '.join(found[:6]) or 'none'}); "
+            "put one there, or name the File to read."
+        )
+    return found[0]
+
+
 class ReadTable(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -185,7 +204,10 @@ class ReadTable(io.ComfyNode):
                     tooltip="Folder inside ComfyUI's input directory (connect a data source's folder).",
                 ),
                 io.String.Input(
-                    "file", display_name="File", default="", tooltip="File name in that folder."
+                    "file",
+                    display_name="File",
+                    default="",
+                    tooltip="File name in that folder; empty: the folder's one data file, whatever its name (a new month's export).",
                 ),
             ],
             outputs=[Table.Output(display_name="table", tooltip="The rows, for the next step.")],
@@ -199,6 +221,8 @@ class ReadTable(io.ComfyNode):
         from .data_preview import read_rows
 
         base = Path(folder_paths.get_input_directory()).resolve()
+        if not file.strip():
+            file = one_data_file(base, folder.strip())
         path = (base / folder.strip() / file.strip()).resolve()
         if base not in path.parents or not path.is_file():
             raise ValueError(f"No file {file!r} in input folder {folder!r}.")
@@ -208,8 +232,18 @@ class ReadTable(io.ComfyNode):
             raw.decode("utf-8-sig")
         except UnicodeDecodeError:
             encoding = "Shift_JIS (cp932)"
-        decode(raw)  # raises for anything else
-        out = make(path.stem, read_rows(path))
+        text = decode(raw)  # raises for anything else
+        # A CSV's header names its columns, also when it has no rows (a quiet month's export).
+        header = (
+            next(
+                csv.reader(text.splitlines()[:1], delimiter="\t" if path.suffix == ".tsv" else ","),
+                [],
+            )
+            if path.suffix not in (".jsonl", ".json")
+            else []
+        )
+        rows = read_rows(path)
+        out = make(path.stem, rows, [c for c in header if c] or None)
         return io.NodeOutput(
             out, ui=report("Read table", None, out, {"file": path.name, "encoding": encoding})
         )
@@ -276,10 +310,65 @@ class WriteTable(io.ComfyNode):
         rel = str(path.relative_to(root))
         ui = report("Write table", t, out, {"file": f"output/{rel}"})
         ui["aws_files"] = [rel]  # an API call returns it as a download
+        parent = str(Path(rel).parent)
+        # ComfyUI's own file record: the chat offers it as a download (/view), as for an API output.
+        ui["files"] = [
+            {"filename": path.name, "subfolder": "" if parent == "." else parent, "type": "output"}
+        ]
         return io.NodeOutput(rel, ui=ui)
 
 
 # --- shape ------------------------------------------------------------------------------------
+class TableFromResult(io.ComfyNode):
+    """A code tool's table, for the table nodes: its result holds every declared output by name."""
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="AgentWorkflowTableFromResult",
+            display_name="Table from tool result",
+            category=CATEGORY,
+            search_aliases=["tool table", "result to table", "dict to table", "convert"],
+            description="Takes one table out of an Agent Tool's result, so table nodes can use it.",
+            inputs=[
+                io.Dict.Input(
+                    "result", display_name="Tool result", tooltip="An Agent Tool's result."
+                ),
+                io.String.Input(
+                    "output",
+                    display_name="Output",
+                    default="",
+                    tooltip="The tool's output name; empty: its only table.",
+                ),
+            ],
+            outputs=[Table.Output(display_name="table")],
+            is_output_node=True,
+        )
+
+    @classmethod
+    def execute(cls, result: dict, output: str) -> io.NodeOutput:
+        tables = {
+            k: v
+            for k, v in (result or {}).items()
+            if isinstance(v, dict) and isinstance(v.get("rows"), list)
+        }
+        name = output.strip()
+        if name:
+            if name not in tables:
+                raise ValueError(
+                    f"The tool result has no table {name!r}; it has {', '.join(tables) or 'none'}."
+                )
+        elif len(tables) == 1:
+            name = next(iter(tables))
+        else:
+            raise ValueError(
+                f"Name the output to take; the result has tables {', '.join(tables) or 'none'}."
+            )
+        t = tables[name]
+        out = make(t.get("name") or name, t["rows"], t.get("columns"))
+        return io.NodeOutput(out, ui=report("Table from tool result", None, out, {"output": name}))
+
+
 class StackRoles(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -1398,6 +1487,7 @@ NODES = [
     ReadTable,
     WriteTable,
     StackRoles,
+    TableFromResult,
     Concatenate,
     FilterRows,
     JoinTables,

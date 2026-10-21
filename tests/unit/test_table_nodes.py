@@ -36,6 +36,46 @@ class TableNodeTests(unittest.TestCase):
                 self.assertEqual(value, iso)
                 self.assertIn(kind, form)
 
+    def test_a_csv_with_no_rows_keeps_its_columns(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from custom_nodes.agent_workflow_studio.table_nodes import ReadTable
+
+        with tempfile.TemporaryDirectory() as root:
+            (Path(root) / "m").mkdir()
+            (Path(root) / "m" / "orders.csv").write_text(
+                "order_id,region,amount\n", encoding="utf-8"
+            )
+            with patch("folder_paths.get_input_directory", return_value=root):
+                out = ReadTable.execute("m", "orders.csv").args[0]
+            self.assertEqual((out["columns"], out["rows"]), (["order_id", "region", "amount"], []))
+            # File left empty: the folder's one data file, whatever this month calls it.
+            with patch("folder_paths.get_input_directory", return_value=root):
+                self.assertEqual(ReadTable.execute("m", "").args[0]["name"], "orders")
+                (Path(root) / "m" / "march.csv").write_text("a\n1\n", encoding="utf-8")
+                with self.assertRaisesRegex(
+                    ValueError, "holds 2 data files \\(march.csv, orders.csv\\)"
+                ):
+                    ReadTable.execute("m", "")
+
+    def test_a_tools_table_output_reaches_the_table_nodes(self) -> None:
+        from custom_nodes.agent_workflow_studio.table_nodes import TableFromResult
+
+        totals = make("totals", [{"region": "North", "total": 10}])
+        result = {"totals": totals, "text": "1 region", "explain": {"steps": []}}
+        self.assertEqual(TableFromResult.execute(result, "").args[0]["rows"], totals["rows"])
+        self.assertEqual(
+            TableFromResult.execute(result, "totals").args[0]["columns"], ["region", "total"]
+        )
+        with self.assertRaisesRegex(ValueError, "no table 'other'; it has totals"):
+            TableFromResult.execute(result, "other")
+        with self.assertRaisesRegex(
+            ValueError, "Name the output to take; the result has tables a, b"
+        ):
+            TableFromResult.execute({"a": totals, "b": totals}, "")
+
     def test_normalize_steps(self) -> None:
         self.assertEqual(normalize("ｽｽﾞｷ　ﾀﾛｳ", True, True, True, True, False), "スズキタロウ")
         self.assertEqual(normalize("きょうこ", True, True, True, True, False), "キヨウコ")
@@ -92,7 +132,13 @@ class TableNodeTests(unittest.TestCase):
             patch("folder_paths.get_output_directory", return_value=root),
             patch("folder_paths.get_input_directory", return_value=root),
         ):
-            first = WriteTable.execute(table, "api/result.csv", "").result[0]
+            written = WriteTable.execute(table, "api/result.csv", "")
+            first = written.result[0]
+            # ComfyUI's own file record, so the chat offers the CSV as a download.
+            self.assertEqual(
+                written.ui["files"],
+                [{"filename": "result_00001_.csv", "subfolder": "api", "type": "output"}],
+            )
             second = WriteTable.execute(table, "api/result.csv", "").result[0]
             self.assertEqual([first, second], ["api/result_00001_.csv", "api/result_00002_.csv"])
             self.assertTrue((Path(root) / first).is_file(), "an earlier call's file stays")

@@ -1,4 +1,4 @@
-// Builds example_workflows/Studio - Nayose reference.json in an isolated ComfyUI: the nayose
+// Builds example_workflows/Studio - Record matching reference.json in an isolated ComfyUI: the nayose
 // benchmark solved only with visible nodes (no agent code), one stage per standard step, run, scored
 // and packed into stage cards. Usage: scripts/build_templates.sh (after the benchmark template).
 const {chromium} = require('playwright-core');
@@ -7,8 +7,8 @@ const path = require('node:path');
 
 const base = process.env.BASE;
 const root = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows');
-const template = JSON.parse(fs.readFileSync(path.join(root, 'Studio - Nayose benchmark.json'), 'utf8'));
-const target = path.join(root, 'Studio - Nayose reference.json');
+const template = JSON.parse(fs.readFileSync(path.join(root, 'Studio - Record matching benchmark.json'), 'utf8'));
+const target = path.join(root, 'Studio - Record matching reference.json');
 // VARIANT=deterministic: only the certain rules decide; VARIANT=patterns: a classic match-pattern grid
 // (no learning). Both leave unsettled pairs unmerged and print the score instead of saving the template.
 const VARIANT = process.env.VARIANT || '';
@@ -46,13 +46,14 @@ const STEPS = [
 const at = (output, kind, value) => ({output, kind, value});
 const CONTRACT = {
   contract: 2,
+  title: 'Record matching reference',
   purpose: 'Give every person mention in three legacy insurance systems one customer id, with uncertain pairs decided by you.',
   requests: [
     {id: 'R1', title: 'One customer id per person', you_said: 'find whether customers are the same person across the policy, claims and payment systems', we_understood: 'When the exports are read, the workflow gives every person mention a customer id, the same id for the same person.', priority: 'must'},
     {id: 'R2', title: 'You check uncertain pairs', you_said: 'a person checks what the machine is unsure of', we_understood: 'When a pair is uncertain, the workflow sends it to you in the Review tab instead of guessing.', priority: 'should'},
     {id: 'R3', title: 'Own cleaning lane per system', you_said: 'each system is dirty in its own way', we_understood: 'When records are cleaned, each system gets its own cleaning lane.', priority: 'should'},
   ],
-  examples: [{id: 'E1', covers: ['R1'], given: {exports: 'nayose_bench'}, expect: {customer_file: 'nayose_result_'}, note: 'The benchmark exports (Studio - Nayose benchmark writes them to input/nayose_bench): one customer id per mention.'}],
+  examples: [{id: 'E1', covers: ['R1'], given: {exports: 'nayose_bench'}, expect: {customer_file: 'nayose_result_'}, note: 'The benchmark exports (Studio - Record matching benchmark writes them to input/nayose_bench): one customer id per mention.'}],
   promises: {
     // Claim check: the caller uploads the three exports into input/<folder>/ and passes the folder.
     inputs: [{name: 'exports', kind: 'folder', description: 'The folder holding the three legacy exports: policy_master.csv, claims.csv and koza_furikae.csv.', example: 'nayose_bench'}],
@@ -308,7 +309,7 @@ decide: {match: 4, review: 2}
     // What the first run scored (the answer key belongs to the synthetic data, not to the API).
     const scored = app.graph.nodes.find(n => n.type === 'AgentWorkflowNayoseScore').properties.aws_tables?.[0]?.rows ?? [];
     // Its API: the caller's exports folder in (uploaded first), the published customer ids out. The
-    // synthetic generator and its scorer leave: they stay in Studio - Nayose benchmark, as test data.
+    // synthetic generator and its scorer leave: they stay in Studio - Record matching benchmark, as test data.
     const {setSignature} = await import('/extensions/agent_workflow_studio/publish.js');
     const synthetic = app.graph.nodes.find(n => n.isSubgraphNode?.() && !n.properties?.aws_stage);
     // A data folder input: pick a folder in ComfyUI's input folder, or upload the files (App mode too).
@@ -336,11 +337,11 @@ decide: {match: 4, review: 2}
     // The note says how to use this workflow as it now is: an API for your exports.
     const note = app.graph.nodes.find(n => n.type === 'MarkdownNote');
     if (note) note.widgets[0].value = [
-      '# Nayose reference: customer ids for your exports',
+      '# Record matching reference: customer ids for your exports',
       '',
       '1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI\'s input folder.',
       '2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.',
-      '3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench.',
+      '3. To try it on synthetic data: run **Studio - Record matching benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench.',
     ].join('\n');
     arrangeGraph(app.graph);
     // Shipped with the workflow: on first open it becomes the workflow's approved contract.

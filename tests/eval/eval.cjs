@@ -66,10 +66,11 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
       await fetch(`/api/userdata/${encodeURIComponent(`workflows/${name}.json`)}?overwrite=true&full_info=true`, {method: 'POST', body: JSON.stringify(window.comfyAPI.app.app.graph.serialize())});
     }, process.env.SAVE_AS);
     await save();
-    await page.evaluate(() => { void window.comfyAPI.app.app.extensionManager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
+    await page.evaluate(() => { const manager = window.comfyAPI.app.app.extensionManager; if (manager.sidebarTab.activeSidebarTabId !== 'pi-chat') void manager.command.execute('Workspace.ToggleSidebarTab.pi-chat'); });
     const message = page.getByRole('textbox', {name: 'Message the agent'});
     await message.waitFor({timeout: 30000});
     await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message the agent"]')?.disabled, null, {timeout: 120000});
+    await page.evaluate(() => { document.querySelector('.aw-pi-connection').open = true; });  // where the connection's options are
     const autoApprove = page.getByRole('checkbox', {name: 'Auto-approve workflow runs'});
     if (!await autoApprove.isChecked()) await autoApprove.check();
     await message.fill(task.prompt);
@@ -78,7 +79,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
     result.approvals = 0;
     result.cards = [];
     const deadline = Date.now() + (task.timeout_minutes ?? 7) * 60000;
-    while (!await page.evaluate(texts => texts.some(t => document.body.innerText.includes(t)), SETTLED)) {
+    while (!await page.evaluate(texts => texts.includes(document.querySelector('.aw-pi-status')?.dataset.settled), SETTLED)) {
       // Stop waiting (but still collect evidence) on a timeout or a dropped session.
       if (Date.now() > deadline) { result.error = `Agent did not settle within ${task.timeout_minutes ?? 7} minutes.`; break; }
       const dropped = await page.evaluate(() => document.body.innerText.match(/(Pi|Claude) disconnected[^.]*\./)?.[0]);
@@ -120,7 +121,7 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
             data_inputs: (current.promises?.inputs ?? []).filter(i => ['folder', 'file'].includes(String(i.kind).toLowerCase())).map(i => i.name)};
         }
       } catch (error) { contract = {error: String(error)}; }
-      const tools = [...document.querySelectorAll('.aw-pi-host summary, .aw-pi-host details > summary')].map(s => s.textContent.trim()).filter(t => /^(Done|Failed) · /.test(t));
+      const tools = [...document.querySelectorAll('.aw-pi-host details[data-tool]')].map(d => [d.querySelector('summary').textContent.trim(), d.dataset.tool]).filter(([t]) => /^(Done|Failed) · /.test(t)).map(([t, name]) => `${t.split(' · ')[0]} · ${name}`);
       // Why tool calls failed (the agent sees this; useful for spotting recurring mistakes).
       const failures = [...document.querySelectorAll('.aw-pi-host details')].filter(d => /^Failed · /.test(d.querySelector('summary')?.textContent.trim() ?? '')).map(d => d.textContent.trim().slice(0, 400));
       return {

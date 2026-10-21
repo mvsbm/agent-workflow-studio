@@ -25,10 +25,10 @@
     "aws_given": true
    },
    "widgets_values": [
-    "# Nayose reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
+    "# Record matching reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Record matching benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
    ],
    "widgets_values_named": {
-    "text": "# Nayose reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
+    "text": "# Record matching reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Record matching benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
    },
    "color": "#432",
    "bgcolor": "#653"
@@ -13389,6 +13389,7 @@
   },
   "aws_contract": {
    "contract": 2,
+   "title": "Record matching reference",
    "purpose": "Give every person mention in three legacy insurance systems one customer id, with uncertain pairs decided by you.",
    "requests": [
     {
@@ -13425,7 +13426,7 @@
      "expect": {
       "customer_file": "nayose_result_"
      },
-     "note": "The benchmark exports (Studio - Nayose benchmark writes them to input/nayose_bench): one customer id per mention."
+     "note": "The benchmark exports (Studio - Record matching benchmark writes them to input/nayose_bench): one customer id per mention."
     }
    ],
    "promises": {

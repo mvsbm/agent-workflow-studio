@@ -66,9 +66,19 @@ export function signatureOf(graph, defs) {
   return {inputs, outputs};
 }
 
-/** Set the signature (what the agent's "signature" edit and App mode both write). */
+/** Set the signature (what the agent's "signature" edit and App mode both write). An input's
+ *  description is App mode's own label for it; one set before (by App mode's editor) is kept. */
 export function setSignature(graph, inputs, outputs) {
-  graph.extra = {...graph.extra, linearData: {inputs: inputs.map(({node, widget}) => [node, widget]), outputs}};
+  const before = new Map((graph.extra?.linearData?.inputs ?? []).filter(i => i[2]).map(([node, widget, config]) => [`${node}/${widget}`, config]));
+  // A Data folder's Upload button follows its folder into App mode (UI only: not part of the API).
+  inputs = inputs.flatMap(input => {
+    const uploads = graph.getNodeById?.(input.node)?.type === 'AgentWorkflowDataFolder' && input.widget === 'folder' && !inputs.some(i => i.node === input.node && i.widget === 'upload');
+    return uploads ? [input, {node: input.node, widget: 'upload', description: input.description && `Upload: ${input.description.charAt(0).toLowerCase()}${input.description.slice(1)}`}] : [input];
+  });
+  graph.extra = {...graph.extra, linearData: {inputs: inputs.map(({node, widget, description}) => {
+    const config = before.get(`${node}/${widget}`) ?? (description ? {description} : null);
+    return config ? [node, widget, config] : [node, widget];
+  }), outputs}};
   refreshApp();
 }
 

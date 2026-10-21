@@ -7,7 +7,7 @@ Reads a CSV/TSV/JSONL file from a folder in ComfyUI's input directory (UTF-8 or 
 | Input | Type | What it is |
 | --- | --- | --- |
 | Folder | `STRING` | Folder inside ComfyUI's input directory (connect a data source's folder). |
-| File | `STRING` | File name in that folder. |
+| File | `STRING` | File name in that folder; empty: the folder's one data file, whatever its name (a new month's export). |
 
 ## Outputs
 
