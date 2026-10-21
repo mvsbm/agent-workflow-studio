@@ -6,15 +6,15 @@ You, as a step of the cascade: the pairs a stage left unsettled, split by the de
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| Unsettled | `PAIRS,DICT` | A stage's unsettled branch (Decision rules or LLM suggestions). |
+| Unsettled | `RECORD_PAIRS,DICT` | A stage's unsettled branch (Decision rules or LLM suggestions). |
 
 ## Outputs
 
 | Output | Type | What it is |
 | --- | --- | --- |
-| matched | `DECISIONS` | Pairs you decided are the same person. |
-| different | `DECISIONS` | Pairs you decided are different people. |
-| open | `PAIRS` | Pairs you have not decided yet. |
+| matched | `PAIR_DECISIONS` | Pairs you decided are the same person. |
+| different | `PAIR_DECISIONS` | Pairs you decided are different people. |
+| open | `RECORD_PAIRS` | Pairs you have not decided yet. |
 
 ## Where it runs
 

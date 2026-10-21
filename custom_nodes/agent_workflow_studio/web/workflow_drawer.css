@@ -55,3 +55,8 @@ details[open] > .aw-section-head > .pi, .aw-section-head[aria-expanded="true"] >
 .aw-diff { background: color-mix(in srgb, var(--warning-background, #d9a441) 22%, transparent); }
 .aw-empty { padding: 16px; font-size: 14px; color: var(--muted-foreground, #8a8a8a); text-align: center; }
 .aw-table th[scope="row"] { white-space: nowrap; width: 1%; overflow-wrap: normal; }
+.aw-field { box-sizing: border-box; height: 32px; padding: 0 10px; border: none; border-radius: 8px; font-size: 14px; background: var(--secondary-background, #313235); color: var(--base-foreground, #fff); }
+.aw-field::placeholder { color: var(--muted-foreground, #8a8a8a); }
+.aw-field:focus-visible { outline: 1px solid var(--primary-background, #0b8ce9); }
+.aw-button-primary { background: var(--primary-background, #0b8ce9); color: #fff; }
+.aw-button-primary:hover { background: var(--primary-background-hover, #31a2f5); }

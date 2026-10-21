@@ -19,7 +19,15 @@ from aiohttp import WSMsgType, web
 
 from . import api_review
 from . import loop as improve_loop
-from .agent_tools import NAME, approval_text, code_hash
+from .agent_tools import (
+    NAME,
+    approval_text,
+    code_hash,
+    example_problems,
+    port_problems,
+    run_examples,
+    typed_ports,
+)
 from .lld import validate_lld
 from .native_layers import design_of, intent_of, layers, split
 from .pi_auth import (
@@ -946,7 +954,7 @@ class PiChatSession:
             ids = ", ".join(s["id"] for s in self.contract["steps"])
             raise ValueError(f"No step {arguments.get('step')!r} in the design (steps: {ids}).")
         agreed = [d["id"] for d in self.contract["decisions"] if d.get("by") != "user"]
-        spec = validate_lld(step, arguments, agreed)
+        spec = validate_lld(step, arguments, agreed, self.repo.tool_names())
         result = await self.canvas_action(
             "build",
             {
@@ -1040,16 +1048,29 @@ class PiChatSession:
         name = arguments.get("name")
         if not isinstance(name, str) or not NAME.fullmatch(name):
             raise ValueError("A tool name is a short lowercase identifier, e.g. match_names.")
+        # A tool's interface is the studio's own: ports typed like a node's, and examples that are
+        # its tests (they run in the sandbox before the user is asked, and in every Run checks).
         ports = {key: arguments.get(key) for key in ("inputs", "outputs")}
-        if not all(
-            isinstance(v, list)
-            and all(isinstance(p, dict) and {"name", "kind"} <= p.keys() for p in v)
-            for v in ports.values()
-        ):
-            raise ValueError("Describe inputs and outputs as lists of {name, kind}.")
+        examples = arguments.get("examples")
         description = str(arguments.get("description", "")).strip()[:1200]
-        if not description:
-            raise ValueError("Say what the tool does.")
+        # Code is the exception: the user approves it knowing why the studio's nodes would not do.
+        why = str(arguments.get("why_not_a_node", "")).strip()[:600]
+        from .workflow_contract import raise_all
+
+        raise_all(
+            [
+                *port_problems("inputs", ports["inputs"]),
+                *port_problems("outputs", ports["outputs"]),
+                *([] if ports["outputs"] else ["Declare at least one output."]),
+                *example_problems(examples),
+                *([] if description else ["Say what the tool does."]),
+                *(
+                    []
+                    if len(why) >= 20
+                    else ["Say in why_not_a_node why no installed node can do this step."]
+                ),
+            ]
+        )
         file = await self.workspace_action("workspace_read", {"path": f"tools/{name}.py"})
         code = base64.b64decode(file["data"]).decode("utf-8")
         if "def run(" not in code:
@@ -1062,7 +1083,28 @@ class PiChatSession:
                 "tool per stage, chained through `data`; a later tool reads earlier tools' files "
                 "from inputs['_run_folders']."
             )
-        text = approval_text(name, description, ports["inputs"], ports["outputs"], code)
+        manifest = {
+            "version": 2,
+            "tier": "workflow",
+            "name": name,
+            "description": description,
+            "why_not_a_node": why,
+            # Each kind written as its registered socket (old names and class names resolved).
+            **{side: typed_ports(ports[side]) for side in ("inputs", "outputs")},
+            "examples": examples,
+            "sha256": code_hash(code),
+        }
+        with tempfile.TemporaryDirectory(prefix="aws-tool-tests-") as scratch:
+            tests = await asyncio.to_thread(run_examples, code, manifest, Path(scratch))
+        if failed := [t for t in tests if not t["passed"]]:
+            raise ValueError(
+                f"{len(failed)} of {len(tests)} examples fail in the sandbox, so the tool is not "
+                "shown to the user yet: "
+                + " ".join(f"example {t['example']}: {'; '.join(t['problems'])}" for t in failed)
+            )
+        text = approval_text(
+            name, description, manifest["inputs"], manifest["outputs"], code, tests, why
+        )
         answer = await self.canvas_action(
             "tool_approve", {"title": f"Approve tool {name}?", "text": text}
         )
@@ -1071,7 +1113,6 @@ class PiChatSession:
                 "approved": False,
                 "message": "The user did not approve this tool; ask what to change.",
             }
-        manifest = {"name": name, "description": description, **ports, "sha256": code_hash(code)}
         sha = await asyncio.to_thread(self.repo.save_tool, name, code, manifest)
         return {
             "approved": True,

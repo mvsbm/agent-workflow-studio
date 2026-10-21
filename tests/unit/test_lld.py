@@ -69,6 +69,23 @@ class LLDTests(unittest.TestCase):
             "decision D1", validate_lld(STEP, tagged, ["D1"])["nodes"]["pick"]["realizes"]
         )
 
+    def test_workflow_code_is_a_node_of_the_plan_naming_an_approved_tool(self) -> None:
+        def code(s):
+            s["nodes"]["llm"] = {
+                "type": "AgentWorkflowAgentTool",
+                "set": {"tool": "classify_reviews"},
+                "realizes": ["takes review", "does"],
+            }
+
+        built = validate_lld(STEP, spec(code), [], {"classify_reviews"})
+        self.assertEqual(
+            built["nodes"]["llm"]["realizes"], ["takes review", "does"]
+        )  # traced like any node
+        with self.assertRaisesRegex(
+            ValueError, r"runs tool 'classify_reviews', which is not approved .*comfy_propose_tool"
+        ):
+            validate_lld(STEP, spec(code), [], set())
+
 
 class LLDGapTests(unittest.TestCase):
     def test_the_lld_rules_hold_on_the_stage_as_it_is_now(self) -> None:

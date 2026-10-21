@@ -28,9 +28,15 @@ def allowed(step: dict, decisions: list[str]) -> set[str]:
     return {*clauses(step), "why", *(f"decision {d}" for d in decisions)}
 
 
-def validate_lld(step: dict, spec: object, decisions: list[str] = ()) -> dict:
+TOOL_NODE = "AgentWorkflowAgentTool"
+
+
+def validate_lld(
+    step: dict, spec: object, decisions: list[str] = (), tools: set[str] | None = None
+) -> dict:
     """The spec, or ValueError naming what to fix: every clause realized, every node traced, every
-    port of the stage wired, nothing wired to what does not exist."""
+    port of the stage wired, nothing wired to what does not exist. A node may be workflow code (an
+    Agent Tool node naming an approved tool in `tools`), traced like any other node."""
     if not isinstance(spec, dict) or not isinstance(spec.get("nodes"), dict) or not spec["nodes"]:
         raise ValueError("Give the step's nodes: {key: {type, set, realizes}}.")
     nodes, wires = spec["nodes"], spec.get("wires") or []
@@ -56,6 +62,14 @@ def validate_lld(step: dict, spec: object, decisions: list[str] = ()) -> dict:
             )
         node["realizes"] = tags
         realized |= set(tags)
+        if node["type"] == TOOL_NODE and tools is not None:
+            name = (node.get("set") or {}).get("tool")
+            if name not in tools:
+                raise ValueError(
+                    f"Node {key} runs tool {name!r}, which is not approved in this workflow "
+                    f"({', '.join(sorted(tools)) or 'none yet'}): propose it with comfy_propose_tool "
+                    "first, then set tool to its name."
+                )
         promote = node.get("promote") or []
         if (
             not isinstance(promote, list)

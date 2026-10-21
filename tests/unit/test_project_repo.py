@@ -29,6 +29,46 @@ class ProjectRepoTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
+    def test_a_tool_shows_its_spec_code_approval_tests_and_diff(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import code_hash
+
+        code = "def run(i):\n    return {'n': 1}\n"
+        manifest = {
+            "version": 2,
+            "name": "count",
+            "outputs": [{"name": "n", "kind": "INT"}],
+            "sha256": code_hash(code),
+        }
+        sha = self.repo.save_tool("count", code, manifest)
+        self.repo.add_record(
+            {
+                "kind": "pipeline",
+                "tools": [{"tool": "count", "passed": True, "problems": [], "examples": 1}],
+            },
+            "Checks · ✓ tool tests",
+            {"nodes": []},
+        )
+        detail = self.repo.tool_detail("count")
+        self.assertEqual((detail["code"], detail["approved"]["sha"]), (code, sha))
+        self.assertTrue(detail["tests"]["passed"])
+        self.assertIn("+def run(i):", self.repo.code_diff(sha))  # the version's code change
+        self.assertEqual(
+            self.repo.code_diff(self.repo.log()[0]["sha"]), ""
+        )  # a record changes no code
+        with self.assertRaisesRegex(ValueError, "unknown tool"):
+            self.repo.tool_detail("../x")
+        from custom_nodes.agent_workflow_studio.graduation import brief
+
+        text = brief(
+            "count",
+            code,
+            {**manifest, "examples": [{"inputs": {}, "expect": {"n": 1}}]},
+            WORKFLOW_ID,
+        )
+        self.assertIn("| n | INT | io.Int |", text)  # the node keeps the tool's interface
+        self.assertIn('- inputs `{}` → expect `{"n": 1}`', text)  # its tests carry over
+        self.assertTrue(text.rstrip().endswith("return {'n': 1}\n```"))
+
     def test_commit_log_show_and_unchanged_snapshot(self) -> None:
         one = graph((1, "PrimitiveString", ["hi"]))
         first = self.repo.commit(one, "Agent: add source", "agent")

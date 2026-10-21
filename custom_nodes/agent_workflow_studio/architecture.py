@@ -17,7 +17,9 @@ STRUCTURAL, COMPLETENESS, RELEASE = "structural", "completeness", "release"
 UNTYPED = {"*", "DICT", ""}  # a port that says nothing about its data
 # A gate is a Check node; a node that only shows data (most are ComfyUI output nodes) is not one.
 CHECKS = {"AgentWorkflowCheck"}
-FUZZY = {"AgentWorkflowAgentTool", "AgentWorkflowFuzzyNode", "AgentWorkflowPiStructuredAgent"}
+# Nodes where a model decides at run time. Workflow code (an Agent Tool) is not one: it is approved,
+# typed and tested (the "tool tests" level of Run checks), so it is deterministic like a node.
+FUZZY = {"AgentWorkflowFuzzyNode", "AgentWorkflowPiStructuredAgent"}
 RULES: list[tuple[str, str, Callable]] = []
 
 
@@ -83,7 +85,10 @@ def stage_is_a_step(wf: dict) -> list:
     ]
 
 
-@rule(COMPLETENESS, "Give the port a data type (TABLE, PAIRS, DECISIONS, CUSTOMERS).")
+@rule(
+    COMPLETENESS,
+    "Give the port a registered data type: TABLE or a dataset class (see /agent-workflow-studio/standards).",
+)
 def ports_typed(wf: dict) -> list:
     return [
         (
@@ -117,11 +122,14 @@ def has_signature(wf: dict) -> list:
     return [] if linear.get("outputs") else [("workflow", "has no outputs chosen for its API")]
 
 
-@rule(RELEASE, "Harden the step into deterministic nodes, or accept its agent-written logic.")
+@rule(
+    RELEASE,
+    "Harden the step into deterministic nodes (or a tested tool), or accept the model's judgment.",
+)
 def no_fuzzy_steps(wf: dict) -> list:
     defs = _definitions(wf)
     return [
-        (definition["name"], "decides with agent-written code or an LLM")
+        (definition["name"], "decides with an LLM at run time")
         for node, definition in _stages(wf)
         if _loose(node) and FUZZY & set(_inner_types(definition, defs))
     ]

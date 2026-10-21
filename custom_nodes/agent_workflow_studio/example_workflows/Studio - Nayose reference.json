@@ -1,5 +1,5 @@
 {
- "id": "bfbaa8e5-ad67-44ec-b343-af649da13ffd",
+ "id": "e17f2eeb-020e-41e3-8d53-a3cec63e477b",
  "revision": 0,
  "last_node_id": 68,
  "last_link_id": 125,
@@ -25,17 +25,17 @@
     "aws_given": true
    },
    "widgets_values": [
-    "# Nayose reference: customer ids for your exports\n\n1. Put the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv) in one folder under ComfyUI's input folder, or upload each: `curl -F image=@policy_master.csv -F type=input -F subfolder=my_exports http://127.0.0.1:8188/upload/image`.\n2. Set **Input · exports** to that folder and press **Run** (or open it as an App: Alt+M). Published, it is an API: the Contract tab shows the call.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
+    "# Nayose reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
    ],
    "widgets_values_named": {
-    "text": "# Nayose reference: customer ids for your exports\n\n1. Put the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv) in one folder under ComfyUI's input folder, or upload each: `curl -F image=@policy_master.csv -F type=input -F subfolder=my_exports http://127.0.0.1:8188/upload/image`.\n2. Set **Input · exports** to that folder and press **Run** (or open it as an App: Alt+M). Published, it is an API: the Contract tab shows the call.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
+    "text": "# Nayose reference: customer ids for your exports\n\n1. On **Input · exports**, press **Upload data files** and pick the three legacy exports (policy_master.csv, claims.csv, koza_furikae.csv): they go into a new folder, which the input then holds. Or pick a folder already in ComfyUI's input folder.\n2. Press **Run**, or open it as an App (Alt+M), which offers the same upload. Published, it is an API: the Contract tab shows the call, with the upload first.\n3. To try it on synthetic data: run **Studio - Nayose benchmark** (it writes the exports to input/nayose_bench with an answer key that scores the result), then run this with exports = nayose_bench."
    },
    "color": "#432",
    "bgcolor": "#653"
   },
   {
    "id": 44,
-   "type": "9373f320-9764-43f0-8c01-72a965027b11",
+   "type": "142521c0-728d-4163-88e1-a1280d947e89",
    "pos": [
     480,
     10
@@ -120,7 +120,7 @@
   },
   {
    "id": 46,
-   "type": "133dd207-b8ea-4e12-b401-02517f0f4521",
+   "type": "38f982d6-d9bf-4099-87fe-c12b8b6f9b8e",
    "pos": [
     1000,
     10
@@ -203,7 +203,7 @@
   },
   {
    "id": 48,
-   "type": "4f99c922-31ae-4648-80ad-1656dd8cc056",
+   "type": "88defca9-2238-4859-a1f3-443bb5d4cf65",
    "pos": [
     1000,
     360
@@ -286,7 +286,7 @@
   },
   {
    "id": 50,
-   "type": "a884c4ae-4359-45b5-a2ca-e1c1ba65c406",
+   "type": "eaa69a21-83d7-41d3-bdb2-f5cf4e9165e0",
    "pos": [
     1000,
     710
@@ -369,7 +369,7 @@
   },
   {
    "id": 52,
-   "type": "ed16acff-4b2f-4817-a88d-c0609f4ccc7e",
+   "type": "83dd329b-2b9b-4269-9e10-3891cdda71ed",
    "pos": [
     1520,
     10
@@ -463,7 +463,7 @@
   },
   {
    "id": 54,
-   "type": "54321fe5-27e8-4bf9-9480-979f1439a8ed",
+   "type": "04d93e77-b263-484c-9965-fbbca163222f",
    "pos": [
     2040,
     10
@@ -559,7 +559,7 @@
   },
   {
    "id": 56,
-   "type": "16f2833a-110f-48ff-a094-6b513673acb5",
+   "type": "cd0ce7cf-1485-40bc-8aa8-b9d642de19ad",
    "pos": [
     2560,
     10
@@ -589,7 +589,7 @@
     {
      "localized_name": "data",
      "name": "data",
-     "type": "PAIRS",
+     "type": "RECORD_PAIRS",
      "links": [
       93
      ]
@@ -617,7 +617,7 @@
       "pairs": "find_candidates.pairs"
      },
      "gives": {
-      "data": "PAIRS"
+      "data": "RECORD_PAIRS"
      },
      "uses": "Compare fields",
      "why": "decisions need plain levels",
@@ -640,7 +640,7 @@
   },
   {
    "id": 58,
-   "type": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+   "type": "ee95f17b-3cdf-4c16-be9a-cfaeeb41487e",
    "pos": [
     3080,
     10
@@ -657,7 +657,7 @@
      "localized_name": "Pairs",
      "name": "data",
      "shape": 7,
-     "type": "PAIRS,DICT",
+     "type": "RECORD_PAIRS,DICT",
      "link": 93
     }
    ],
@@ -665,7 +665,7 @@
     {
      "localized_name": "matched",
      "name": "matched",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       106
      ]
@@ -673,7 +673,7 @@
     {
      "localized_name": "different",
      "name": "different",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       109
      ]
@@ -681,7 +681,7 @@
     {
      "localized_name": "unsettled",
      "name": "unsettled",
-     "type": "PAIRS",
+     "type": "RECORD_PAIRS",
      "links": [
       98
      ]
@@ -710,9 +710,9 @@
       "data": "compare.data"
      },
      "gives": {
-      "matched": "DECISIONS",
-      "different": "DECISIONS",
-      "unsettled": "PAIRS"
+      "matched": "PAIR_DECISIONS",
+      "different": "PAIR_DECISIONS",
+      "unsettled": "RECORD_PAIRS"
      },
      "uses": "Decision rules",
      "why": "sure cases need no score",
@@ -735,7 +735,7 @@
   },
   {
    "id": 60,
-   "type": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+   "type": "20654c4e-94db-4191-a22c-22849f5032c1",
    "pos": [
     3600,
     10
@@ -752,7 +752,7 @@
      "localized_name": "Pairs",
      "name": "data",
      "shape": 7,
-     "type": "PAIRS,DICT",
+     "type": "RECORD_PAIRS,DICT",
      "link": 98
     },
     {
@@ -784,7 +784,7 @@
     {
      "localized_name": "matched",
      "name": "matched",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       107
      ]
@@ -792,7 +792,7 @@
     {
      "localized_name": "different",
      "name": "different",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       110
      ]
@@ -800,7 +800,7 @@
     {
      "localized_name": "unsettled",
      "name": "unsettled",
-     "type": "PAIRS",
+     "type": "RECORD_PAIRS",
      "links": [
       103
      ]
@@ -830,9 +830,9 @@
       "data": "decide_rules.unsettled"
      },
      "gives": {
-      "matched": "DECISIONS",
-      "different": "DECISIONS",
-      "unsettled": "PAIRS"
+      "matched": "PAIR_DECISIONS",
+      "different": "PAIR_DECISIONS",
+      "unsettled": "RECORD_PAIRS"
      },
      "uses": "Learn weights, Decision rules",
      "why": "each field’s evidence differs",
@@ -863,7 +863,7 @@
   },
   {
    "id": 62,
-   "type": "8451745d-4989-422a-a9ae-ee864a7b486b",
+   "type": "ca41dc35-813b-436d-8aa9-b6b0dc49ccc7",
    "pos": [
     4120,
     10
@@ -879,7 +879,7 @@
     {
      "localized_name": "Unsettled",
      "name": "data",
-     "type": "PAIRS,DICT",
+     "type": "RECORD_PAIRS,DICT",
      "link": 103
     }
    ],
@@ -887,7 +887,7 @@
     {
      "localized_name": "matched",
      "name": "matched",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       108
      ]
@@ -895,7 +895,7 @@
     {
      "localized_name": "different",
      "name": "different",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": [
       111
      ]
@@ -925,8 +925,8 @@
       "data": "decide_score.unsettled"
      },
      "gives": {
-      "matched": "DECISIONS",
-      "different": "DECISIONS"
+      "matched": "PAIR_DECISIONS",
+      "different": "PAIR_DECISIONS"
      },
      "uses": "Your review decisions",
      "why": "a person beats a guess",
@@ -944,7 +944,7 @@
   },
   {
    "id": 63,
-   "type": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+   "type": "49cf3ad6-68fc-4642-bc71-98bcb376908b",
    "pos": [
     4640,
     10
@@ -961,42 +961,42 @@
      "localized_name": "Matched 1",
      "name": "matched_1",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 106
     },
     {
      "localized_name": "Matched 2",
      "name": "matched_2",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 107
     },
     {
      "localized_name": "Matched 3",
      "name": "matched_3",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 108
     },
     {
      "localized_name": "Different 1",
      "name": "different_1",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 109
     },
     {
      "localized_name": "Different 2",
      "name": "different_2",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 110
     },
     {
      "localized_name": "Different 3",
      "name": "different_3",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": 111
     },
     {
@@ -1010,9 +1010,9 @@
    ],
    "outputs": [
     {
-     "localized_name": "customers",
+     "localized_name": "clusters",
      "name": "customers",
-     "type": "CUSTOMERS",
+     "type": "RECORD_CLUSTERS",
      "links": [
       115
      ]
@@ -1025,7 +1025,7 @@
     "aws_card": {
      "purpose": "",
      "lines": [
-      "Customers: 2,532 (largest 27 records)",
+      "Clusters: 2,532 (largest 27 records)",
       "2,333 merges blocked"
      ],
      "state": ""
@@ -1047,7 +1047,7 @@
       "different_3": "you_verify.different"
      },
      "gives": {
-      "customers": "CUSTOMERS"
+      "customers": "RECORD_CLUSTERS"
      },
      "uses": "Cluster guard",
      "why": "one wrong link must not chain many",
@@ -1074,7 +1074,7 @@
   },
   {
    "id": 65,
-   "type": "06539e58-62ec-41d0-9a05-928246fac477",
+   "type": "99af2342-7f71-49a7-af44-6aee60c5f592",
    "pos": [
     5160,
     10
@@ -1096,7 +1096,7 @@
     {
      "localized_name": "Groups",
      "name": "groups",
-     "type": "CUSTOMERS,DICT",
+     "type": "RECORD_CLUSTERS,DICT",
      "link": 115
     }
    ],
@@ -1157,33 +1157,33 @@
   },
   {
    "id": 67,
-   "type": "PrimitiveString",
+   "type": "AgentWorkflowDataFolder",
    "pos": [
     10,
     10
    ],
    "size": [
     270,
-    58
+    96
    ],
    "flags": {},
    "order": 1,
    "mode": 0,
    "inputs": [
     {
-     "localized_name": "value",
-     "name": "value",
-     "type": "STRING",
+     "localized_name": "Folder",
+     "name": "folder",
+     "type": "COMBO",
      "widget": {
-      "name": "value"
+      "name": "folder"
      },
      "link": null
     }
    ],
    "outputs": [
     {
-     "localized_name": "STRING",
-     "name": "STRING",
+     "localized_name": "folder",
+     "name": "folder",
      "type": "STRING",
      "links": [
       124
@@ -1192,14 +1192,15 @@
    ],
    "title": "Input · exports",
    "properties": {
-    "Node name for S&R": "PrimitiveString",
     "aws_input": "exports"
    },
    "widgets_values": [
-    "nayose_bench"
+    "nayose_bench",
+    ""
    ],
    "widgets_values_named": {
-    "value": "nayose_bench"
+    "folder": "nayose_bench",
+    "upload": ""
    }
   },
   {
@@ -1236,7 +1237,6 @@
    "outputs": [],
    "title": "Output · customer_file",
    "properties": {
-    "Node name for S&R": "AgentWorkflowApiOutput",
     "aws_output": "customer_file",
     "aws_output_from": "publish.path"
    },
@@ -1327,7 +1327,7 @@
    0,
    58,
    0,
-   "PAIRS"
+   "RECORD_PAIRS"
   ],
   [
    98,
@@ -1335,7 +1335,7 @@
    2,
    60,
    0,
-   "PAIRS"
+   "RECORD_PAIRS"
   ],
   [
    103,
@@ -1343,7 +1343,7 @@
    2,
    62,
    0,
-   "PAIRS"
+   "RECORD_PAIRS"
   ],
   [
    106,
@@ -1351,7 +1351,7 @@
    0,
    63,
    0,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    107,
@@ -1359,7 +1359,7 @@
    0,
    63,
    1,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    108,
@@ -1367,7 +1367,7 @@
    0,
    63,
    2,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    109,
@@ -1375,7 +1375,7 @@
    1,
    63,
    3,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    110,
@@ -1383,7 +1383,7 @@
    1,
    63,
    4,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    111,
@@ -1391,7 +1391,7 @@
    1,
    63,
    5,
-   "DECISIONS"
+   "PAIR_DECISIONS"
   ],
   [
    114,
@@ -1407,7 +1407,7 @@
    0,
    65,
    1,
-   "CUSTOMERS"
+   "RECORD_CLUSTERS"
   ],
   [
    124,
@@ -1430,7 +1430,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "9373f320-9764-43f0-8c01-72a965027b11",
+    "id": "142521c0-728d-4163-88e1-a1280d947e89",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1461,7 +1461,7 @@
     },
     "inputs": [
      {
-      "id": "b0e98a46-fe52-4fb0-b787-76398e7c8881",
+      "id": "9874d68f-0386-4e3f-bc3f-17747a59d892",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -1476,7 +1476,7 @@
     ],
     "outputs": [
      {
-      "id": "cc5e5fc9-ada7-4890-b7a0-14db670a6548",
+      "id": "ee345ed5-e1c0-4204-951a-bfd55ecd0deb",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -1529,7 +1529,6 @@
       ],
       "title": "Profile the exports",
       "properties": {
-       "Node name for S&R": "AgentWorkflowProfileData",
        "aws_wires": [
         "3 files"
        ],
@@ -2071,7 +2070,6 @@
       "outputs": [],
       "title": "Check · folder",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "folder",
        "aws_headline": "✓ passed · The synthetic exports were profiled. · nayose_bench"
       },
@@ -2120,7 +2118,7 @@
     "description": "Does: Look at the three exports before cleaning using Profile data (EDA)\nTakes: folder (your input)\nGives: folder (STRING)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: The synthetic exports were profiled.\nBecause: each column’s dirt decides its cleaning"
    },
    {
-    "id": "133dd207-b8ea-4e12-b401-02517f0f4521",
+    "id": "38f982d6-d9bf-4099-87fe-c12b8b6f9b8e",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -2151,7 +2149,7 @@
     },
     "inputs": [
      {
-      "id": "284ba9a8-be81-4824-a1a5-970ef385c6f2",
+      "id": "fd7c7799-1633-4655-bacc-74d6580fe3ad",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -2166,7 +2164,7 @@
     ],
     "outputs": [
      {
-      "id": "aa4934f0-7bdf-4aa9-aee8-2808298f15b6",
+      "id": "c93d5229-b85d-4ff8-8000-83db7f410a03",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -2227,7 +2225,6 @@
       ],
       "title": "Read policy_master.csv",
       "properties": {
-       "Node name for S&R": "AgentWorkflowReadTable",
        "aws_wires": [
         "3,589 rows"
        ],
@@ -2483,7 +2480,6 @@
       ],
       "title": "One row per person (holder, insured, beneficiary)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowStackRoles",
        "aws_wires": [
         "5,480 rows"
        ],
@@ -2671,7 +2667,6 @@
       ],
       "title": "Reading into surname and given name",
       "properties": {
-       "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
         ""
        ],
@@ -2963,7 +2958,6 @@
       ],
       "title": "Mainframe kana and names to standard",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
         ""
        ],
@@ -3228,7 +3222,6 @@
       ],
       "title": "Variant kanji (〓-free) to standard",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -3483,7 +3476,6 @@
       ],
       "title": "Sex codes 1/2 to M/F",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -3729,7 +3721,6 @@
       ],
       "title": "Era dates (S45.03.12, 3450312) to YYYY-MM-DD",
       "properties": {
-       "Node name for S&R": "AgentWorkflowParseDates",
        "aws_wires": [
         ""
        ],
@@ -4014,7 +4005,6 @@
       ],
       "title": "Phones and postcodes to digits",
       "properties": {
-       "Node name for S&R": "AgentWorkflowExtractDigits",
        "aws_wires": [
         ""
        ],
@@ -4259,7 +4249,6 @@
       "outputs": [],
       "title": "Check · table",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "table",
        "aws_headline": "✓ passed · At least 4,500 policy mentions come out (5,480 on the default data). · 5,480 row(s)"
       },
@@ -4364,7 +4353,7 @@
     "description": "Does: Clean the policy system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 policy mentions come out (5,480 on the default data).\nBecause: it stores three roles side by side"
    },
    {
-    "id": "4f99c922-31ae-4648-80ad-1656dd8cc056",
+    "id": "88defca9-2238-4859-a1f3-443bb5d4cf65",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -4395,7 +4384,7 @@
     },
     "inputs": [
      {
-      "id": "d6079b06-bcbb-4fe8-b14d-36566ac62099",
+      "id": "9a812363-d3cb-4bab-a8c4-89595b0f100d",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -4410,7 +4399,7 @@
     ],
     "outputs": [
      {
-      "id": "e013c6c0-149c-4ee2-9274-e1cc4a91abca",
+      "id": "d5e15763-9dbc-4b7b-99b8-b78d460eac8c",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -4471,7 +4460,6 @@
       ],
       "title": "Read claims.csv",
       "properties": {
-       "Node name for S&R": "AgentWorkflowReadTable",
        "aws_wires": [
         "1,808 rows"
        ],
@@ -4685,7 +4673,6 @@
       ],
       "title": "One row per person (claimant, insured)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowStackRoles",
        "aws_wires": [
         "2,699 rows"
        ],
@@ -4869,7 +4856,6 @@
       ],
       "title": "Reading into surname and given name",
       "properties": {
-       "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
         ""
        ],
@@ -5161,7 +5147,6 @@
       ],
       "title": "Heard names and hiragana to standard",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
         ""
        ],
@@ -5426,7 +5411,6 @@
       ],
       "title": "Variant kanji to standard",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -5681,7 +5665,6 @@
       ],
       "title": "Sex 男/女 to M/F",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -5927,7 +5910,6 @@
       ],
       "title": "Dates to YYYY-MM-DD",
       "properties": {
-       "Node name for S&R": "AgentWorkflowParseDates",
        "aws_wires": [
         ""
        ],
@@ -6192,7 +6174,6 @@
       ],
       "title": "Phones and postcodes to digits",
       "properties": {
-       "Node name for S&R": "AgentWorkflowExtractDigits",
        "aws_wires": [
         ""
        ],
@@ -6437,7 +6418,6 @@
       "outputs": [],
       "title": "Check · table",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "table",
        "aws_headline": "✓ passed · At least 2,200 claim mentions come out (2,699 on the default data). · 2,699 row(s)"
       },
@@ -6542,7 +6522,7 @@
     "description": "Does: Clean the claims system’s mentions in its own lane using Read table, Stack roles, Normalize text, Parse dates\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 2,200 claim mentions come out (2,699 on the default data).\nBecause: clerks type variant kanji"
    },
    {
-    "id": "a884c4ae-4359-45b5-a2ca-e1c1ba65c406",
+    "id": "eaa69a21-83d7-41d3-bdb2-f5cf4e9165e0",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -6573,7 +6553,7 @@
     },
     "inputs": [
      {
-      "id": "ed177ca7-68ce-41a2-95e1-625b4ccc4e33",
+      "id": "a845944c-ac85-4644-ab18-6301bd5740d4",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -6588,7 +6568,7 @@
     ],
     "outputs": [
      {
-      "id": "8ddb8a41-16c0-4bc3-aabc-7e257a6d44a7",
+      "id": "cb287844-1f11-49a7-96a9-0ba30ef09585",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -6649,7 +6629,6 @@
       ],
       "title": "Read koza_furikae.csv",
       "properties": {
-       "Node name for S&R": "AgentWorkflowReadTable",
        "aws_wires": [
         "5,396 rows"
        ],
@@ -6815,7 +6794,6 @@
       ],
       "title": "One row per account holder",
       "properties": {
-       "Node name for S&R": "AgentWorkflowStackRoles",
        "aws_wires": [
         ""
        ],
@@ -6965,7 +6943,6 @@
       ],
       "title": "Account name into surname and given name",
       "properties": {
-       "Node name for S&R": "AgentWorkflowSplitName",
        "aws_wires": [
         ""
        ],
@@ -7228,7 +7205,6 @@
       ],
       "title": "Bank-format kana to standard",
       "properties": {
-       "Node name for S&R": "AgentWorkflowNormalizeText",
        "aws_wires": [
         ""
        ],
@@ -7451,7 +7427,6 @@
       "outputs": [],
       "title": "Check · table",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "table",
        "aws_headline": "✓ passed · At least 4,500 payment mentions come out (5,396 on the default data). · 5,396 row(s)"
       },
@@ -7524,7 +7499,7 @@
     "description": "Does: Clean the payment system’s mentions in its own lane using Read table, Stack roles, Normalize text\nTakes: folder from 1 · Profile data\nGives: table (TABLE)\nServes R3 · Own cleaning lane per system: you said “each system is dirty in its own way”\nVerified when: At least 4,500 payment mentions come out (5,396 on the default data).\nBecause: it holds only bank kana"
    },
    {
-    "id": "ed16acff-4b2f-4817-a88d-c0609f4ccc7e",
+    "id": "83dd329b-2b9b-4269-9e10-3891cdda71ed",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -7555,7 +7530,7 @@
     },
     "inputs": [
      {
-      "id": "e3a09f09-fb0b-483e-83e9-af2a0781a27a",
+      "id": "fdedec65-8136-4e63-a37c-563183219426",
       "name": "a",
       "type": "TABLE",
       "linkIds": [
@@ -7568,7 +7543,7 @@
       ]
      },
      {
-      "id": "2139ffdd-dcc4-49e2-a1bf-e3eb95b3a42a",
+      "id": "fbddf294-6f83-49f8-b33f-105e4afaacad",
       "name": "b",
       "type": "TABLE",
       "linkIds": [
@@ -7582,7 +7557,7 @@
       ]
      },
      {
-      "id": "8b08ca53-6247-4616-b070-296516e34727",
+      "id": "7a5e181c-2557-4a89-ab7f-cf7f65dbe482",
       "name": "c",
       "type": "TABLE",
       "linkIds": [
@@ -7598,7 +7573,7 @@
     ],
     "outputs": [
      {
-      "id": "19ae5173-3818-4507-98f9-2fb61a5950bb",
+      "id": "58f71de6-a4bf-460a-b1e7-071335ed7519",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -7668,7 +7643,6 @@
       ],
       "title": "All mentions (3 systems)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowConcatenate",
        "aws_wires": [
         "13,575 rows"
        ],
@@ -7878,7 +7852,6 @@
       ],
       "title": "OCR look-alikes in readings (力 → カ)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -8133,7 +8106,6 @@
       ],
       "title": "Company marks out of readings (ｶ) → —)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -8389,7 +8361,6 @@
       ],
       "title": "Company forms out of names (株式会社 → —)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowMapValues",
        "aws_wires": [
         ""
        ],
@@ -8636,7 +8607,6 @@
       "outputs": [],
       "title": "Check · table",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "table",
        "aws_headline": "✓ passed · All mentions go on: at least 11,500 (13,575 on the default data). · 13,575 row(s)"
       },
@@ -8725,7 +8695,7 @@
     "description": "Does: Join the lanes and fix OCR look-alikes and company marks using Concatenate tables, Map values\nTakes: a from 2 · Clean policies, b from 2 · Clean claims, c from 2 · Clean payments\nGives: table (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: All mentions go on: at least 11,500 (13,575 on the default data).\nBecause: the same name must read the same way"
    },
    {
-    "id": "54321fe5-27e8-4bf9-9480-979f1439a8ed",
+    "id": "04d93e77-b263-484c-9965-fbbca163222f",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -8756,7 +8726,7 @@
     },
     "inputs": [
      {
-      "id": "25c77447-7586-472f-9696-ed9094f178a4",
+      "id": "c8d3d0fc-ad64-4dde-88e2-da329f9ec62a",
       "name": "table",
       "type": "TABLE",
       "linkIds": [
@@ -8769,7 +8739,7 @@
       ]
      },
      {
-      "id": "c4bd23a9-c772-4a35-bd24-38f47e9e2c91",
+      "id": "8df04acd-b5a0-4aac-832e-4dfc0d08c947",
       "name": "keys",
       "type": "STRING",
       "linkIds": [
@@ -8782,7 +8752,7 @@
       ]
      },
      {
-      "id": "a4303a70-dce4-4c37-9913-f367739f8d95",
+      "id": "651c377f-a2b1-433c-a7e1-10c21b42fa6a",
       "name": "max_group",
       "type": "INT",
       "linkIds": [
@@ -8797,7 +8767,7 @@
     ],
     "outputs": [
      {
-      "id": "cfed26f9-a0e5-42fe-a036-7914efc75b66",
+      "id": "a7242e40-c3b9-473e-84ed-b2e08a367f3c",
       "name": "pairs",
       "type": "TABLE",
       "linkIds": [
@@ -8874,7 +8844,6 @@
       ],
       "title": "Candidate pairs (keys)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowFindCandidates",
        "aws_wires": [
         "57,624 pairs"
        ],
@@ -8967,8 +8936,6 @@
        ],
        "aws_realizes": [
         "gives pairs",
-        "takes keys",
-        "takes max_group",
         "takes table",
         "does"
        ]
@@ -9038,7 +9005,6 @@
       "outputs": [],
       "title": "Check · pairs",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "pairs",
        "aws_headline": "✓ passed · At least 45,000 candidate pairs (about 58,000 on the default data). · 57,624 row(s)"
       },
@@ -9103,7 +9069,7 @@
     "description": "Does: Pair mentions that share a key using Find candidate pairs (blocking keys)\nTakes: table from 3 · Enrich\nGives: pairs (TABLE)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 candidate pairs (about 58,000 on the default data).\nBecause: comparing every pair is too slow"
    },
    {
-    "id": "16f2833a-110f-48ff-a094-6b513673acb5",
+    "id": "cd0ce7cf-1485-40bc-8aa8-b9d642de19ad",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -9134,7 +9100,7 @@
     },
     "inputs": [
      {
-      "id": "6561aa0a-aed5-471f-a6b1-c6031c75abc2",
+      "id": "9c9e463d-7c8f-484b-8def-72ebd820bf86",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -9147,7 +9113,7 @@
       ]
      },
      {
-      "id": "20a0a132-2080-463c-95a4-f732647b0774",
+      "id": "5823ea7f-8a85-49ff-b52f-6c08390b487e",
       "name": "pairs",
       "type": "TABLE",
       "linkIds": [
@@ -9162,9 +9128,9 @@
     ],
     "outputs": [
      {
-      "id": "d7f75436-a32a-42ec-909c-c83d0e06650f",
+      "id": "0af9d45b-2955-4dbf-b1ee-30a0c198a0c7",
       "name": "data",
-      "type": "PAIRS",
+      "type": "RECORD_PAIRS",
       "linkIds": [
        50
       ],
@@ -9242,7 +9208,7 @@
        {
         "localized_name": "data",
         "name": "data",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          50,
          92
@@ -9250,12 +9216,23 @@
        }
       ],
       "properties": {
-       "Node name for S&R": "AgentWorkflowCompareFields",
        "aws_wires": [
         "",
         ""
        ],
        "aws_headline": "57,624 → 57,624 pairs · kana_freq rare 40,107, n/a 12,903, common 4,614",
+       "aws_datasets": [
+        [
+         1,
+         {
+          "class": "record_pairs",
+          "name": "pairs",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/compare_fields-20261021-113104907/pairs.jsonl",
+          "format": "jsonl",
+          "row_count": 57624
+         }
+        ]
+       ],
        "aws_tables": [
         {
          "title": "Compare fields",
@@ -9492,7 +9469,6 @@
       "outputs": [],
       "title": "Check · data",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "data",
        "aws_headline": "✓ passed · At least 45,000 pairs compared (57,624 on the default data). · 57,624 row(s)"
       },
@@ -9534,7 +9510,7 @@
       "origin_slot": 1,
       "target_id": -20,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 92,
@@ -9542,14 +9518,14 @@
       "origin_slot": 1,
       "target_id": 57,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      }
     ],
     "extra": {},
-    "description": "Does: Compare each pair field by field using Compare fields\nTakes: records from 3 · Enrich, pairs from 4 · Find candidates\nGives: data (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 pairs compared (57,624 on the default data).\nBecause: decisions need plain levels"
+    "description": "Does: Compare each pair field by field using Compare fields\nTakes: records from 3 · Enrich, pairs from 4 · Find candidates\nGives: data (RECORD_PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 45,000 pairs compared (57,624 on the default data).\nBecause: decisions need plain levels"
    },
    {
-    "id": "f0ec0e7d-fd9a-4103-b075-435946a99ab6",
+    "id": "ee95f17b-3cdf-4c16-be9a-cfaeeb41487e",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -9580,9 +9556,9 @@
     },
     "inputs": [
      {
-      "id": "376ae074-424f-4018-8a71-566327d3e46d",
+      "id": "731430ad-5189-415b-ae33-d6d24e07fdc5",
       "name": "data",
-      "type": "PAIRS,DICT",
+      "type": "RECORD_PAIRS,DICT",
       "linkIds": [
        91
       ],
@@ -9596,9 +9572,9 @@
     ],
     "outputs": [
      {
-      "id": "f0c0ef9c-d15f-40c5-8074-91f8baf51cd8",
+      "id": "5254ae8b-3a59-438a-b06c-c58961286246",
       "name": "matched",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        55
       ],
@@ -9609,9 +9585,9 @@
       ]
      },
      {
-      "id": "83c447dc-0000-4982-9f20-6971b3b08858",
+      "id": "52cba286-b102-4db4-a88d-8cf20e70ca49",
       "name": "different",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        56
       ],
@@ -9622,9 +9598,9 @@
       ]
      },
      {
-      "id": "c3742d08-9979-4fdd-8028-d401d833ddf7",
+      "id": "9a9b6187-185b-4371-9d00-1ff933f20d33",
       "name": "unsettled",
-      "type": "PAIRS",
+      "type": "RECORD_PAIRS",
       "linkIds": [
        51
       ],
@@ -9656,7 +9632,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 91
        },
        {
@@ -9691,7 +9667,7 @@
        {
         "localized_name": "decisions",
         "name": "decisions",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": null
        },
        {
@@ -9703,7 +9679,7 @@
        {
         "localized_name": "matched",
         "name": "matched",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          55,
          97
@@ -9712,7 +9688,7 @@
        {
         "localized_name": "different",
         "name": "different",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          56
         ]
@@ -9720,7 +9696,7 @@
        {
         "localized_name": "unsettled",
         "name": "unsettled",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          51
         ]
@@ -9728,7 +9704,6 @@
       ],
       "title": "Certain matches and non-matches",
       "properties": {
-       "Node name for S&R": "AgentWorkflowDecisionRules",
        "aws_wires": [
         "57,624 pairs",
         "",
@@ -9737,6 +9712,49 @@
         "45,061 unsettled"
        ],
        "aws_headline": "9,857 matched · 2,706 different · 45,061 passed on\nDifferent sex → different 654\nFamily member sharing a phone (different given name) → different 805\nFamily member at the same address (different given name) → different 536\nSame name, conflicting birth date (a namesake) → different 711\nMaiden name (same given name and birth, surname changed) → match 716\nSame policy and same reading → match 7,560\nSame phone and same reading → match 1,581\nNo rule applied: passed on → undecided 45,061",
+       "aws_datasets": [
+        [
+         0,
+         {
+          "class": "pair_decisions",
+          "name": "decisions",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113105573-58_37/decisions.csv",
+          "format": "csv",
+          "row_count": 57624
+         }
+        ],
+        [
+         2,
+         {
+          "class": "pair_decisions",
+          "name": "matched",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113105573-58_37/matched.csv",
+          "format": "csv",
+          "row_count": 9857
+         }
+        ],
+        [
+         3,
+         {
+          "class": "pair_decisions",
+          "name": "different",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113105573-58_37/different.csv",
+          "format": "csv",
+          "row_count": 2706
+         }
+        ],
+        [
+         4,
+         {
+          "class": "record_pairs",
+          "name": "unsettled",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/compare_fields-20261021-113104907/pairs.jsonl",
+          "format": "jsonl",
+          "row_count": 45061,
+          "subset": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113105573-58_37/unsettled.csv"
+         }
+        ]
+       ],
        "aws_tables": [
         {
          "title": "Rules in effect (first that applies decides)",
@@ -9756,7 +9774,7 @@
            "sex = different",
            "different",
            "654",
-           "654 → 654",
+           "",
            ""
           ],
           [
@@ -9765,7 +9783,7 @@
            "kana_given = different, phone = same",
            "different",
            "805",
-           "805 → 805",
+           "",
            ""
           ],
           [
@@ -9774,7 +9792,7 @@
            "kana_given = different, address = ['exact', 'similar']",
            "different",
            "536",
-           "536 → 536",
+           "",
            ""
           ],
           [
@@ -9783,7 +9801,7 @@
            "birth = conflict",
            "different",
            "711",
-           "711 → 711",
+           "",
            ""
           ],
           [
@@ -9792,7 +9810,7 @@
            "kana_given = exact, birth = exact, kana_surname = different",
            "match",
            "716",
-           "716 → 716",
+           "",
            ""
           ],
           [
@@ -9801,7 +9819,7 @@
            "policy_ref = same, kana = exact",
            "match",
            "7,560",
-           "7,560 → 7,560",
+           "",
            ""
           ],
           [
@@ -9810,7 +9828,7 @@
            "phone = same, kana = exact",
            "match",
            "1,581",
-           "1,581 → 1,581",
+           "",
            ""
           ]
          ]
@@ -10185,7 +10203,6 @@
       "outputs": [],
       "title": "Check · matched",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "matched",
        "aws_headline": "✓ passed · At least 7,000 certain matches (9,857 on the default data). · 9,857 row(s)"
       },
@@ -10211,7 +10228,7 @@
       "origin_slot": 0,
       "target_id": 37,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 55,
@@ -10219,7 +10236,7 @@
       "origin_slot": 2,
       "target_id": -20,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 56,
@@ -10227,7 +10244,7 @@
       "origin_slot": 3,
       "target_id": -20,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 51,
@@ -10235,7 +10252,7 @@
       "origin_slot": 4,
       "target_id": -20,
       "target_slot": 2,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 97,
@@ -10243,14 +10260,14 @@
       "origin_slot": 2,
       "target_id": 59,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      }
     ],
     "extra": {},
-    "description": "Does: Settle the certain pairs by rule using Decision rules\nTakes: data from 5 · Compare\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 7,000 certain matches (9,857 on the default data).\nBecause: sure cases need no score"
+    "description": "Does: Settle the certain pairs by rule using Decision rules\nTakes: data from 5 · Compare\nGives: matched (PAIR_DECISIONS), different (PAIR_DECISIONS), unsettled (RECORD_PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 7,000 certain matches (9,857 on the default data).\nBecause: sure cases need no score"
    },
    {
-    "id": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+    "id": "20654c4e-94db-4191-a22c-22849f5032c1",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -10281,9 +10298,9 @@
     },
     "inputs": [
      {
-      "id": "3945bfd7-9dec-42d4-a465-2959c31fd8f7",
+      "id": "f23dd8da-6ad9-4a54-b254-2cfc21f179b2",
       "name": "data",
-      "type": "PAIRS,DICT",
+      "type": "RECORD_PAIRS,DICT",
       "linkIds": [
        96
       ],
@@ -10295,7 +10312,7 @@
       ]
      },
      {
-      "id": "574d0e45-b6b0-458a-acb4-6276bf37f45a",
+      "id": "dfbfc53c-55a8-4bd9-bb08-bb50d288a84d",
       "name": "match_probability",
       "type": "FLOAT",
       "linkIds": [
@@ -10308,7 +10325,7 @@
       ]
      },
      {
-      "id": "5bfadc6b-c3cf-45e7-bca6-b7843264175e",
+      "id": "d2c46d41-3cb6-4a43-80c6-dc607439908a",
       "name": "review_probability",
       "type": "FLOAT",
       "linkIds": [
@@ -10321,7 +10338,7 @@
       ]
      },
      {
-      "id": "52eabc3c-4111-4dbd-b7d2-eabc97aee3a8",
+      "id": "0c3065d8-fc76-4174-92f7-6e17898ec03b",
       "name": "review_limit",
       "type": "INT",
       "linkIds": [
@@ -10336,9 +10353,9 @@
     ],
     "outputs": [
      {
-      "id": "bdd9d50e-5f41-4f53-b074-db53ddb039d3",
+      "id": "8abf8a0e-65ec-45b1-a2cc-2f078b8ae5d5",
       "name": "matched",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        57
       ],
@@ -10349,9 +10366,9 @@
       ]
      },
      {
-      "id": "35e729d1-4c16-438c-8dab-bda80c8ac084",
+      "id": "a2258891-02f6-4cf0-a4b2-8cedf2bb222c",
       "name": "different",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        58
       ],
@@ -10362,9 +10379,9 @@
       ]
      },
      {
-      "id": "fe2d4390-dae7-4c7b-8eae-67df1007efb4",
+      "id": "59a90c60-22f3-4357-acd7-0637ecafe79a",
       "name": "unsettled",
-      "type": "PAIRS",
+      "type": "RECORD_PAIRS",
       "linkIds": [
        54
       ],
@@ -10396,7 +10413,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 96
        },
        {
@@ -10448,7 +10465,7 @@
        {
         "localized_name": "data",
         "name": "data",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          53
         ]
@@ -10456,7 +10473,6 @@
       ],
       "title": "Learn the points",
       "properties": {
-       "Node name for S&R": "AgentWorkflowLearnWeights",
        "aws_wires": [
         "learned scorecard",
         "57,624 pairs"
@@ -10782,8 +10798,6 @@
        ],
        "aws_realizes": [
         "takes data",
-        "takes match_probability",
-        "takes review_probability",
         "does"
        ]
       },
@@ -10821,7 +10835,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 53
        },
        {
@@ -10856,7 +10870,7 @@
        {
         "localized_name": "decisions",
         "name": "decisions",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": null
        },
        {
@@ -10868,7 +10882,7 @@
        {
         "localized_name": "matched",
         "name": "matched",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          57,
          102
@@ -10877,7 +10891,7 @@
        {
         "localized_name": "different",
         "name": "different",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          58
         ]
@@ -10885,7 +10899,7 @@
        {
         "localized_name": "unsettled",
         "name": "unsettled",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          54
         ]
@@ -10893,7 +10907,6 @@
       ],
       "title": "Score the unsettled pairs",
       "properties": {
-       "Node name for S&R": "AgentWorkflowDecisionRules",
        "aws_wires": [
         "45,061 pairs",
         "",
@@ -10902,6 +10915,49 @@
         "2,331 unsettled"
        ],
        "aws_headline": "38,520 matched · 4,210 different · 2,331 to review\nScore ≥ 1.4 → match 38,520\nScore -4.1 to 1.4 → review 2,331\nScore < -4.1 → different 4,210",
+       "aws_datasets": [
+        [
+         0,
+         {
+          "class": "pair_decisions",
+          "name": "decisions",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113106925-60_39/decisions.csv",
+          "format": "csv",
+          "row_count": 45061
+         }
+        ],
+        [
+         2,
+         {
+          "class": "pair_decisions",
+          "name": "matched",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113106925-60_39/matched.csv",
+          "format": "csv",
+          "row_count": 38520
+         }
+        ],
+        [
+         3,
+         {
+          "class": "pair_decisions",
+          "name": "different",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113106925-60_39/different.csv",
+          "format": "csv",
+          "row_count": 4210
+         }
+        ],
+        [
+         4,
+         {
+          "class": "record_pairs",
+          "name": "unsettled",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/compare_fields-20261021-113104907/pairs.jsonl",
+          "format": "jsonl",
+          "row_count": 2331,
+          "subset": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/decision_rules-20261021-113106925-60_39/unsettled.csv"
+         }
+        ]
+       ],
        "aws_tables": [
         {
          "title": "Rules in effect (first that applies decides)",
@@ -10921,7 +10977,7 @@
            "total ≥ 1.4",
            "match",
            "38,520",
-           "38,520 → 38,520",
+           "",
            ""
           ],
           [
@@ -10930,7 +10986,7 @@
            "total ≥ -4.1",
            "review",
            "2,331",
-           "2,331 → 2,331",
+           "",
            ""
           ],
           [
@@ -10939,7 +10995,7 @@
            "otherwise",
            "different",
            "4,210",
-           "4,210 → 4,210",
+           "",
            ""
           ]
          ]
@@ -11278,7 +11334,6 @@
         "gives different",
         "gives matched",
         "gives unsettled",
-        "takes review_limit",
         "does"
        ]
       },
@@ -11347,7 +11402,6 @@
       "outputs": [],
       "title": "Check · matched",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "matched",
        "aws_headline": "✓ passed · At least 30,000 scored matches (38,520 on the default data). · 38,520 row(s)"
       },
@@ -11373,7 +11427,7 @@
       "origin_slot": 1,
       "target_id": 39,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 52,
@@ -11389,7 +11443,7 @@
       "origin_slot": 0,
       "target_id": 38,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 57,
@@ -11397,7 +11451,7 @@
       "origin_slot": 2,
       "target_id": -20,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 58,
@@ -11405,7 +11459,7 @@
       "origin_slot": 3,
       "target_id": -20,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 54,
@@ -11413,7 +11467,7 @@
       "origin_slot": 4,
       "target_id": -20,
       "target_slot": 2,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 102,
@@ -11421,7 +11475,7 @@
       "origin_slot": 2,
       "target_id": 61,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 120,
@@ -11449,10 +11503,10 @@
      }
     ],
     "extra": {},
-    "description": "Does: Score the rest with learned points using Learn weights, Decision rules\nTakes: data from 6 · Decide rules\nGives: matched (DECISIONS), different (DECISIONS), unsettled (PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 30,000 scored matches (38,520 on the default data).\nBecause: each field’s evidence differs"
+    "description": "Does: Score the rest with learned points using Learn weights, Decision rules\nTakes: data from 6 · Decide rules\nGives: matched (PAIR_DECISIONS), different (PAIR_DECISIONS), unsettled (RECORD_PAIRS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: At least 30,000 scored matches (38,520 on the default data).\nBecause: each field’s evidence differs"
    },
    {
-    "id": "8451745d-4989-422a-a9ae-ee864a7b486b",
+    "id": "ca41dc35-813b-436d-8aa9-b6b0dc49ccc7",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11483,9 +11537,9 @@
     },
     "inputs": [
      {
-      "id": "bbd94b5b-bdb5-44c5-8c7d-49bdcd842983",
+      "id": "b223e05c-907f-4317-a894-4c93f7c22082",
       "name": "data",
-      "type": "PAIRS,DICT",
+      "type": "RECORD_PAIRS,DICT",
       "linkIds": [
        101
       ],
@@ -11498,9 +11552,9 @@
     ],
     "outputs": [
      {
-      "id": "3d94f867-8e21-457e-9a3a-a21b18eea494",
+      "id": "7404340d-6a03-45a2-99fb-3d640cedbdd0",
       "name": "matched",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        59
       ],
@@ -11511,9 +11565,9 @@
       ]
      },
      {
-      "id": "4cc386c5-62c2-4733-a5ad-c734e192ff81",
+      "id": "aea26048-903c-4284-aa10-7aae7ba55bdb",
       "name": "different",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        60
       ],
@@ -11544,7 +11598,7 @@
        {
         "localized_name": "Unsettled",
         "name": "data",
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 101
        }
       ],
@@ -11552,7 +11606,7 @@
        {
         "localized_name": "matched",
         "name": "matched",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          59
         ]
@@ -11560,7 +11614,7 @@
        {
         "localized_name": "different",
         "name": "different",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          60
         ]
@@ -11568,19 +11622,51 @@
        {
         "localized_name": "open",
         "name": "open",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": null
        }
       ],
       "title": "Your decisions on uncertain pairs",
       "properties": {
-       "Node name for S&R": "AgentWorkflowReviewDecisions",
        "aws_wires": [
         "0 same",
         "0 different",
         "2,331 open"
        ],
        "aws_headline": "YOUR REVIEW · 0 same · 0 different · 2,331 open",
+       "aws_datasets": [
+        [
+         0,
+         {
+          "class": "pair_decisions",
+          "name": "matched",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/your_review-20261021-113107207/matched.csv",
+          "format": "csv",
+          "row_count": 0
+         }
+        ],
+        [
+         1,
+         {
+          "class": "pair_decisions",
+          "name": "different",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/your_review-20261021-113107207/different.csv",
+          "format": "csv",
+          "row_count": 0
+         }
+        ],
+        [
+         2,
+         {
+          "class": "record_pairs",
+          "name": "open",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/compare_fields-20261021-113104907/pairs.jsonl",
+          "format": "jsonl",
+          "row_count": 2331,
+          "subset": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/your_review-20261021-113107207/open.csv"
+         }
+        ]
+       ],
        "aws_tables": [
         {
          "title": "Your review decisions",
@@ -11735,7 +11821,7 @@
       "origin_slot": 0,
       "target_id": 40,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 59,
@@ -11743,7 +11829,7 @@
       "origin_slot": 0,
       "target_id": -20,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 60,
@@ -11751,14 +11837,14 @@
       "origin_slot": 1,
       "target_id": -20,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      }
     ],
     "extra": {},
-    "description": "Does: You decide the pairs the score is unsure of using Your review decisions\nTakes: data from 7 · Decide score\nGives: matched (DECISIONS), different (DECISIONS)\nServes R2 · You check uncertain pairs: you said “a person checks what the machine is unsure of”\nVerified when: The unsure pairs reached you in the Review tab.\nBecause: a person beats a guess"
+    "description": "Does: You decide the pairs the score is unsure of using Your review decisions\nTakes: data from 7 · Decide score\nGives: matched (PAIR_DECISIONS), different (PAIR_DECISIONS)\nServes R2 · You check uncertain pairs: you said “a person checks what the machine is unsure of”\nVerified when: The unsure pairs reached you in the Review tab.\nBecause: a person beats a guess"
    },
    {
-    "id": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+    "id": "49cf3ad6-68fc-4642-bc71-98bcb376908b",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -11789,9 +11875,9 @@
     },
     "inputs": [
      {
-      "id": "866bdf68-98be-4a9d-a425-46d4a3192dbe",
+      "id": "1fdf1462-3e8c-4983-8414-caba1a2e5c63",
       "name": "matched_1",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        94
       ],
@@ -11803,9 +11889,9 @@
       ]
      },
      {
-      "id": "996e8519-1154-4557-b563-9da67b246a2e",
+      "id": "8168c055-a832-4572-9d0a-fe8f8666ef7a",
       "name": "matched_2",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        99
       ],
@@ -11817,9 +11903,9 @@
       ]
      },
      {
-      "id": "bbf16263-2383-4967-a5a7-4f604493eb5d",
+      "id": "ee50d217-ef2f-407a-80c0-03de70d17226",
       "name": "matched_3",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        104
       ],
@@ -11831,9 +11917,9 @@
       ]
      },
      {
-      "id": "d18f7e50-62ee-43f6-878a-8fdc69f9aba6",
+      "id": "62af4714-aa20-466d-92bc-a16ccf5f65cf",
       "name": "different_1",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        95
       ],
@@ -11845,9 +11931,9 @@
       ]
      },
      {
-      "id": "17348b5a-71e5-4d64-8d42-5c2b4e3ea5a0",
+      "id": "f4fc7fcb-ca27-4402-96c9-3c414ecc131a",
       "name": "different_2",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        100
       ],
@@ -11859,9 +11945,9 @@
       ]
      },
      {
-      "id": "61797186-7143-4803-93bd-544aee822041",
+      "id": "04bbaf37-8c5c-4db4-ab0a-9b23239ce806",
       "name": "different_3",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        105
       ],
@@ -11873,13 +11959,13 @@
       ]
      },
      {
-      "id": "34f2361b-3457-4519-8ab8-635bb60a5e85",
+      "id": "46f7fac3-ee4f-4838-842b-f89175304143",
       "name": "max_size",
       "type": "INT",
       "linkIds": [
        123
       ],
-      "label": "Max records per customer",
+      "label": "Max records per cluster",
       "pos": [
        0,
        0
@@ -11888,13 +11974,13 @@
     ],
     "outputs": [
      {
-      "id": "49618d07-0e8f-43e7-8150-cf2207b4ae89",
+      "id": "ab8242a0-937e-4fb3-9fd1-b1828f0f46af",
       "name": "customers",
-      "type": "CUSTOMERS",
+      "type": "RECORD_CLUSTERS",
       "linkIds": [
        62
       ],
-      "localized_name": "customers",
+      "localized_name": "clusters",
       "pos": [
        24,
        24
@@ -11922,67 +12008,67 @@
         "localized_name": "All decisions",
         "name": "data",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
         "localized_name": "Matched 1",
         "name": "matched_1",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 94
        },
        {
         "localized_name": "Matched 2",
         "name": "matched_2",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 99
        },
        {
         "localized_name": "Matched 3",
         "name": "matched_3",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 104
        },
        {
         "localized_name": "Matched 4",
         "name": "matched_4",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
         "localized_name": "Different 1",
         "name": "different_1",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 95
        },
        {
         "localized_name": "Different 2",
         "name": "different_2",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 100
        },
        {
         "localized_name": "Different 3",
         "name": "different_3",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 105
        },
        {
         "localized_name": "Different 4",
         "name": "different_4",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
-        "localized_name": "Max records per customer",
+        "localized_name": "Max records per cluster",
         "name": "max_size",
         "type": "INT",
         "widget": {
@@ -11993,9 +12079,9 @@
       ],
       "outputs": [
        {
-        "localized_name": "customers",
-        "name": "customers",
-        "type": "CUSTOMERS",
+        "localized_name": "clusters",
+        "name": "clusters",
+        "type": "RECORD_CLUSTERS",
         "links": [
          62,
          113
@@ -12004,11 +12090,22 @@
       ],
       "title": "Build customers (guarded)",
       "properties": {
-       "Node name for S&R": "AgentWorkflowClusterGuard",
        "aws_wires": [
-        "2,532 customers"
+        "2,532 clusters"
        ],
-       "aws_headline": "2,532 customers · 46,044 merges · 2,333 blocked\nSince the last run: 2,532 kept their id · 0 new · 0 gone · 0 records moved",
+       "aws_headline": "2,532 clusters · 46,044 merges · 2,333 blocked\nSince the last run: 2,532 kept their id · 0 new · 0 gone · 0 records moved",
+       "aws_datasets": [
+        [
+         0,
+         {
+          "class": "record_clusters",
+          "name": "clusters",
+          "file": "agent_tools/e17f2eeb-020e-41e3-8d53-a3cec63e477b/cluster_guard-20261021-113107347/clusters.csv",
+          "format": "csv",
+          "row_count": 13411
+         }
+        ]
+       ],
        "aws_tables": [
         {
          "title": "Blocked merges (why) (first 20 of 2,333)",
@@ -12032,7 +12129,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0000070/holder and claims/0000034/insured, decided different"
           ],
           [
@@ -12043,7 +12140,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0000070/holder and claims/0000034/insured, decided different"
           ],
           [
@@ -12054,7 +12151,7 @@
            "Same phone and same reading",
            "",
            "phone=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0003326/holder and claims/0000137/insured, decided different"
           ],
           [
@@ -12065,7 +12162,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0000308/holder and policies/0000167/holder, decided differe…"
           ],
           [
@@ -12076,7 +12173,7 @@
            "Same phone and same reading",
            "",
            "phone=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0003183/holder and policies/0000392/holder, decided differe…"
           ],
           [
@@ -12087,7 +12184,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join claims/0000315/insured and policies/0000649/holder, decided different"
           ],
           [
@@ -12098,7 +12195,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join claims/0000315/insured and policies/0000649/holder, decided different"
           ],
           [
@@ -12109,7 +12206,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join claims/0000315/insured and policies/0000649/holder, decided different"
           ],
           [
@@ -12120,7 +12217,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0001696/holder and policies/0000856/holder, decided differe…"
           ],
           [
@@ -12131,7 +12228,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0001894/holder and claims/0000943/insured, decided different"
           ],
           [
@@ -12142,7 +12239,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0002001/insured and claims/0001001/insured, decided differe…"
           ],
           [
@@ -12153,7 +12250,7 @@
            "Same phone and same reading",
            "",
            "phone=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0002802/holder and claims/0001001/insured, decided different"
           ],
           [
@@ -12164,8 +12261,8 @@
            "Same phone and same reading",
            "",
            "phone=same, kana=exact",
-           "Certain matches and non-matches",
-           "would join policies/0002784/holder and policies/0002551/holder, decided differe…"
+           "6 · Decide: certain rules",
+           "would join policies/0002784/holder and policies/0002484/insured, decided differ…"
           ],
           [
            "p9bd945619261",
@@ -12175,8 +12272,8 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
-           "would join policies/0002517/holder and claims/0001251/insured, decided different"
+           "6 · Decide: certain rules",
+           "would join policies/0002517/holder and claims/0001252/insured, decided different"
           ],
           [
            "p750e2ab2a56d",
@@ -12186,8 +12283,8 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
-           "would join policies/0002517/holder and claims/0001251/insured, decided different"
+           "6 · Decide: certain rules",
+           "would join policies/0002517/holder and claims/0001252/insured, decided different"
           ],
           [
            "p8f4c86fe08ad",
@@ -12197,7 +12294,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join claims/0001286/claimant and claims/0001285/claimant, decided differe…"
           ],
           [
@@ -12208,7 +12305,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join claims/0001286/claimant and claims/0001285/claimant, decided differe…"
           ],
           [
@@ -12219,8 +12316,8 @@
            "Same phone and same reading",
            "",
            "phone=same, kana=exact",
-           "Certain matches and non-matches",
-           "would join policies/0002943/holder and claims/0001364/insured, decided different"
+           "6 · Decide: certain rules",
+           "would join policies/0002943/holder and claims/0001365/insured, decided different"
           ],
           [
            "p7bbaaab8ed97",
@@ -12230,7 +12327,7 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0000166/holder and claims/0000088/claimant, decided differe…"
           ],
           [
@@ -12241,15 +12338,15 @@
            "Same policy and same reading",
            "",
            "policy_ref=same, kana=exact",
-           "Certain matches and non-matches",
+           "6 · Decide: certain rules",
            "would join policies/0000308/holder and policies/0000167/holder, decided differe…"
           ]
          ]
         },
         {
-         "title": "Largest customers",
+         "title": "Largest clusters",
          "columns": [
-          "customer",
+          "cluster",
           "records"
          ],
          "rows": [
@@ -12306,7 +12403,7 @@
            "count": 55293,
            "children": [
             {
-             "label": "Certain matches and non-matches",
+             "label": "6 · Decide: certain rules",
              "count": 12563,
              "decision": null,
              "children": [
@@ -12323,7 +12420,7 @@
              ]
             },
             {
-             "label": "Score the unsettled pairs",
+             "label": "7 · Decide: learned score",
              "count": 42730,
              "decision": null,
              "children": [
@@ -12358,7 +12455,7 @@
            ]
           },
           {
-           "label": "Customers: 2,532 (largest 27 records)",
+           "label": "Clusters: 2,532 (largest 27 records)",
            "count": 13411,
            "children": [
             {
@@ -12406,7 +12503,6 @@
         "takes matched_1",
         "takes matched_2",
         "takes matched_3",
-        "takes max_size",
         "does"
        ]
       },
@@ -12471,7 +12567,6 @@
       "outputs": [],
       "title": "Check · customers",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "customers",
        "aws_headline": "✓ passed · Nearly every mention is in a customer: at least 11,500 (13,411 on the default data). · 13,411 row(s)"
       },
@@ -12497,7 +12592,7 @@
       "origin_slot": 0,
       "target_id": 41,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 99,
@@ -12505,7 +12600,7 @@
       "origin_slot": 1,
       "target_id": 41,
       "target_slot": 2,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 104,
@@ -12513,7 +12608,7 @@
       "origin_slot": 2,
       "target_id": 41,
       "target_slot": 3,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 95,
@@ -12521,7 +12616,7 @@
       "origin_slot": 3,
       "target_id": 41,
       "target_slot": 5,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 100,
@@ -12529,7 +12624,7 @@
       "origin_slot": 4,
       "target_id": 41,
       "target_slot": 6,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 105,
@@ -12537,7 +12632,7 @@
       "origin_slot": 5,
       "target_id": 41,
       "target_slot": 7,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 62,
@@ -12545,7 +12640,7 @@
       "origin_slot": 0,
       "target_id": -20,
       "target_slot": 0,
-      "type": "CUSTOMERS"
+      "type": "RECORD_CLUSTERS"
      },
      {
       "id": 113,
@@ -12553,7 +12648,7 @@
       "origin_slot": 0,
       "target_id": 64,
       "target_slot": 0,
-      "type": "CUSTOMERS"
+      "type": "RECORD_CLUSTERS"
      },
      {
       "id": 123,
@@ -12565,10 +12660,10 @@
      }
     ],
     "extra": {},
-    "description": "Does: Group matches into customers, refusing bad merges using Cluster guard\nTakes: matched_1 from 6 · Decide rules, matched_2 from 7 · Decide score, matched_3 from 8 · You verify, different_1 from 6 · Decide rules, different_2 from 7 · Decide score, different_3 from 8 · You verify\nGives: customers (CUSTOMERS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).\nBecause: one wrong link must not chain many"
+    "description": "Does: Group matches into customers, refusing bad merges using Cluster guard\nTakes: matched_1 from 6 · Decide rules, matched_2 from 7 · Decide score, matched_3 from 8 · You verify, different_1 from 6 · Decide rules, different_2 from 7 · Decide score, different_3 from 8 · You verify\nGives: customers (RECORD_CLUSTERS)\nServes R1 · One customer id per person: you said “find whether customers are the same person across the policy, claims and payment systems”\nVerified when: Nearly every mention is in a customer: at least 11,500 (13,411 on the default data).\nBecause: one wrong link must not chain many"
    },
    {
-    "id": "06539e58-62ec-41d0-9a05-928246fac477",
+    "id": "99af2342-7f71-49a7-af44-6aee60c5f592",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -12599,7 +12694,7 @@
     },
     "inputs": [
      {
-      "id": "950fed66-4a4d-43f4-a4a9-10e960eae4fe",
+      "id": "0c6f0616-eade-4baf-b8fb-f5ade5dc549d",
       "name": "records",
       "type": "TABLE",
       "linkIds": [
@@ -12612,9 +12707,9 @@
       ]
      },
      {
-      "id": "6b4ad7aa-3bfb-4287-b805-5c3c19b24880",
+      "id": "56ad7fad-e36d-4150-a163-9c4331fb968a",
       "name": "groups",
-      "type": "CUSTOMERS,DICT",
+      "type": "RECORD_CLUSTERS,DICT",
       "linkIds": [
        112
       ],
@@ -12627,7 +12722,7 @@
     ],
     "outputs": [
      {
-      "id": "5bcff46f-a948-4291-9dfd-75808482993f",
+      "id": "c35481eb-ba88-49c3-b1d1-4d631dc11de5",
       "name": "path",
       "type": "STRING",
       "linkIds": [
@@ -12666,7 +12761,7 @@
        {
         "localized_name": "Groups",
         "name": "groups",
-        "type": "CUSTOMERS,DICT",
+        "type": "RECORD_CLUSTERS,DICT",
         "link": 112
        },
        {
@@ -12700,7 +12795,6 @@
       ],
       "title": "Customer id for every mention",
       "properties": {
-       "Node name for S&R": "AgentWorkflowAttachGroups",
        "aws_wires": [
         ""
        ],
@@ -12957,7 +13051,6 @@
       ],
       "title": "Write nayose_result.csv",
       "properties": {
-       "Node name for S&R": "AgentWorkflowWriteTable",
        "aws_wires": [
         ""
        ],
@@ -13098,7 +13191,6 @@
       "outputs": [],
       "title": "Check · path",
       "properties": {
-       "Node name for S&R": "AgentWorkflowCheck",
        "aws_watches": "path",
        "aws_headline": "✓ passed · The result file is written. · nayose_reference/nayose_result_00002_.csv"
       },
@@ -13140,7 +13232,7 @@
       "origin_slot": 1,
       "target_id": 42,
       "target_slot": 1,
-      "type": "CUSTOMERS"
+      "type": "RECORD_CLUSTERS"
      },
      {
       "id": 64,
@@ -13177,7 +13269,11 @@
    "inputs": [
     [
      "67",
-     "value"
+     "folder"
+    ],
+    [
+     "67",
+     "upload"
     ]
    ],
    "outputs": [
@@ -13185,7 +13281,7 @@
    ]
   },
   "aws_verified": {
-   "fingerprint": "3aba2634550d4687be0ff718",
+   "fingerprint": "6a804d373080b2f34b7af9ce",
    "gates": {
     "profile_data": "passed",
     "clean_policies": "passed",
@@ -13289,7 +13385,7 @@
    "open": {
     "you_verify": 2331
    },
-   "at": "2026-10-21T00:59"
+   "at": "2026-10-21T11:31"
   },
   "aws_contract": {
    "contract": 2,

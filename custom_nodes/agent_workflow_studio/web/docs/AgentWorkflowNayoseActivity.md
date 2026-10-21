@@ -6,7 +6,7 @@ Clean facts: policies (auto, fire, medical, injury, liability) with holder, insu
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| People | `NAYOSE_PEOPLE` | From Nayose · 1 People. |
+| People | `SYNTHETIC_PEOPLE` | From Nayose · 1 People. |
 | Update rate | `FLOAT` | How often a move, marriage or new phone is reported to a policy at all (lower = more stale records). Default: `0.5`. |
 | Seed | `INT` | Same seed, same data: change it for a different sample. Default: `7`. |
 
@@ -14,7 +14,7 @@ Clean facts: policies (auto, fire, medical, injury, liability) with holder, insu
 
 | Output | Type | What it is |
 | --- | --- | --- |
-| facts | `NAYOSE_FACTS` | Clean policies, claims and bank registrations. |
+| facts | `SYNTHETIC_ACTIVITY` | Clean policies, claims and bank registrations. |
 
 ## Where it runs
 

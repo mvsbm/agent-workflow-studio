@@ -6,7 +6,7 @@ One legacy system's export of the same facts, damaged the way that system damage
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| Facts | `NAYOSE_FACTS` | From Nayose · 2 Insurance activity. |
+| Facts | `SYNTHETIC_ACTIVITY` | From Nayose · 2 Insurance activity. |
 | System | `COMBO` | Which legacy system exports these facts, in its own format and with its own kinds of damage. |
 | Damage | `FLOAT` | 0 = clean, 1 = realistic, 3 = terrible Default: `1.0`. |
 | Folder | `STRING` | Folder inside ComfyUI's input directory. Default: `nayose`. |

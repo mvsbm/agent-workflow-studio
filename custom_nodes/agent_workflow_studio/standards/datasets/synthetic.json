@@ -1,0 +1,19 @@
+{
+ "$comment": "Dataset classes of the synthetic-data domain: test data with known answers (the generator and its scorer).",
+ "domain": "synthetic",
+ "description": "Synthetic test data with a hidden answer key: the people generated, and the activity facts derived from them.",
+ "classes": {
+  "synthetic_people": {
+   "description": "The generated people: the truth the scorer compares against. Passed between the generator's nodes in memory.",
+   "socket": "SYNTHETIC_PEOPLE",
+   "aliases": ["NAYOSE_PEOPLE"],
+   "storage": "memory"
+  },
+  "synthetic_activity": {
+   "description": "The activity facts derived from the people, before they are written as damaged system exports. Passed in memory.",
+   "socket": "SYNTHETIC_ACTIVITY",
+   "aliases": ["NAYOSE_FACTS"],
+   "storage": "memory"
+  }
+ }
+}

@@ -5,7 +5,7 @@
  "nodes": [
   {
    "id": 1,
-   "type": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+   "type": "49cf3ad6-68fc-4642-bc71-98bcb376908b",
    "pos": [
     0,
     0
@@ -22,42 +22,42 @@
      "localized_name": "Matched 1",
      "name": "matched_1",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
      "localized_name": "Matched 2",
      "name": "matched_2",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
      "localized_name": "Matched 3",
      "name": "matched_3",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
      "localized_name": "Different 1",
      "name": "different_1",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
      "localized_name": "Different 2",
      "name": "different_2",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
      "localized_name": "Different 3",
      "name": "different_3",
      "shape": 7,
-     "type": "DECISIONS,DICT",
+     "type": "PAIR_DECISIONS,DICT",
      "link": null
     },
     {
@@ -71,9 +71,9 @@
    ],
    "outputs": [
     {
-     "localized_name": "customers",
+     "localized_name": "clusters",
      "name": "customers",
-     "type": "CUSTOMERS",
+     "type": "RECORD_CLUSTERS",
      "links": []
     }
    ],
@@ -97,7 +97,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "913d0b61-bec5-4ed5-b80a-36b8aab38219",
+    "id": "49cf3ad6-68fc-4642-bc71-98bcb376908b",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -128,9 +128,9 @@
     },
     "inputs": [
      {
-      "id": "866bdf68-98be-4a9d-a425-46d4a3192dbe",
+      "id": "1fdf1462-3e8c-4983-8414-caba1a2e5c63",
       "name": "matched_1",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        94
       ],
@@ -142,9 +142,9 @@
       ]
      },
      {
-      "id": "996e8519-1154-4557-b563-9da67b246a2e",
+      "id": "8168c055-a832-4572-9d0a-fe8f8666ef7a",
       "name": "matched_2",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        99
       ],
@@ -156,9 +156,9 @@
       ]
      },
      {
-      "id": "bbf16263-2383-4967-a5a7-4f604493eb5d",
+      "id": "ee50d217-ef2f-407a-80c0-03de70d17226",
       "name": "matched_3",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        104
       ],
@@ -170,9 +170,9 @@
       ]
      },
      {
-      "id": "d18f7e50-62ee-43f6-878a-8fdc69f9aba6",
+      "id": "62af4714-aa20-466d-92bc-a16ccf5f65cf",
       "name": "different_1",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        95
       ],
@@ -184,9 +184,9 @@
       ]
      },
      {
-      "id": "17348b5a-71e5-4d64-8d42-5c2b4e3ea5a0",
+      "id": "f4fc7fcb-ca27-4402-96c9-3c414ecc131a",
       "name": "different_2",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        100
       ],
@@ -198,9 +198,9 @@
       ]
      },
      {
-      "id": "61797186-7143-4803-93bd-544aee822041",
+      "id": "04bbaf37-8c5c-4db4-ab0a-9b23239ce806",
       "name": "different_3",
-      "type": "DECISIONS,DICT",
+      "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
        105
       ],
@@ -212,13 +212,13 @@
       ]
      },
      {
-      "id": "34f2361b-3457-4519-8ab8-635bb60a5e85",
+      "id": "46f7fac3-ee4f-4838-842b-f89175304143",
       "name": "max_size",
       "type": "INT",
       "linkIds": [
        123
       ],
-      "label": "Max records per customer",
+      "label": "Max records per cluster",
       "pos": [
        0,
        0
@@ -227,13 +227,13 @@
     ],
     "outputs": [
      {
-      "id": "49618d07-0e8f-43e7-8150-cf2207b4ae89",
+      "id": "ab8242a0-937e-4fb3-9fd1-b1828f0f46af",
       "name": "customers",
-      "type": "CUSTOMERS",
+      "type": "RECORD_CLUSTERS",
       "linkIds": [
        62
       ],
-      "localized_name": "customers",
+      "localized_name": "clusters",
       "pos": [
        24,
        24
@@ -261,67 +261,67 @@
         "localized_name": "All decisions",
         "name": "data",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
         "localized_name": "Matched 1",
         "name": "matched_1",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 94
        },
        {
         "localized_name": "Matched 2",
         "name": "matched_2",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 99
        },
        {
         "localized_name": "Matched 3",
         "name": "matched_3",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 104
        },
        {
         "localized_name": "Matched 4",
         "name": "matched_4",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
         "localized_name": "Different 1",
         "name": "different_1",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 95
        },
        {
         "localized_name": "Different 2",
         "name": "different_2",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 100
        },
        {
         "localized_name": "Different 3",
         "name": "different_3",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": 105
        },
        {
         "localized_name": "Different 4",
         "name": "different_4",
         "shape": 7,
-        "type": "DECISIONS,DICT",
+        "type": "PAIR_DECISIONS,DICT",
         "link": null
        },
        {
-        "localized_name": "Max records per customer",
+        "localized_name": "Max records per cluster",
         "name": "max_size",
         "type": "INT",
         "widget": {
@@ -332,9 +332,9 @@
       ],
       "outputs": [
        {
-        "localized_name": "customers",
-        "name": "customers",
-        "type": "CUSTOMERS",
+        "localized_name": "clusters",
+        "name": "clusters",
+        "type": "RECORD_CLUSTERS",
         "links": [
          62,
          113
@@ -342,9 +342,7 @@
        }
       ],
       "title": "Build customers (guarded)",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowClusterGuard"
-      },
+      "properties": {},
       "widgets_values": [
        60,
        ""
@@ -405,9 +403,7 @@
       ],
       "outputs": [],
       "title": "Check · customers",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowCheck"
-      },
+      "properties": {},
       "widgets_values": [
        "rows_at_least",
        "11500",
@@ -430,7 +426,7 @@
       "origin_slot": 0,
       "target_id": 41,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 99,
@@ -438,7 +434,7 @@
       "origin_slot": 1,
       "target_id": 41,
       "target_slot": 2,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 104,
@@ -446,7 +442,7 @@
       "origin_slot": 2,
       "target_id": 41,
       "target_slot": 3,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 95,
@@ -454,7 +450,7 @@
       "origin_slot": 3,
       "target_id": 41,
       "target_slot": 5,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 100,
@@ -462,7 +458,7 @@
       "origin_slot": 4,
       "target_id": 41,
       "target_slot": 6,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 105,
@@ -470,7 +466,7 @@
       "origin_slot": 5,
       "target_id": 41,
       "target_slot": 7,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 62,
@@ -478,7 +474,7 @@
       "origin_slot": 0,
       "target_id": -20,
       "target_slot": 0,
-      "type": "CUSTOMERS"
+      "type": "RECORD_CLUSTERS"
      },
      {
       "id": 113,
@@ -486,7 +482,7 @@
       "origin_slot": 0,
       "target_id": 64,
       "target_slot": 0,
-      "type": "CUSTOMERS"
+      "type": "RECORD_CLUSTERS"
      },
      {
       "id": 123,

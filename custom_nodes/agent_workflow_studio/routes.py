@@ -48,6 +48,20 @@ def install_routes() -> None:
 
     routes = PromptServer.instance.routes
 
+    # Data and text only: ComfyUI's own template catalog (image, video, audio, 3D) stays out of the
+    # Templates browser, which then lists this pack's templates (example_workflows/). Registered
+    # before ComfyUI serves /templates itself, so this answers first; the frontend takes [] as none.
+    @routes.get(r"/templates/{index:index(\.[A-Za-z_-]+)?\.json}")
+    async def no_core_templates(request: web.Request) -> web.Response:
+        return web.json_response([])
+
+    @routes.get("/agent-workflow-studio/standards")
+    async def standards_registry(request: web.Request) -> web.Response:
+        """The type standard (core types, dataset classes, old names), for the frontend and agents."""
+        from .standards import as_dict, live_sockets
+
+        return web.json_response(as_dict(await asyncio.to_thread(live_sockets)))
+
     @routes.post("/agent-workflow-studio/outputs/cleanup")
     async def cleanup_outputs(request: web.Request) -> web.Response:
         """Remove run outputs older than `days` (a dry run by default: what it would free)."""

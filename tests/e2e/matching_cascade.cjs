@@ -69,7 +69,7 @@ decide: {match: 2, review: 1}
     assert.match(text, /Candidate pairs 600/);
     assert.match(text, /Birth and reading both different/);
     assert.match(text, /Merges .* accepted .* blocked by the guard/);
-    assert.match(text, /Customers: \d+/);
+    assert.match(text, /Clusters: \d+/);
     // Learn weights replaced the rough ±1 points with learned ones, and Decision rules used them.
     const learned = await page.evaluate(() => window.comfyAPI.app.app.graph.nodes.find(n => n.type === 'AgentWorkflowLearnWeights').properties.aws_tables[1].rows);
     const sameReading = learned.find(row => row[0] === 'reading' && row[1] === 'same');
@@ -79,9 +79,9 @@ decide: {match: 2, review: 1}
     // graph.clear() gives the workflow a new id, so look in every workflow's run folders.
     const tools = path.join(output, 'agent_tools');
     const clusters = fs.readdirSync(tools).flatMap(w => fs.readdirSync(path.join(tools, w)).filter(d => d.startsWith('cluster_guard-')).map(d => path.join(tools, w, d)));
-    assert.ok(fs.readFileSync(path.join(clusters[0], 'clusters.csv'), 'utf8').startsWith('mention,customer'));
+    assert.ok(fs.readFileSync(path.join(clusters[0], 'clusters.csv'), 'utf8').startsWith('record,cluster'));
     await page.screenshot({path: path.join(artifacts, 'matching-cascade.png')});
-    // Typed sockets: an unsettled branch (PAIRS) cannot feed Cluster guard (DECISIONS); a Stub takes its input's type.
+    // Typed sockets (the type standard): an unsettled branch (RECORD_PAIRS) cannot feed Cluster guard (PAIR_DECISIONS); a Stub takes its input's type.
     const typed = await page.evaluate(() => {
       const app = window.comfyAPI.app.app, g = app.graph, L = window.LiteGraph;
       const rules = g.nodes.find(n => n.type === 'AgentWorkflowDecisionRules'), guard = g.nodes.find(n => n.type === 'AgentWorkflowClusterGuard');
@@ -95,10 +95,10 @@ decide: {match: 2, review: 1}
       return result;
     });
     assert.ok(typed.refused, 'unsettled pairs must not reach Cluster guard');
-    assert.deepEqual(typed.types, ['DECISIONS', 'STRING', 'DECISIONS', 'DECISIONS', 'PAIRS']);
-    assert.equal(typed.stub, 'PAIRS');
-    // Customers tab: the largest customer opens to its records and the chain of matches that joined them.
-    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-customers'));
+    assert.deepEqual(typed.types, ['PAIR_DECISIONS', 'STRING', 'PAIR_DECISIONS', 'PAIR_DECISIONS', 'RECORD_PAIRS']);
+    assert.equal(typed.stub, 'RECORD_PAIRS');
+    // Clusters tab: the largest cluster opens to its records and the chain of matches that joined them.
+    await page.evaluate(async () => (await import('/extensions/agent_workflow_studio/workflow_drawer.js')).openWorkflowTab('workflow-clusters'));
     const largest = page.locator('.aw-review-list details').first();
     await largest.locator('summary').click({timeout: 30000});
     await largest.locator('ol').waitFor({timeout: 10000});
@@ -118,7 +118,7 @@ decide: {match: 2, review: 1}
     });
     const flat = await glance();
     assert.ok(flat.wires.includes('learned scorecard') && flat.wires.some(w => /^[\d,]+ pairs$/.test(w)), flat.wires.join(' | '));
-    assert.ok(flat.headlines.some(h => /^[\d,]+ customers · /.test(h)), flat.headlines.join(' | '));
+    assert.ok(flat.headlines.some(h => /^[\d,]+ clusters · /.test(h)), flat.headlines.join(' | '));
     await page.evaluate(() => { const canvas = window.comfyAPI.app.app.canvas; canvas.ds.scale = 0.4; canvas.setDirty(true, true); canvas.draw(true, true); });
     // Classic canvas at low quality hides DOM widgets: the headline is drawn on the canvas (Vue nodes mode shows it in HTML).
     assert.ok(await page.evaluate(() => document.body.classList.contains('aw-zoomed-out') && window.comfyAPI.app.app.canvas.low_quality));
@@ -134,7 +134,7 @@ decide: {match: 2, review: 1}
     });
     await page.waitForFunction(() => {
       const cards = [...document.querySelectorAll('.aw-card')].map(card => card.innerText);
-      return cards.length === 3 && cards.some(t => /match [\d,]+/.test(t)) && cards.some(t => /Customers: \d+/.test(t)) && cards.some(t => /learned: .* of pairs match/.test(t));
+      return cards.length === 3 && cards.some(t => /match [\d,]+/.test(t)) && cards.some(t => /Clusters: \d+/.test(t)) && cards.some(t => /learned: .* of pairs match/.test(t));
     }, null, {timeout: 90000});
     const top = await page.evaluate(() => window.comfyAPI.app.app.graph.nodes.map(n => n.title));
     // Short titles from the step ids, numbered by step: the purpose is on the card itself.

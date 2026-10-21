@@ -16,6 +16,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from . import api_review
+from .standards import api_kinds, handoff_sockets
 
 SCHEMA_PATH = Path(__file__).with_name("contract.schema.json")
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
@@ -62,6 +63,44 @@ def raise_all(problems: list[str]) -> None:
         )
 
 
+def standardize(contract: dict, design: bool = True) -> list[str]:
+    """Write every type in the contract by its registered name (the type standard: standards.py),
+    in place: an API input's or output's kind (count → integer, csv → table) and each step's port
+    types (PAIRS → RECORD_PAIRS). Returns what is not registered, so it is refused, not guessed."""
+    from .standards import api_kind, api_kinds, port_socket, port_types, resolve
+
+    problems = []
+    for side in ("inputs", "outputs"):
+        for item in (contract.get("promises") or {}).get(side) or []:
+            if not isinstance(item, dict) or "kind" not in item:
+                continue
+            if kind := api_kind(str(item["kind"]).strip().lower()):
+                item["kind"] = kind
+            else:
+                problems.append(
+                    f"Promised {side[:-1]} {item.get('name')} has kind {item['kind']!r}, which is "
+                    f"not a registered type; use one of: {', '.join(api_kinds())}."
+                )
+    if not design:
+        return problems
+    for step in contract.get("steps") or []:
+        for side in ("takes", "gives"):
+            for port, value in (step.get(side) or {}).items():
+                if not isinstance(value, str) or "." in value or value == "*":
+                    continue  # a wire (step.port, input.name) or "unknown while planning"
+                parts = [
+                    (resolve(p) and resolve(p).socket) or port_socket(p) for p in value.split(",")
+                ]
+                if all(parts):
+                    step[side][port] = ",".join(parts)
+                else:
+                    problems.append(
+                        f"Step {step.get('id')} {side[:-1]} {port}: {value} is not a registered type; "
+                        f"use one of: {', '.join(port_types())} (or a dataset class of a domain)."
+                    )
+    return problems
+
+
 def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
     """Raise ValueError unless the contract matches the schema and is internally consistent.
     intent_only: the contract before its design (no steps yet), so nothing covers its requests yet."""
@@ -85,7 +124,7 @@ def validate_contract(contract: object, *, intent_only: bool = False) -> dict:
                 for e in errors[:10]
             ]
         )
-    problems: list[str] = []
+    problems: list[str] = standardize(contract, design=not intent_only)
     for section in ("requests", "examples", "steps", "decisions"):
         ids = [item["id"] for item in contract[section]]
         if twice := sorted({i for i in ids if ids.count(i) > 1}):
@@ -222,6 +261,11 @@ def agent_schemas() -> dict[str, dict]:
         json.dumps(base).replace('{"$ref": "#/$defs/port"}', json.dumps(defs["port"]))
     )
     full["properties"]["contract"] = {"enum": [2, "2"]}  # some models send the marker as text
+    # The agents propose with the registered kinds only (the type standard); stored contracts with
+    # older names still load (validate_contract resolves them).
+    for side in ("inputs", "outputs"):
+        port = full["properties"]["promises"]["properties"][side]["items"]["properties"]
+        port["kind"] = {"enum": api_kinds(), "description": port["kind"]["description"]}
     intent = copy.deepcopy(full)
     intent["description"] = (
         "The contract: what the user wants (purpose, requests, examples, promised inputs and outputs, "
@@ -525,7 +569,6 @@ def report(contract: dict, evidence: dict, acceptance: dict | None = None) -> di
 
 
 SHORT = 160  # purpose + uses + why: the words the designer writes (wiring adds the rest)
-TYPED = {"TABLE", "PAIRS", "DECISIONS", "CUSTOMERS"}  # data hand-offs that deserve a named entity
 
 
 def stage_numbers(contract: dict) -> dict[str, int]:
@@ -662,7 +705,7 @@ def review(contract: dict) -> list[tuple[bool, str]]:
         f"{s['id']}.{k}"
         for s in steps
         for k, v in s.get("gives", {}).items()
-        if v in TYPED and f"{s['id']}.{k}" in consumed
+        if v in handoff_sockets() and f"{s['id']}.{k}" in consumed
     ]
     musts = {r["id"] for r in contract["requests"] if r["priority"] == "must"}
     examples = {r for e in contract["examples"] for r in e["covers"]}

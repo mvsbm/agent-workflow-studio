@@ -83,6 +83,32 @@ class NativeLayersTests(unittest.TestCase):
         )  # an author's tag stays
         self.assertNotIn("properties", nodes[2])  # scaffolding is not part of the design
 
+    def test_a_setting_promoted_to_the_stage_card_is_not_data_the_design_takes(self) -> None:
+        from custom_nodes.agent_workflow_studio.native_layers import infer_realizes
+
+        stored = workflow()
+        stored["nodes"][0]["properties"]["aws_step"] = {"takes": {"pairs": "compare.pairs"}}
+        stored["definitions"]["subgraphs"][0].update(
+            inputs=[{"name": "pairs"}, {"name": "match_at"}],
+            nodes=[
+                {
+                    "id": 1,
+                    "type": "Score",
+                    # Data the step takes may arrive through a widget too (a folder name).
+                    "inputs": [
+                        {"name": "pairs", "widget": {"name": "pairs"}},
+                        {"name": "match_at", "widget": {"name": "match_at"}},
+                    ],
+                }
+            ],
+            links=[
+                {"origin_id": -10, "origin_slot": 0, "target_id": 1, "target_slot": 0},
+                {"origin_id": -10, "origin_slot": 1, "target_id": 1, "target_slot": 1},
+            ],
+        )
+        nodes = infer_realizes(stored)["definitions"]["subgraphs"][0]["nodes"]
+        self.assertEqual(nodes[0]["properties"]["aws_realizes"], ["takes pairs", "does"])
+
 
 if __name__ == "__main__":
     unittest.main()

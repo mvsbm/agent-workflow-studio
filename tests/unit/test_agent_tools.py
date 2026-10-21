@@ -102,6 +102,99 @@ class AgentToolTests(unittest.TestCase):
         self.assertTrue(text.rstrip().endswith('return {"text": text, "files": ["result.txt"]}'))
 
 
+ECHO = "def run(inputs):\n    return dict(inputs)\n"
+
+
+class TypedToolTests(unittest.TestCase):
+    """A tool's interface is the studio's own: typed ports, checked, with examples as its tests."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.run_dir = Path(self.temp.name) / "run"
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_studio_values_cross_the_sandbox_unchanged(self) -> None:
+        import math
+
+        table = {
+            "name": "policies",
+            "columns": ["id", "name", "birth", "premium", "note"],
+            "rows": [
+                {
+                    "id": "P-001",
+                    "name": "鈴木 恵子",
+                    "birth": "S45.03.12",
+                    "premium": 12000.5,
+                    "note": None,
+                },
+                {"id": "P-002", "name": "ｽｽﾞｷ ｹｲｺ", "birth": "", "premium": 0, "note": "a\tb\n"},
+            ],
+        }
+        pairs = {"counts": {"same": 3}, "_run_folders": ["/tmp/x"]}
+        sent = {"table": table, "pairs": pairs, "n": 7, "on": True, "ratio": 0.25}
+        self.assertEqual(run_tool(ECHO, sent, self.run_dir), sent)
+        # Not-a-number survives as NaN (JSON's NaN extension on both sides).
+        self.assertTrue(math.isnan(run_tool(ECHO, {"x": float("nan")}, self.run_dir)["x"]))
+
+    def test_ports_use_the_studio_types(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import (
+            port_problems,
+            typed_ports,
+            value_problems,
+        )
+
+        self.assertEqual(port_problems("inputs", [{"name": "rows", "kind": "TABLE"}]), [])
+        self.assertEqual(
+            port_problems(
+                "outputs", [{"name": "shade", "kind": "colour"}, {"name": "Bad", "kind": "INT"}]
+            ),
+            [
+                "outputs: shade has kind 'colour'; use a registered type: STRING, INT, FLOAT, BOOLEAN, DICT, TABLE, RECORD_PAIRS, PAIR_DECISIONS, RECORD_CLUSTERS.",
+                "outputs: 'Bad' is not a short lowercase name.",
+            ],
+        )
+        # Aliases and class names resolve to the registered socket, which the manifest keeps.
+        ports = [
+            {"name": "n", "kind": "number"},
+            {"name": "pairs", "kind": "PAIRS"},
+            {"name": "c", "kind": "record_clusters"},
+        ]
+        self.assertEqual(
+            [p["kind"] for p in typed_ports(ports)], ["FLOAT", "RECORD_PAIRS", "RECORD_CLUSTERS"]
+        )
+        # A dataset passed in memory cannot cross into a tool.
+        self.assertIn(
+            "has kind 'synthetic_people'",
+            port_problems("inputs", [{"name": "p", "kind": "synthetic_people"}])[0],
+        )
+        ports = [{"name": "table", "kind": "TABLE"}, {"name": "count", "kind": "INT"}]
+        self.assertEqual(
+            value_problems("output", {"table": {"rows": []}, "count": True}, ports),
+            ["output table should be TABLE, got dict", "output count should be INT, got bool"],
+        )
+
+    def test_examples_are_the_tools_tests(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import example_problems, run_examples
+
+        manifest = {
+            "outputs": [{"name": "text", "kind": "STRING"}],
+            "examples": [
+                {"inputs": {"text": "名寄せ ok"}, "expect": {"text": "名寄せ OK"}},
+                {"inputs": {"text": "a"}, "expect": {"text": "b"}},
+            ],
+        }
+        first, second = run_examples(UPPER, manifest, self.run_dir)
+        self.assertEqual(first, {"example": 1, "passed": True, "problems": []})
+        self.assertEqual(second["problems"], ['text: expected "b", got "A"'])
+        self.assertEqual(
+            example_problems([]),
+            ["Give examples: [{inputs, expect}], at least one; they are the tool's tests."],
+        )
+        self.assertEqual(len(example_problems([{"inputs": {}, "expect": {}}])), 1)
+
+
 class ApprovedToolTests(unittest.TestCase):
     WORKFLOW = {"id": "5d9a308c-81ae-4aab-a0bd-5145aa83e56e", "nodes": []}
 
@@ -229,6 +322,115 @@ class ApprovedToolTests(unittest.TestCase):
         self.assertEqual(what["title"], "What this step did")
         self.assertEqual(what["rows"], [["1", "Converted half-width kana to full-width", "5,396"]])
         self.assertEqual(examples["rows"], [["ｽｽﾞｷ", "スズキ", "width"]])
+
+    def test_a_typed_tool_keeps_to_its_declared_ports(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import code_hash
+
+        code = "def run(i):\n    return {'count': str(len(i['text']))}\n"
+        self.repo.save_tool(
+            "count",
+            code,
+            {
+                "version": 2,
+                "tier": "workflow",
+                "name": "count",
+                "description": "d",
+                "inputs": [{"name": "text", "kind": "STRING"}],
+                "outputs": [{"name": "count", "kind": "INT"}],
+                "examples": [],
+                "sha256": code_hash(code),
+            },
+        )
+        with self.assertRaisesRegex(ValueError, r"input text \(STRING\) is missing"):
+            self.node.execute("count")
+        with self.assertRaisesRegex(
+            RuntimeError, "broke its declared ports: output count should be INT, got str"
+        ):
+            self.node.execute("count", "abc")
+        self.assertEqual(self.repo.log()[0]["message"], "Run · Agent tool count #9 · failed")
+
+    def test_run_checks_tests_each_tool_the_workflow_runs(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import code_hash, test_tools, tools_used
+
+        workflow = {
+            "nodes": [{"id": 1, "type": "AgentWorkflowAgentTool", "widgets_values": ["upper", ""]}],
+            "definitions": {
+                "subgraphs": [
+                    {"nodes": [{"type": "AgentWorkflowAgentTool", "widgets_values": ["typed"]}]}
+                ]
+            },
+        }
+        self.assertEqual(tools_used(workflow), ["upper", "typed"])
+        manifest = {
+            "version": 2,
+            "name": "typed",
+            "description": "d",
+            "inputs": [{"name": "text", "kind": "STRING"}],
+            "outputs": [{"name": "text", "kind": "STRING"}],
+            "examples": [{"inputs": {"text": "a"}, "expect": {"text": "A"}}],
+            "sha256": code_hash(UPPER),
+        }
+        self.repo.save_tool("typed", UPPER, manifest)
+        old, typed, missing = test_tools(
+            self.repo, ["upper", "typed", "gone"], Path(self.temp.name) / "t"
+        )
+        self.assertEqual(
+            old["problems"], ["has no examples (its tests): propose it again with examples"]
+        )
+        self.assertTrue(typed["passed"])
+        self.assertIn("No approved tool", missing["problems"][0])
+
+    def test_a_tool_takes_and_gives_datasets_by_reference(self) -> None:
+        from custom_nodes.agent_workflow_studio.agent_tools import code_hash
+        from custom_nodes.agent_workflow_studio.datasets import ref
+
+        upstream = (
+            Path(self.temp.name) / "output" / "agent_tools" / self.WORKFLOW["id"] / "compare-1"
+        )
+        upstream.mkdir(parents=True)
+        (upstream / "pairs.jsonl").write_text('{"id": "p1"}\n{"id": "p2"}\n', encoding="utf-8")
+        given = ref(
+            "record_pairs", "pairs", upstream / "pairs.jsonl", 2, run_folders=[str(upstream)]
+        )
+        code = (
+            "import os, json\n"
+            "def run(i):\n"
+            "    rows = [json.loads(l) for l in open(i['pairs']['uri'], encoding='utf-8') if l.strip()]\n"
+            "    out = os.path.join(os.environ['TOOL_RUN_DIR'], 'kept.jsonl')\n"
+            "    open(out, 'w').write(json.dumps(rows[0]) + '\\n')\n"
+            "    return {'kept': {'kind': 'studio#dataset', 'class': 'record_pairs', 'name': 'kept',\n"
+            "                     'uri': out, 'format': 'jsonl', 'row_count': 1}}\n"
+        )
+        self.repo.save_tool(
+            "keep_first",
+            code,
+            {
+                "version": 2,
+                "name": "keep_first",
+                "description": "d",
+                "inputs": [{"name": "pairs", "kind": "RECORD_PAIRS"}],
+                "outputs": [{"name": "kept", "kind": "RECORD_PAIRS"}],
+                "examples": [],
+                "sha256": code_hash(code),
+            },
+        )
+        result = self.node.execute("keep_first", data=given).args[0]
+        self.assertEqual(
+            (result["kept"]["class"], result["kept"]["row_count"]), ("record_pairs", 1)
+        )
+        # A plain dict where a dataset is declared breaks the tool's ports.
+        with self.assertRaisesRegex(RuntimeError, "kept should be RECORD_PAIRS"):
+            bad = code.replace("{'kind': 'studio#dataset',", "{'not': 'a reference',")
+            self.repo.save_tool(
+                "keep_bad",
+                bad,
+                {
+                    **self.repo.load_tool("keep_first")[1],
+                    "name": "keep_bad",
+                    "sha256": code_hash(bad),
+                },
+            )
+            self.node.execute("keep_bad", data=given)
 
     def test_refuses_unknown_or_changed_tools(self) -> None:
         with self.assertRaisesRegex(ValueError, "No approved tool"):

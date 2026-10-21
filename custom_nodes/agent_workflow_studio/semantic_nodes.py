@@ -17,7 +17,7 @@ from typing import Any
 from comfy_api.latest import io
 
 from .data_preview import table
-from .table_nodes import Pairs, Table, check_table, columns_of, make, need_columns, report
+from .table_nodes import RecordPairs, Table, check_table, columns_of, make, need_columns, report
 
 CATEGORY = "agent_workflow_studio/matching"
 EMBEDDER = "cl-nagoya/ruri-v3-30m"  # Japanese bi-encoder, Apache-2.0, 37M parameters
@@ -235,7 +235,7 @@ class RerankPairs(io.ComfyNode):
             inputs=[
                 io.MultiType.Input(
                     "data",
-                    types=[Pairs, io.Dict],
+                    types=[RecordPairs, io.Dict],
                     display_name="Pairs",
                     tooltip="Compare fields' data, or a stage's unsettled branch (only those are scored).",
                 ),
@@ -271,7 +271,7 @@ class RerankPairs(io.ComfyNode):
                 ),
             ],
             outputs=[
-                Pairs.Output(
+                RecordPairs.Output(
                     display_name="data",
                     tooltip="The pairs with `rerank`, for Learn weights and Decision rules.",
                 )
@@ -282,14 +282,15 @@ class RerankPairs(io.ComfyNode):
 
     @classmethod
     def execute(cls, data: Any, columns: str, high: float, low: float, model: str) -> io.NodeOutput:
+        from .datasets import lineage_file, ref, subset_file, subset_ids, ui_datasets
         from .decision_rules import read_pairs
-        from .matching_nodes import chain, own_folder, read_csv, upstream_file, workflow_repo
+        from .matching_nodes import chain, own_folder, workflow_repo
 
         if low > high:
             raise ValueError("Low below must not be above High from.")
-        rows = read_pairs(upstream_file("pairs.jsonl", data))
-        subset = (data or {}).get("pairs_subset") if isinstance(data, dict) else None
-        wanted = {r["id"] for r in read_csv(upstream_file(subset, data))} if subset else None
+        # The pairs it is given (a record_pairs dataset, limited to its subset when a branch).
+        rows = read_pairs(lineage_file(data, "record_pairs", "pairs.jsonl"))
+        wanted = subset_ids(data)
         cols = columns_of(columns)
         todo = [r for r in rows if wanted is None or r["id"] in wanted]
         started = time.time()
@@ -321,9 +322,15 @@ class RerankPairs(io.ComfyNode):
         line = f"{len(todo):,} pairs reranked: " + " · ".join(
             f"{lv} {levels[lv]:,}" for lv in ("high", "medium", "low")
         )
-        out = {"_run_folders": chain(data, folder), "file": "pairs.jsonl", "count": len(rows)}
-        if subset:
-            out["pairs_subset"] = subset
+        out = ref(
+            "record_pairs",
+            "reranked",
+            folder / "pairs.jsonl",
+            len(rows),
+            subset=subset_file(data),
+            upstream=data,
+            run_folders=chain(data, folder),
+        )
         ui = {
             "text": (line,),
             "aws_headline": (line,),
@@ -347,6 +354,7 @@ class RerankPairs(io.ComfyNode):
                 table("Examples per level", examples, 9),
             ],
         }
+        ui["aws_datasets"] = ui_datasets((0, out))
         return io.NodeOutput(out, ui=ui)
 
 

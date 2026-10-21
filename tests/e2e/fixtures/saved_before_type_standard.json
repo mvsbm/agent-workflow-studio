@@ -1,0 +1,585 @@
+{
+ "revision": 0,
+ "last_node_id": 1,
+ "last_link_id": 0,
+ "nodes": [
+  {
+   "id": 1,
+   "type": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    320,
+    290
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Pairs",
+     "name": "data",
+     "shape": 7,
+     "type": "PAIRS,DICT",
+     "link": null
+    },
+    {
+     "name": "match_probability",
+     "type": "FLOAT",
+     "widget": {
+      "name": "match_probability"
+     },
+     "link": null
+    },
+    {
+     "name": "review_probability",
+     "type": "FLOAT",
+     "widget": {
+      "name": "review_probability"
+     },
+     "link": null
+    },
+    {
+     "name": "review_limit",
+     "type": "INT",
+     "widget": {
+      "name": "review_limit"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "matched",
+     "name": "matched",
+     "type": "DECISIONS",
+     "links": []
+    },
+    {
+     "localized_name": "different",
+     "name": "different",
+     "type": "DECISIONS",
+     "links": []
+    },
+    {
+     "localized_name": "unsettled",
+     "name": "unsettled",
+     "type": "PAIRS",
+     "links": []
+    }
+   ],
+   "title": "Learn points and score",
+   "properties": {
+    "previewExposures": []
+   },
+   "widgets_values": [
+    0.95,
+    0.3,
+    2000
+   ],
+   "widgets_values_named": {
+    "match_probability": 0.95,
+    "review_probability": 0.3,
+    "review_limit": 2000,
+    "stage_card": ""
+   },
+   "color": "#5b3d7a",
+   "bgcolor": "#3a2a4f"
+  }
+ ],
+ "links": [],
+ "version": 0.4,
+ "definitions": {
+  "subgraphs": [
+   {
+    "id": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 68,
+     "lastLinkId": 125,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "Learn points and score",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      68
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      1410,
+      10,
+      128,
+      108
+     ]
+    },
+    "inputs": [
+     {
+      "id": "3945bfd7-9dec-42d4-a465-2959c31fd8f7",
+      "name": "data",
+      "type": "PAIRS,DICT",
+      "linkIds": [
+       96
+      ],
+      "localized_name": "Pairs",
+      "shape": 7,
+      "pos": [
+       51,
+       24
+      ]
+     },
+     {
+      "id": "574d0e45-b6b0-458a-acb4-6276bf37f45a",
+      "name": "match_probability",
+      "type": "FLOAT",
+      "linkIds": [
+       120
+      ],
+      "label": "Match at",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "5bfadc6b-c3cf-45e7-bca6-b7843264175e",
+      "name": "review_probability",
+      "type": "FLOAT",
+      "linkIds": [
+       121
+      ],
+      "label": "Review from",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "52eabc3c-4111-4dbd-b7d2-eabc97aee3a8",
+      "name": "review_limit",
+      "type": "INT",
+      "linkIds": [
+       122
+      ],
+      "label": "Review limit",
+      "pos": [
+       0,
+       0
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "bdd9d50e-5f41-4f53-b074-db53ddb039d3",
+      "name": "matched",
+      "type": "DECISIONS",
+      "linkIds": [
+       57
+      ],
+      "localized_name": "matched",
+      "pos": [
+       24,
+       24
+      ]
+     },
+     {
+      "id": "35e729d1-4c16-438c-8dab-bda80c8ac084",
+      "name": "different",
+      "type": "DECISIONS",
+      "linkIds": [
+       58
+      ],
+      "localized_name": "different",
+      "pos": [
+       24,
+       44
+      ]
+     },
+     {
+      "id": "fe2d4390-dae7-4c7b-8eae-67df1007efb4",
+      "name": "unsettled",
+      "type": "PAIRS",
+      "linkIds": [
+       54
+      ],
+      "localized_name": "unsettled",
+      "pos": [
+       24,
+       64
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 38,
+      "type": "AgentWorkflowLearnWeights",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       664
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Pairs",
+        "name": "data",
+        "shape": 7,
+        "type": "PAIRS,DICT",
+        "link": 96
+       },
+       {
+        "localized_name": "Pairs file",
+        "name": "pairs_file",
+        "type": "STRING",
+        "widget": {
+         "name": "pairs_file"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Starting rules",
+        "name": "rules",
+        "type": "STRING",
+        "widget": {
+         "name": "rules"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Match at",
+        "name": "match_probability",
+        "type": "FLOAT",
+        "widget": {
+         "name": "match_probability"
+        },
+        "link": 120
+       },
+       {
+        "localized_name": "Review from",
+        "name": "review_probability",
+        "type": "FLOAT",
+        "widget": {
+         "name": "review_probability"
+        },
+        "link": 121
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "rules",
+        "name": "rules",
+        "type": "STRING",
+        "links": [
+         52
+        ]
+       },
+       {
+        "localized_name": "data",
+        "name": "data",
+        "type": "PAIRS",
+        "links": [
+         53
+        ]
+       }
+      ],
+      "title": "Learn the points",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowLearnWeights"
+      },
+      "widgets_values": [
+       "pairs.jsonl",
+       "# Rough starting points; Learn weights replaces them with points learned from the pairs.\nrules: []\nscore:\n  kana_surname: {exact: 1, similar: 0.5, different: -1, missing: 0}\n  kana_given: {exact: 2, similar: 1, different: -2, missing: 0}\n  kana_freq: {rare: 1, common: 0, n/a: 0}\n  name: {exact: 2, similar: 1, different: -1, missing: 0}\n  birth: {exact: 2, close: 1, conflict: -2, missing: 0}\n  phone: {same: 2, different: -1, missing: 0}\n  address: {exact: 1, similar: 1, different: -1, missing: 0}\n  policy_ref: {same: 1, different: 0, missing: 0}\ndecide: {match: 4, review: 2}\n",
+       0.95,
+       0.3,
+       ""
+      ],
+      "widgets_values_named": {
+       "pairs_file": "pairs.jsonl",
+       "rules": "# Rough starting points; Learn weights replaces them with points learned from the pairs.\nrules: []\nscore:\n  kana_surname: {exact: 1, similar: 0.5, different: -1, missing: 0}\n  kana_given: {exact: 2, similar: 1, different: -2, missing: 0}\n  kana_freq: {rare: 1, common: 0, n/a: 0}\n  name: {exact: 2, similar: 1, different: -1, missing: 0}\n  birth: {exact: 2, close: 1, conflict: -2, missing: 0}\n  phone: {same: 2, different: -1, missing: 0}\n  address: {exact: 1, similar: 1, different: -1, missing: 0}\n  policy_ref: {same: 1, different: 0, missing: 0}\ndecide: {match: 4, review: 2}\n",
+       "match_probability": 0.95,
+       "review_probability": 0.3,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 39,
+      "type": "AgentWorkflowDecisionRules",
+      "pos": [
+       770,
+       10
+      ],
+      "size": [
+       560,
+       700
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Pairs",
+        "name": "data",
+        "shape": 7,
+        "type": "PAIRS,DICT",
+        "link": 53
+       },
+       {
+        "localized_name": "Pairs file",
+        "name": "pairs_file",
+        "type": "STRING",
+        "widget": {
+         "name": "pairs_file"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Rules",
+        "name": "rules",
+        "type": "STRING",
+        "widget": {
+         "name": "rules"
+        },
+        "link": 52
+       },
+       {
+        "localized_name": "Review limit",
+        "name": "review_limit",
+        "type": "INT",
+        "widget": {
+         "name": "review_limit"
+        },
+        "link": 122
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "decisions",
+        "name": "decisions",
+        "type": "DECISIONS",
+        "links": null
+       },
+       {
+        "localized_name": "summary",
+        "name": "summary",
+        "type": "STRING",
+        "links": null
+       },
+       {
+        "localized_name": "matched",
+        "name": "matched",
+        "type": "DECISIONS",
+        "links": [
+         57,
+         102
+        ]
+       },
+       {
+        "localized_name": "different",
+        "name": "different",
+        "type": "DECISIONS",
+        "links": [
+         58
+        ]
+       },
+       {
+        "localized_name": "unsettled",
+        "name": "unsettled",
+        "type": "PAIRS",
+        "links": [
+         54
+        ]
+       }
+      ],
+      "title": "Score the unsettled pairs",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowDecisionRules"
+      },
+      "widgets_values": [
+       "pairs.jsonl",
+       "# Learned by Learn weights from 57,624 pairs (0 reviewed): 87.8% of candidate pairs look like matches.\nrules: []\nscore:\n  kana_surname:\n    different: -1.6\n    exact: 0.3\n    similar: -1.6\n    missing: 0.0\n  kana_given:\n    different: -5.8\n    exact: 4.1\n    similar: -0.2\n    missing: 0.0\n  kana_freq:\n    common: 4.1\n    rare: -0.2\n    n/a: 0.0\n  name:\n    different: -2.8\n    exact: 4.4\n    similar: 1.2\n    missing: 0.0\n  birth:\n    close: 2.2\n    conflict: -4.0\n    exact: 5.5\n    missing: 0.0\n  phone:\n    different: 1.7\n    same: -0.7\n    missing: 0.0\n  address:\n    different: 0.1\n    exact: 0.2\n    similar: -0.1\n    missing: 0.0\n  policy_ref:\n    different: 2.0\n    same: -2.0\n    missing: 0.0\ndecide:\n  match: 1.4\n  review: -4.1\n",
+       2000,
+       ""
+      ],
+      "widgets_values_named": {
+       "pairs_file": "pairs.jsonl",
+       "rules": "# Learned by Learn weights from 57,624 pairs (0 reviewed): 87.8% of candidate pairs look like matches.\nrules: []\nscore:\n  kana_surname:\n    different: -1.6\n    exact: 0.3\n    similar: -1.6\n    missing: 0.0\n  kana_given:\n    different: -5.8\n    exact: 4.1\n    similar: -0.2\n    missing: 0.0\n  kana_freq:\n    common: 4.1\n    rare: -0.2\n    n/a: 0.0\n  name:\n    different: -2.8\n    exact: 4.4\n    similar: 1.2\n    missing: 0.0\n  birth:\n    close: 2.2\n    conflict: -4.0\n    exact: 5.5\n    missing: 0.0\n  phone:\n    different: 1.7\n    same: -0.7\n    missing: 0.0\n  address:\n    different: 0.1\n    exact: 0.2\n    similar: -0.1\n    missing: 0.0\n  policy_ref:\n    different: 2.0\n    same: -2.0\n    missing: 0.0\ndecide:\n  match: 1.4\n  review: -4.1\n",
+       "review_limit": 2000,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 61,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       770,
+       820
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 102
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · matched",
+      "properties": {
+       "Node name for S&R": "AgentWorkflowCheck"
+      },
+      "widgets_values": [
+       "rows_at_least",
+       "30000",
+       "At least 30,000 scored matches (38,520 on the default data).",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "rows_at_least",
+       "expect": "30000",
+       "says": "At least 30,000 scored matches (38,520 on the default data).",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 53,
+      "origin_id": 38,
+      "origin_slot": 1,
+      "target_id": 39,
+      "target_slot": 0,
+      "type": "PAIRS"
+     },
+     {
+      "id": 52,
+      "origin_id": 38,
+      "origin_slot": 0,
+      "target_id": 39,
+      "target_slot": 2,
+      "type": "STRING"
+     },
+     {
+      "id": 96,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 38,
+      "target_slot": 0,
+      "type": "PAIRS"
+     },
+     {
+      "id": 57,
+      "origin_id": 39,
+      "origin_slot": 2,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 58,
+      "origin_id": 39,
+      "origin_slot": 3,
+      "target_id": -20,
+      "target_slot": 1,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 54,
+      "origin_id": 39,
+      "origin_slot": 4,
+      "target_id": -20,
+      "target_slot": 2,
+      "type": "PAIRS"
+     },
+     {
+      "id": 102,
+      "origin_id": 39,
+      "origin_slot": 2,
+      "target_id": 61,
+      "target_slot": 0,
+      "type": "DECISIONS"
+     },
+     {
+      "id": 120,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 38,
+      "target_slot": 3,
+      "type": "FLOAT"
+     },
+     {
+      "id": 121,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 38,
+      "target_slot": 4,
+      "type": "FLOAT"
+     },
+     {
+      "id": 122,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 39,
+      "target_slot": 3,
+      "type": "INT"
+     }
+    ],
+    "extra": {},
+    "description": "Points per field level learned from the pairs themselves (no answer key), then each unsettled pair scored: match above one threshold, review between, different below."
+   }
+  ]
+ },
+ "extra": {
+  "BlueprintDescription": "Points per field level learned from the pairs themselves (no answer key), then each unsettled pair scored: match above one threshold, review between, different below."
+ }
+}

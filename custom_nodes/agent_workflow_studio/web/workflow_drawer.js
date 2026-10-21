@@ -1,4 +1,4 @@
-// The open workflow's own panels (contract, versions, data, review, customers): registered here and
+// The open workflow's own panels (contract, versions, data, review, clusters): registered here and
 // shown as tabs in ComfyUI's right panel, in its Workflow overview (workflow_overview.js). When that
 // panel cannot be found, they show in this drawer on the right of the canvas instead, titled with
 // the workflow and following a switch of workflow. The left sidebar keeps global tools only.
@@ -68,7 +68,7 @@ function showStrip() {
   }));
 }
 
-const TOOLTIP = "Open this workflow's overview: contract, versions, data, review, customers";
+const TOOLTIP = "Open this workflow's overview: contract, versions, data, review, clusters";
 
 function place() {
   // Just below the top bar that holds the Workflow button (the canvas itself spans the whole window).

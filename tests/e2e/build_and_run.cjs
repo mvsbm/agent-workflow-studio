@@ -194,7 +194,7 @@ const comfy = fn => `(() => { const app = window.comfyAPI.app.app; return (${fn}
     messages.splice(1, 1);
     assert.equal(messages[1], 'Publish API hello-e2e');
     // The workflow's CI run is a version too, like a CI run on a commit; publishing needed it green.
-    assert.equal(messages[2], 'Checks · ✓ design · ✓ stage Checks · ✓ examples · ✓ no regression');
+    assert.equal(messages[2], 'Checks · ✓ design · ✓ tool tests · ✓ stage Checks · ✓ examples · ✓ no regression');
     assert.equal(messages[3], 'Acceptance · 1/1 examples passed');
     assert.equal(messages[4], 'Agent canvas edit');
     assert.equal(messages[5], 'Build show: preview');

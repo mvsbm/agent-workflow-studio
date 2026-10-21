@@ -2,7 +2,7 @@
 .aw-review-card { border: 1px solid var(--interface-stroke, #505053); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .aw-review-card > summary { cursor: pointer; font-weight: 600; }
 .aw-review-meta { font-size: 12px; color: var(--muted-foreground, #8a8a8a); }
-.aw-review-why { font-size: 12px; color: var(--warning-background, #d9a441); }
+.aw-review-why { font-size: 12px; color: color-mix(in srgb, #c98a1a 70%, var(--base-foreground, #fff)); }
 .aw-review-reason { font-size: 13px; }
 .aw-review-choices { display: flex; flex-wrap: wrap; gap: 6px; }
 .aw-review-open { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: var(--muted-foreground, #8a8a8a); cursor: pointer; white-space: nowrap; }
@@ -11,11 +11,11 @@
 .aw-review-scroll .aw-table { width: max-content; min-width: 100%; }
 .aw-review-scroll td, .aw-review-scroll th { white-space: nowrap; }
 .aw-review-more { align-self: center; margin: 8px 0 16px; }
-/* Customers: the decisions that joined a customer, grouped by the stage that made them. */
-.aw-customer-stage { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
-.aw-customer-stage > strong { font-size: 13px; font-weight: 600; }
-.aw-customer-steps { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.aw-customer-steps li::marker { color: var(--muted-foreground, #8a8a8a); }
+/* Clusters: the decisions that joined a cluster, grouped by the stage that made them. */
+.aw-cluster-stage { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.aw-cluster-stage > strong { font-size: 13px; font-weight: 600; }
+.aw-cluster-steps { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.aw-cluster-steps li::marker { color: var(--muted-foreground, #8a8a8a); }
 /* A pair side by side: the two records get equal columns. */
 .aw-review-card > .aw-table { table-layout: fixed; }
 .aw-review-card > .aw-table thead th:first-child { width: 76px; }

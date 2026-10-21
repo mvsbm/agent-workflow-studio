@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import json
 import re
+import tempfile
 from pathlib import Path
 
 from .api_review import compatibility
+from .standards import api_kind, resolve
+from .standards import value_problems as type_problems
 
 NAME = re.compile(r"^[a-z][a-z0-9_-]{0,40}$")
-JSON_TYPES = {"STRING": "string", "INT": "integer", "FLOAT": "number", "BOOLEAN": "boolean"}
 
 
 def published_dir(root: Path) -> Path:
@@ -65,16 +67,15 @@ def bind_inputs(spec: dict, values: dict) -> dict:
             f"Unknown input(s): {', '.join(sorted(unknown))}. Inputs: {', '.join(inputs) or 'none'}."
         )
     for name, value in values.items():
-        item, kind = inputs[name], JSON_TYPES.get(inputs[name].get("type", ""), None)
-        ok = {
-            "string": isinstance(value, str),
-            "integer": isinstance(value, int) and not isinstance(value, bool),
-            "number": isinstance(value, int | float) and not isinstance(value, bool),
-            "boolean": isinstance(value, bool),
-            None: isinstance(value, str | int | float | bool),
-        }[kind]
-        if not ok:
-            raise ValueError(f"Input {name} must be {kind or 'a plain value'}.")
+        # Checked against its socket's registered type (the type standard); untyped: a plain value.
+        item, socket = inputs[name], inputs[name].get("type", "")
+        if resolve(socket):
+            if type_problems(socket, value):
+                # Said as a caller reads it: the JSON type (string, integer, …).
+                wanted = resolve(socket).schema.get("type") or resolve(socket).kind or socket
+                raise ValueError(f"Input {name} must be {wanted}.")
+        elif not isinstance(value, str | int | float | bool):
+            raise ValueError(f"Input {name} must be a plain value.")
         # A data folder's choices are those listed when it was published; uploads come later
         # (missing_data checks that the folder is there).
         if (
@@ -95,13 +96,15 @@ class NotFound(ValueError):
 
 
 def data_inputs(spec: dict) -> dict[str, str]:
-    """The published inputs that are data (claim check): name → "folder" or "file"."""
+    """The published inputs that are data the caller uploads first (claim check), by their kind:
+    the registered types whose API form is an upload (FILE, FOLDER)."""
     promised = ((spec.get("workflow") or {}).get("extra") or {}).get("aws_contract") or {}
-    return {
-        i["name"]: str(i["kind"]).lower()
-        for i in (promised.get("promises") or {}).get("inputs") or []
-        if str(i.get("kind", "")).lower() in ("folder", "file")
-    }
+    found = {}
+    for i in (promised.get("promises") or {}).get("inputs") or []:
+        spec_ = resolve(api_kind(str(i.get("kind", "")).lower()))
+        if spec_ and spec_.api == "upload":
+            found[i["name"]] = spec_.kind
+    return found
 
 
 def missing_data(spec: dict, values: dict, input_dir: Path) -> list[str]:
@@ -243,9 +246,6 @@ def prompt_hash(prompt: dict) -> str:
     return hashlib.sha256(json.dumps(prompt, sort_keys=True).encode()).hexdigest()[:16]
 
 
-JSON_KINDS = {"text": "string", "string": "string", "number": "number", "float": "number"}
-JSON_KINDS |= {"integer": "integer", "int": "integer", "boolean": "boolean", "bool": "boolean"}
-JSON_KINDS |= {"file": "string", "folder": "string"}
 PROBLEM = {
     "description": "RFC 9457 Problem Details: what was wrong and how to fix it.",
     "content": {
@@ -294,8 +294,9 @@ def _output_schema(name: str, contract: dict) -> dict:
             },
             **({"x-key": entity["key"]} if entity.get("key") else {}),
         }
-    kind = JSON_KINDS.get(str(item.get("kind", "")).lower())
-    return {**({"type": kind} if kind else {}), "description": about}
+    # Otherwise its registered type's own schema (a table's {columns, rows} included).
+    known = resolve(api_kind(str(item.get("kind", "")).lower()))
+    return {**(known.schema if known else {}), "description": about}
 
 
 def _openapi_run(spec: dict, base: str = "") -> dict:
@@ -312,8 +313,8 @@ def _openapi_run(spec: dict, base: str = "") -> dict:
             **(
                 {"type": "string"}
                 if kind
-                else {"type": JSON_TYPES[item["type"]]}
-                if item.get("type") in JSON_TYPES
+                else resolve(item.get("type", "")).schema
+                if resolve(item.get("type", ""))
                 else {}
             ),
             **(
@@ -626,7 +627,15 @@ def install_api_routes() -> None:
                 raise ValueError(
                     "This workflow has no contract: there is nothing to check it against."
                 )
-            result = run(contract, evidence, repo.records("acceptance"), latest_published(repo.id))
+            # The workflow's own code, tested in the sandbox: each tool its nodes run, on its examples.
+            from .agent_tools import test_tools, tools_used
+
+            with tempfile.TemporaryDirectory(prefix="aws-tool-tests-") as scratch:
+                names = tools_used(evidence.get("workflow") or {})
+                tools = await asyncio.to_thread(test_tools, repo, names, Path(scratch))
+            result = run(
+                contract, evidence, repo.records("acceptance"), latest_published(repo.id), tools
+            )
             sha = await asyncio.to_thread(
                 repo.add_record,
                 {"kind": "pipeline", **result},

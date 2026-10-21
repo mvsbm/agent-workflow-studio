@@ -1,0 +1,109 @@
+{
+ "$comment": "The studio's core types: closed and domain-free. Every port, tool port, API input and output and data hand-off uses one of these or a dataset class (datasets/*.json). Read by standards.py; STANDARDS.md is generated from it.",
+ "version": 1,
+ "types": {
+  "STRING": {
+   "description": "Text.",
+   "kind": "text",
+   "aliases": ["text", "string", "str"],
+   "socket": "STRING",
+   "schema": {"type": "string"},
+   "api": "value",
+   "app_input": "PrimitiveString"
+  },
+  "INT": {
+   "description": "A whole number.",
+   "kind": "integer",
+   "aliases": ["integer", "int", "count"],
+   "socket": "INT",
+   "schema": {"type": "integer"},
+   "api": "value",
+   "app_input": "PrimitiveInt"
+  },
+  "FLOAT": {
+   "description": "A number.",
+   "kind": "number",
+   "aliases": ["number", "float", "decimal"],
+   "socket": "FLOAT",
+   "schema": {"type": "number"},
+   "api": "value",
+   "app_input": "PrimitiveFloat"
+  },
+  "BOOLEAN": {
+   "description": "Yes or no.",
+   "kind": "boolean",
+   "aliases": ["boolean", "bool", "flag"],
+   "socket": "BOOLEAN",
+   "schema": {"type": "boolean"},
+   "api": "value",
+   "app_input": "PrimitiveBoolean"
+  },
+  "JSON": {
+   "description": "A small structured value (an object): a summary, settings, a step's result.",
+   "kind": "json",
+   "aliases": ["json", "object", "dict", "DICT"],
+   "socket": "DICT",
+   "schema": {"type": "object"},
+   "api": "value",
+   "app_input": null
+  },
+  "TABLE": {
+   "description": "A small table carried inline: its rows themselves. Large data is a DATASET instead.",
+   "kind": "table",
+   "aliases": ["table", "rows", "records", "csv"],
+   "socket": "TABLE",
+   "schema": {
+    "type": "object",
+    "required": ["columns", "rows"],
+    "properties": {
+     "name": {"type": "string"},
+     "columns": {"type": "array", "items": {"type": "string"}},
+     "rows": {"type": "array", "items": {"type": "object"}}
+    }
+   },
+   "api": "value",
+   "app_input": null
+  },
+  "DATASET": {
+   "description": "Data passed by reference: records stored as a file in a job's run folder, of a registered dataset class, with a name. The base of every dataset class; never carries rows inline.",
+   "kind": "dataset",
+   "aliases": ["dataset"],
+   "socket": null,
+   "schema": {
+    "type": "object",
+    "required": ["kind", "class", "uri"],
+    "properties": {
+     "kind": {"const": "studio#dataset"},
+     "class": {"type": "string"},
+     "name": {"type": "string"},
+     "uri": {"type": "string"},
+     "format": {"enum": ["jsonl", "csv", "json"]},
+     "row_count": {"type": "integer", "minimum": 0},
+     "subset": {"type": "string", "description": "Only the rows of uri whose id is in this file."},
+     "job": {"type": "string"},
+     "inputs": {"type": "array", "items": {"type": "string"}}
+    }
+   },
+   "api": "reference",
+   "app_input": null
+  },
+  "FILE": {
+   "description": "One data file the caller uploads first (ComfyUI's POST /upload/image into the input folder), then names.",
+   "kind": "file",
+   "aliases": ["file"],
+   "socket": "STRING",
+   "schema": {"type": "string"},
+   "api": "upload",
+   "app_input": "AgentWorkflowDataFolder"
+  },
+  "FOLDER": {
+   "description": "A folder of data files the caller uploads first (into ComfyUI's input folder), then names.",
+   "kind": "folder",
+   "aliases": ["folder", "directory"],
+   "socket": "STRING",
+   "schema": {"type": "string"},
+   "api": "upload",
+   "app_input": "AgentWorkflowDataFolder"
+  }
+ }
+}

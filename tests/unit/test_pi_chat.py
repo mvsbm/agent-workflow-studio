@@ -274,18 +274,37 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
         proposal = {
             "name": "upper",
             "description": "Uppercase text",
-            "inputs": [{"name": "text", "kind": "text"}],
-            "outputs": [{"name": "text", "kind": "text"}],
+            "why_not_a_node": "CaseConverter has no Japanese-aware mode for this test.",
+            "inputs": [{"name": "text", "kind": "colour"}],
+            "outputs": [{"name": "text", "kind": "STRING"}],
         }
+        # One answer names every problem: an unregistered type and the missing examples (its tests).
+        with self.assertRaisesRegex(ValueError, r"^2 problems .*kind 'colour'.*Give examples"):
+            await self.session.agent_action("tool_propose", proposal)
+        proposal["inputs"][0]["kind"] = "text"  # an alias: stored as its socket, STRING
+        # A failing example comes back to the agent before the user is asked.
+        proposal["examples"] = [{"inputs": {"text": "ab"}, "expect": {"text": "Ab"}}]
+        with patch.object(self.session, "canvas_action", AsyncMock()) as canvas:
+            with self.assertRaisesRegex(ValueError, 'example 1: text: expected "Ab", got "AB"'):
+                await self.session.agent_action("tool_propose", proposal)
+        canvas.assert_not_awaited()
+        proposal["examples"] = [{"inputs": {"text": "名寄せ ok"}, "expect": {"text": "名寄せ OK"}}]
         with patch.object(
             self.session, "canvas_action", AsyncMock(return_value={"approved": True})
         ) as canvas:
             result = await self.session.agent_action("tool_propose", proposal)
         action, args = canvas.await_args.args
         self.assertEqual((action, args["title"]), ("tool_approve", "Approve tool upper?"))
+        self.assertIn("TESTS: 1/1 of its examples pass in the sandbox.", args["text"])
+        self.assertIn("WHY CODE, NOT A NODE: CaseConverter has no", args["text"])
         self.assertTrue(args["text"].rstrip().endswith("return {'text': inputs['text'].upper()}"))
         self.assertTrue(result["approved"])
         self.assertEqual(self.session.repo.load_tool("upper")[0], code)
+        manifest = self.session.repo.load_tool("upper")[1]
+        self.assertEqual(
+            (manifest["version"], manifest["tier"], len(manifest["examples"])), (2, "workflow", 1)
+        )
+        self.assertEqual(manifest["inputs"], [{"name": "text", "kind": "STRING"}])
         self.assertEqual(self.session.repo.log()[0]["message"], "Tool approved: upper")
         with self.assertRaisesRegex(ValueError, "comfy_propose_contract"):
             await self.session.agent_action("tool_approve", {})

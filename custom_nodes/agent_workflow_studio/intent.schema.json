@@ -129,10 +129,17 @@
         "maxLength": 80
        },
        "kind": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 40,
-        "description": "What it holds: text, number, boolean, folder (a folder of data files the caller uploads to ComfyUI's input folder), file (one such file), image, ..."
+        "enum": [
+         "text",
+         "integer",
+         "number",
+         "boolean",
+         "json",
+         "table",
+         "file",
+         "folder"
+        ],
+        "description": "What it holds: a registered kind of the type standard (text, integer, number, boolean, json, table, file: one data file the caller uploads first, folder: a folder of them). Old names resolve (count, csv, …)."
        },
        "description": {
         "type": "string",
@@ -184,10 +191,17 @@
         "maxLength": 80
        },
        "kind": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 40,
-        "description": "What it holds: text, number, boolean, folder (a folder of data files the caller uploads to ComfyUI's input folder), file (one such file), image, ..."
+        "enum": [
+         "text",
+         "integer",
+         "number",
+         "boolean",
+         "json",
+         "table",
+         "file",
+         "folder"
+        ],
+        "description": "What it holds: a registered kind of the type standard (text, integer, number, boolean, json, table, file: one data file the caller uploads first, folder: a folder of them). Old names resolve (count, csv, …)."
        },
        "description": {
         "type": "string",

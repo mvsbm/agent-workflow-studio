@@ -139,7 +139,7 @@ function createPanel() {
       toggle.setAttribute('aria-expanded', String(open));
       if (!open || details.childElementCount) return;
       try {
-        const {diff, record, plan_text: planText, workflow, touched = []} = await request(`/commits/${commit.sha}`);
+        const {diff, record, plan_text: planText, workflow, touched = [], code} = await request(`/commits/${commit.sha}`);
         if (touched.length) {
           const stages = el('div', null, {className: 'aw-versions-record'});
           stages.append(el('div', 'Stages it changed', {className: 'aw-label'}));
@@ -151,6 +151,14 @@ function createPanel() {
           }
           stages.append(list);
           details.append(stages);
+        }
+        // Workflow code this version changed (an approved tool), as a diff of its exact source.
+        if (code) {
+          const changed = el('div', null, {className: 'aw-versions-record'});
+          const lines = el('pre', null, {className: 'aw-versions-code'});
+          for (const line of code.split('\n')) lines.append(el('span', `${line}\n`, {className: line.startsWith('+') && !line.startsWith('+++') ? 'aw-code-add' : line.startsWith('-') && !line.startsWith('---') ? 'aw-code-del' : ''}));
+          changed.append(el('div', 'Code changed', {className: 'aw-label'}), lines);
+          details.append(changed);
         }
         if (planText) {
           const plan = el('div', null, {className: 'aw-versions-record'});

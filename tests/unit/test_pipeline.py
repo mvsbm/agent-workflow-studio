@@ -78,6 +78,7 @@ class PipelineTests(unittest.TestCase):
             statuses(result),
             {
                 "static": "passed",
+                "unit": "passed",
                 "integration": "not_run",
                 "acceptance": "not_run",
                 "regression": "passed",
@@ -85,8 +86,21 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertFalse(result["green"])
         self.assertEqual(
-            result["summary"], "✓ design · ○ stage Checks · ○ examples · ✓ no regression"
+            result["summary"],
+            "✓ design · ✓ tool tests · ○ stage Checks · ○ examples · ✓ no regression",
         )
+
+    def test_the_workflows_own_code_is_unit_tested_by_its_tools_examples(self) -> None:
+        gates = {"classify": "passed", "tidy": "needs_user_review"}
+        passing = [{"tool": "score", "passed": True, "problems": [], "examples": 2}]
+        self.assertTrue(run(CONTRACT, evidence(gates), [accepted(True)], None, passing)["green"])
+        failing = [
+            {"tool": "score", "passed": False, "problems": ["example 1: total: expected 3, got 4"]}
+        ]
+        result = run(CONTRACT, evidence(gates), [accepted(True)], None, failing)
+        self.assertFalse(result["green"])
+        unit = next(s for s in result["stages"] if s["stage"] == "unit")
+        self.assertEqual(unit["detail"], ["score: example 1: total: expected 3, got 4"])
 
     def test_green_needs_the_checks_and_examples_of_exactly_this_graph(self) -> None:
         gates = {"classify": "passed", "tidy": "needs_user_review"}
@@ -96,7 +110,7 @@ class PipelineTests(unittest.TestCase):
             statuses(run(CONTRACT, evidence(gates), [older], None))["acceptance"], "not_run"
         )
         failed = run(CONTRACT, evidence(gates), [accepted(False)], None)
-        self.assertEqual(failed["stages"][2]["detail"], ["E1: label: got neutral"])
+        self.assertEqual(failed["stages"][3]["detail"], ["E1: label: got neutral"])
 
     def test_a_hand_edit_that_breaks_the_lld_fails_the_design_stage(self) -> None:
         broken = evidence({"classify": "passed"})
@@ -112,7 +126,7 @@ class PipelineTests(unittest.TestCase):
         gates = {"classify": "failed", "tidy": "needs_user_review"}
         result = run(copy.deepcopy(CONTRACT), evidence(gates), [accepted(True)], published)
         self.assertEqual(statuses(result)["regression"], "failed")
-        self.assertEqual(result["stages"][3]["detail"], ["classify's Checks passed in 1.0.0"])
+        self.assertEqual(result["stages"][4]["detail"], ["classify's Checks passed in 1.0.0"])
 
 
 class PipelineApiTests(unittest.TestCase):

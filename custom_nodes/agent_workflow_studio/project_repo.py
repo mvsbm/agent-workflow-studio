@@ -28,7 +28,7 @@ from .workflow_contract import (
     validate_contract,
 )
 
-# Pairs: same/different/unsure; customers: correct/wrong; a record in a customer: not_this_person.
+# Pairs: same/different/unsure; groups: correct/wrong; a record in a group: not_this_person.
 REVIEW_DECISIONS = {"same", "different", "unsure", "correct", "wrong", "not_this_person"}
 REVIEW_FILE_LIMIT = 20 * 1024 * 1024
 AUTHORS = {
@@ -246,10 +246,37 @@ class ProjectRepo:
             )
             return self._git("rev-parse", "HEAD").strip()
 
+    def code_diff(self, sha: str) -> str:
+        """The workflow code (tools/) a version changed, as a unified diff ("" when none)."""
+        # The code first, then its manifest (ports, examples): the reader wants the source.
+        show = lambda spec: self._git("show", "--format=", "--no-color", sha, "--", spec)  # noqa: E731
+        return (show(":(glob)tools/*.py") + show(":(glob)tools/*.json"))[:20000]
+
+    def tool_detail(self, name: str) -> dict:
+        """One tool as the Design tab shows it: its spec and code, the version that approved it,
+        and its tests' results from the latest Run checks."""
+        code, manifest = self.load_tool(name)
+        approved = next((e for e in self.log() if e["message"] == f"Tool approved: {name}"), None)
+        runs = [r for r in self.records("pipeline") if r.get("tools") is not None]
+        tests = next((t for t in (runs[-1]["tools"] if runs else []) if t["tool"] == name), None)
+        return {
+            "name": name,
+            "manifest": manifest,
+            "code": code,
+            "approved": approved,
+            "tests": tests,
+        }
+
+    def tool_names(self) -> set[str]:
+        """The tools approved in this workflow."""
+        return {p.stem for p in (self.tree / "tools").glob("*.json")}
+
     def load_tool(self, name: str) -> tuple[str, dict]:
         """The approved code of a tool; refuses if it differs from what the user approved."""
-        from .agent_tools import code_hash
+        from .agent_tools import NAME, code_hash
 
+        if not NAME.fullmatch(name or ""):
+            raise ValueError("unknown tool")
         folder = self.tree / "tools"
         if not (folder / f"{name}.json").is_file():
             raise ValueError(f"No approved tool named {name!r} in this workflow.")
@@ -438,6 +465,7 @@ def _detail(repo: ProjectRepo, sha: str) -> dict:
         "touched": touched(diff, workflow),
         "record": repo.record(sha),
         "plan_text": render(contract) if contract else None,
+        "code": repo.code_diff(sha) or None,
     }
 
 
@@ -504,6 +532,22 @@ def install_project_routes() -> None:
         return await call(
             request,
             lambda repo: _detail(repo, sha),
+        )
+
+    @routes.get(prefix + "/tools/{name}")
+    async def tool_detail(request):
+        name = request.match_info["name"]
+        return await call(request, lambda repo: repo.tool_detail(name))
+
+    @routes.get(prefix + "/tools/{name}/graduation")
+    async def graduation_brief(request):
+        """The brief for turning an approved tool into a reviewed studio node (Markdown)."""
+        from .graduation import brief
+
+        name = request.match_info["name"]
+        return await call(
+            request,
+            lambda repo: {"brief": brief(name, *repo.load_tool(name), repo.id)},
         )
 
     @routes.post(prefix + "/commits")
@@ -616,18 +660,23 @@ def install_project_routes() -> None:
         found = await asyncio.to_thread(follow, query)
         return web.json_response({"steps": found}, dumps=partial(json.dumps, default=str))
 
-    @routes.get(prefix + "/customers")
-    async def customers(request):
+    @routes.get(prefix + "/clusters")
+    async def clusters(request):
         def run(repo):
             import folder_paths
 
             runs = Path(folder_paths.get_output_directory()) / "agent_tools" / repo.id
+            # The latest Cluster guard run's explained clusters (customers.json before the standard).
             found = sorted(
-                runs.glob("cluster_guard-*/customers.json"), key=lambda p: p.stat().st_mtime
+                [
+                    *runs.glob("cluster_guard-*/clusters.json"),
+                    *runs.glob("cluster_guard-*/customers.json"),
+                ],
+                key=lambda p: p.stat().st_mtime,
             )
             if not found:
-                return {"customers": None}
-            # Searched and paged here, so the tab stays fast however many customers there are.
+                return {"clusters": None}
+            # Searched and paged here, so the tab stays fast however many clusters there are.
             everything = json.loads(found[-1].read_text(encoding="utf-8"))
             query = request.query.get("q", "").strip().lower()
             offset = max(int(request.query.get("offset", 0) or 0), 0)
@@ -646,7 +695,7 @@ def install_project_routes() -> None:
                 "run": found[-1].parent.name,
                 "total": len(everything),
                 "matches": len(matches),
-                "customers": dict(matches[offset : offset + limit]),
+                "clusters": dict(matches[offset : offset + limit]),
             }
 
         return await call(request, run)

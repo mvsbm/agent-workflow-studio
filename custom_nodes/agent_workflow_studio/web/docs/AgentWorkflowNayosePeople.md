@@ -13,7 +13,7 @@ Synthetic Japanese households with life histories: moves, marriages (surname cha
 
 | Output | Type | What it is |
 | --- | --- | --- |
-| people | `NAYOSE_PEOPLE` | Simulated people and companies with their life histories. |
+| people | `SYNTHETIC_PEOPLE` | Simulated people and companies with their life histories. |
 
 ## Where it runs
 

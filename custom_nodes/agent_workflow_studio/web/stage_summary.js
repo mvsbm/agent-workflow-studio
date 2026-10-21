@@ -27,7 +27,8 @@ export function stageSummary(inner) {
       for (const branch of flow.branches) sum[branch.decision] = (sum[branch.decision] ?? 0) + branch.count;
       lines.push(['match', 'review', 'different', 'undecided'].filter(d => sum[d]).map(d => `${d} ${sum[d].toLocaleString()}`).join(' · '));
     } else if (tree) {
-      const customers = tree.children?.find(c => c.label.startsWith('Customers'));
+      // "Clusters: N" ("Customers: N" in runs from before the type standard).
+      const customers = tree.children?.find(c => /^(Clusters|Customers):/.test(c.label));
       const merges = tree.children?.find(c => c.label === 'Merges');
       if (customers) lines.push(customers.label);
       const blocked = merges?.children?.find(c => c.label.startsWith('blocked'));
@@ -72,17 +73,26 @@ export const numberOf = (node, stage) => `${stage.properties?.aws_stage_order ??
 /** What a node's design badges say. A stage serves requests; a node inside a stage gets its number in
  *  reading order (2.3: stage 2, third node, as in a levelled data-flow diagram) and the part of its
  *  step it realizes; a Check verifies; a node outside the design says so. */
+// Workflow code: an Agent Tool node runs a tool the agent wrote and the user approved for this workflow.
+export const TOOL_NODE = 'AgentWorkflowAgentTool';
+const toolOf = node => node.widgets?.find(w => w.name === 'tool')?.value ?? node.widgets_values?.[0] ?? '';
+
 export function designLabels(node, stage, requests = []) {
   const props = node.properties ?? {};
-  if (props.aws_step) return (props.aws_step.covers ?? []).map(id => {
-    const request = requests.find(r => r.id === id);
-    return {text: `serves ${request ? requestLabel(request) : id}`, kind: 'request'};
-  });
+  if (props.aws_step) {
+    const serves = (props.aws_step.covers ?? []).map(id => {
+      const request = requests.find(r => r.id === id);
+      return {text: `serves ${request ? requestLabel(request) : id}`, kind: 'request'};
+    });
+    // A stage with workflow code says so on its card: code is the exception, so it shows.
+    return (node.subgraph?.nodes ?? []).some(n => n.type === TOOL_NODE) ? [...serves, {text: 'workflow code', kind: 'code'}] : serves;
+  }
   if (!stage) return [];
   if (node.type === 'AgentWorkflowCheck') return [{text: 'verifies the stage', kind: 'gate'}];
   if (SCAFFOLD_TYPES.includes(node.type)) return [];
   const number = numberOf(node, stage), tags = [].concat(props.aws_realizes ?? []);
-  return [tags.length ? {text: `${number} · ${partsText(tags)}`, kind: 'part'} : {text: `${number} · + extra, not in the design`, kind: 'extra'}];
+  const part = tags.length ? {text: `${number} · ${partsText(tags)}`, kind: 'part'} : {text: `${number} · + extra, not in the design`, kind: 'extra'};
+  return node.type === TOOL_NODE ? [part, {text: `workflow code · ${toolOf(node) || 'no tool set'}`, kind: 'code'}] : [part];
 }
 
 /** A stage from the outside and the inside (arc42 black box / white box): what its step says, each

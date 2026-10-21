@@ -5,7 +5,7 @@
  "nodes": [
   {
    "id": 1,
-   "type": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+   "type": "20654c4e-94db-4191-a22c-22849f5032c1",
    "pos": [
     0,
     0
@@ -22,7 +22,7 @@
      "localized_name": "Pairs",
      "name": "data",
      "shape": 7,
-     "type": "PAIRS,DICT",
+     "type": "RECORD_PAIRS,DICT",
      "link": null
     },
     {
@@ -54,19 +54,19 @@
     {
      "localized_name": "matched",
      "name": "matched",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": []
     },
     {
      "localized_name": "different",
      "name": "different",
-     "type": "DECISIONS",
+     "type": "PAIR_DECISIONS",
      "links": []
     },
     {
      "localized_name": "unsettled",
      "name": "unsettled",
-     "type": "PAIRS",
+     "type": "RECORD_PAIRS",
      "links": []
     }
    ],
@@ -94,7 +94,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "45886068-1a5b-42d4-ab49-fc8a60e93abb",
+    "id": "20654c4e-94db-4191-a22c-22849f5032c1",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -125,9 +125,9 @@
     },
     "inputs": [
      {
-      "id": "3945bfd7-9dec-42d4-a465-2959c31fd8f7",
+      "id": "f23dd8da-6ad9-4a54-b254-2cfc21f179b2",
       "name": "data",
-      "type": "PAIRS,DICT",
+      "type": "RECORD_PAIRS,DICT",
       "linkIds": [
        96
       ],
@@ -139,7 +139,7 @@
       ]
      },
      {
-      "id": "574d0e45-b6b0-458a-acb4-6276bf37f45a",
+      "id": "dfbfc53c-55a8-4bd9-bb08-bb50d288a84d",
       "name": "match_probability",
       "type": "FLOAT",
       "linkIds": [
@@ -152,7 +152,7 @@
       ]
      },
      {
-      "id": "5bfadc6b-c3cf-45e7-bca6-b7843264175e",
+      "id": "d2c46d41-3cb6-4a43-80c6-dc607439908a",
       "name": "review_probability",
       "type": "FLOAT",
       "linkIds": [
@@ -165,7 +165,7 @@
       ]
      },
      {
-      "id": "52eabc3c-4111-4dbd-b7d2-eabc97aee3a8",
+      "id": "0c3065d8-fc76-4174-92f7-6e17898ec03b",
       "name": "review_limit",
       "type": "INT",
       "linkIds": [
@@ -180,9 +180,9 @@
     ],
     "outputs": [
      {
-      "id": "bdd9d50e-5f41-4f53-b074-db53ddb039d3",
+      "id": "8abf8a0e-65ec-45b1-a2cc-2f078b8ae5d5",
       "name": "matched",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        57
       ],
@@ -193,9 +193,9 @@
       ]
      },
      {
-      "id": "35e729d1-4c16-438c-8dab-bda80c8ac084",
+      "id": "a2258891-02f6-4cf0-a4b2-8cedf2bb222c",
       "name": "different",
-      "type": "DECISIONS",
+      "type": "PAIR_DECISIONS",
       "linkIds": [
        58
       ],
@@ -206,9 +206,9 @@
       ]
      },
      {
-      "id": "fe2d4390-dae7-4c7b-8eae-67df1007efb4",
+      "id": "59a90c60-22f3-4357-acd7-0637ecafe79a",
       "name": "unsettled",
-      "type": "PAIRS",
+      "type": "RECORD_PAIRS",
       "linkIds": [
        54
       ],
@@ -240,7 +240,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 96
        },
        {
@@ -292,16 +292,14 @@
        {
         "localized_name": "data",
         "name": "data",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          53
         ]
        }
       ],
       "title": "Learn the points",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowLearnWeights"
-      },
+      "properties": {},
       "widgets_values": [
        "pairs.jsonl",
        "# Rough starting points; Learn weights replaces them with points learned from the pairs.\nrules: []\nscore:\n  kana_surname: {exact: 1, similar: 0.5, different: -1, missing: 0}\n  kana_given: {exact: 2, similar: 1, different: -2, missing: 0}\n  kana_freq: {rare: 1, common: 0, n/a: 0}\n  name: {exact: 2, similar: 1, different: -1, missing: 0}\n  birth: {exact: 2, close: 1, conflict: -2, missing: 0}\n  phone: {same: 2, different: -1, missing: 0}\n  address: {exact: 1, similar: 1, different: -1, missing: 0}\n  policy_ref: {same: 1, different: 0, missing: 0}\ndecide: {match: 4, review: 2}\n",
@@ -336,7 +334,7 @@
         "localized_name": "Pairs",
         "name": "data",
         "shape": 7,
-        "type": "PAIRS,DICT",
+        "type": "RECORD_PAIRS,DICT",
         "link": 53
        },
        {
@@ -371,7 +369,7 @@
        {
         "localized_name": "decisions",
         "name": "decisions",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": null
        },
        {
@@ -383,7 +381,7 @@
        {
         "localized_name": "matched",
         "name": "matched",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          57,
          102
@@ -392,7 +390,7 @@
        {
         "localized_name": "different",
         "name": "different",
-        "type": "DECISIONS",
+        "type": "PAIR_DECISIONS",
         "links": [
          58
         ]
@@ -400,16 +398,14 @@
        {
         "localized_name": "unsettled",
         "name": "unsettled",
-        "type": "PAIRS",
+        "type": "RECORD_PAIRS",
         "links": [
          54
         ]
        }
       ],
       "title": "Score the unsettled pairs",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowDecisionRules"
-      },
+      "properties": {},
       "widgets_values": [
        "pairs.jsonl",
        "# Learned by Learn weights from 57,624 pairs (0 reviewed): 87.8% of candidate pairs look like matches.\nrules: []\nscore:\n  kana_surname:\n    different: -1.6\n    exact: 0.3\n    similar: -1.6\n    missing: 0.0\n  kana_given:\n    different: -5.8\n    exact: 4.1\n    similar: -0.2\n    missing: 0.0\n  kana_freq:\n    common: 4.1\n    rare: -0.2\n    n/a: 0.0\n  name:\n    different: -2.8\n    exact: 4.4\n    similar: 1.2\n    missing: 0.0\n  birth:\n    close: 2.2\n    conflict: -4.0\n    exact: 5.5\n    missing: 0.0\n  phone:\n    different: 1.7\n    same: -0.7\n    missing: 0.0\n  address:\n    different: 0.1\n    exact: 0.2\n    similar: -0.1\n    missing: 0.0\n  policy_ref:\n    different: 2.0\n    same: -2.0\n    missing: 0.0\ndecide:\n  match: 1.4\n  review: -4.1\n",
@@ -474,9 +470,7 @@
       ],
       "outputs": [],
       "title": "Check · matched",
-      "properties": {
-       "Node name for S&R": "AgentWorkflowCheck"
-      },
+      "properties": {},
       "widgets_values": [
        "rows_at_least",
        "30000",
@@ -499,7 +493,7 @@
       "origin_slot": 1,
       "target_id": 39,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 52,
@@ -515,7 +509,7 @@
       "origin_slot": 0,
       "target_id": 38,
       "target_slot": 0,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 57,
@@ -523,7 +517,7 @@
       "origin_slot": 2,
       "target_id": -20,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 58,
@@ -531,7 +525,7 @@
       "origin_slot": 3,
       "target_id": -20,
       "target_slot": 1,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 54,
@@ -539,7 +533,7 @@
       "origin_slot": 4,
       "target_id": -20,
       "target_slot": 2,
-      "type": "PAIRS"
+      "type": "RECORD_PAIRS"
      },
      {
       "id": 102,
@@ -547,7 +541,7 @@
       "origin_slot": 2,
       "target_id": 61,
       "target_slot": 0,
-      "type": "DECISIONS"
+      "type": "PAIR_DECISIONS"
      },
      {
       "id": 120,

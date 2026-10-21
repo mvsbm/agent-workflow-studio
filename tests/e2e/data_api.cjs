@@ -75,7 +75,7 @@ const promises = {...intent.promises, outputs: intent.promises.outputs};
     }, {intent, steps, meta, promises});
     assert.deepEqual(result.uploaded, {...result.uploaded, name: 'orders.csv', subfolder: 'orders_e2e', type: 'input'});
     assert.equal(result.card, 'orders.csv', 'the promoted setting shows on the stage card');
-    assert.equal(result.checks, '✓ design · ✓ stage Checks · ✓ examples · ✓ no regression');
+    assert.equal(result.checks, '✓ design · ✓ tool tests · ✓ stage Checks · ✓ examples · ✓ no regression');
     assert.equal(result.published.semver, '1.0.0');
     // The answer: completed, the rows typed by the design's entity, and the full table as a native file.
     assert.equal(result.ran.status, 200);

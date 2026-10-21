@@ -242,7 +242,7 @@
               "type": "string",
               "pattern": "^(\\*|[A-Z][A-Z0-9_]*(,[A-Z][A-Z0-9_]*)*)$"
             },
-            "description": "The stage's typed outputs: port name -> socket type (TABLE, PAIRS, DECISIONS, CUSTOMERS, STRING, IMAGE, ..., or * while unknown)."
+            "description": "The stage's typed outputs: port name -> a registered type's socket (the type standard: TABLE, STRING, INT, ..., or a dataset class such as RECORD_PAIRS), or * while unknown."
           },
           "takes": {
             "type": "object",
@@ -486,7 +486,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 40,
-          "description": "What it holds: text, number, boolean, folder (a folder of data files the caller uploads to ComfyUI's input folder), file (one such file), image, ..."
+          "description": "What it holds: a registered kind of the type standard (text, integer, number, boolean, json, table, file: one data file the caller uploads first, folder: a folder of them). Old names resolve (count, csv, …)."
         },
         "description": {
           "type": "string",
