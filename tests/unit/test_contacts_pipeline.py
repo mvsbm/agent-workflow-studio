@@ -12,7 +12,9 @@ from pathlib import Path
 
 from custom_nodes.agent_workflow_studio.core import contacts as C
 from custom_nodes.agent_workflow_studio.core import steps
+from custom_nodes.agent_workflow_studio.core.candidates import find_pairs
 from custom_nodes.agent_workflow_studio.core.context import Context
+from custom_nodes.agent_workflow_studio.core.features import FEATURES, features
 from custom_nodes.agent_workflow_studio.nayose_bench.contacts import generate_contacts
 from custom_nodes.agent_workflow_studio.nayose_bench.score import score
 
@@ -103,6 +105,27 @@ addresses: {kanji: [都道府県, 住所]}
                 C.read_contacts(step_ctx(root, "a"), "a", "")
             self.assertIn("BIRTH_DATE (birth_date) is not in contacts.csv", str(caught.exception))
             self.assertIn("Map birth_date in the column map (or remove it", str(caught.exception))
+
+
+class StandardizeTests(unittest.TestCase):
+    def test_a_guessed_unvoiced_reading_meets_but_different_sounds_do_not(self) -> None:
+        def meet(a: str, b: str) -> bool:
+            raw = [{"key": k, "sur_kana": s, "giv_kana": "ハナコ"} for k, s in (("1", a), ("2", b))]
+            return find_pairs(C.standardize(raw, {}), passes=("exact",))[0] == [(0, 1)]
+
+        self.assertTrue(meet("ナカヅカ", "ナカツカ"))  # 中塚: a clerk's unvoiced guess
+        self.assertTrue(meet("ナカヅカ", "ナカズカ"))  # one sound, two spellings
+        self.assertTrue(meet("ヤマザキ", "ヤマサキ"))
+        self.assertFalse(meet("マツダ", "マスダ"))  # 松田 and 増田 are different names
+
+    def test_a_mistyped_birth_year_is_no_outlier(self) -> None:
+        raw = [
+            {"key": "1", "sur_kana": "ヤマダ", "birth_date": d}
+            for d in ("1067-03-03", "1967-03-03")
+        ]
+        records = C.standardize(raw, {})
+        X = features(records, [(0, 1)], C.frequencies(records))
+        self.assertEqual(X[0][FEATURES.index("dob_year_diff")], 50)  # as far apart as unknown
 
 
 class PipelineTests(unittest.TestCase):

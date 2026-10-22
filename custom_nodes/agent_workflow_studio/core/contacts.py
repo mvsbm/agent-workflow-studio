@@ -269,9 +269,11 @@ def fold_long(s: str) -> str:
     return "".join(out)
 
 
-def kana_key(s: str) -> str:
+def kana_key(s: str, fold_dz: bool = True) -> str:
     s = kata(s).replace(" ", "").replace("・", "").replace("　", "")
-    s = s.translate(SMALL).replace("ヅ", "ズ").replace("ヂ", "ジ")
+    s = s.translate(SMALL)
+    if fold_dz:  # ヅ/ヂ sound as ズ/ジ: either spelling is the same name
+        s = s.replace("ヅ", "ズ").replace("ヂ", "ジ")
     return fold_long(s)
 
 
@@ -373,6 +375,7 @@ class Record:
     full_k: str = ""
     full_n: str = ""
     loose_n: str = ""  # full kana without dakuten (a guessed reading meets)
+    loose_v: str = ""  # the same with ヅ/ヂ unvoiced to ツ/チ, not ス/シ ("" without ヅ/ヂ)
     dob: str = ""
     gender: str = ""
     aliases: set = field(default_factory=set)  # other surnames it states (a shop's base name)
@@ -436,6 +439,10 @@ def standardize(raw: list[dict], towns: dict[str, str], fixes=FIXES) -> list[Rec
             sk = gk = ""
         rec.sur_k, rec.giv_k = kanji_key(sk), kanji_key(gk)
         rec.sur_n, rec.giv_n = kana_key(sn), kana_key(gn)
+        voiced = kana_key(sn, fold_dz=False) + kana_key(gn, fold_dz=False)
+        # Unvoiced as written, so a clerk's ナカツカ meets ナカヅカ.
+        if "ヅ" in voiced or "ヂ" in voiced:
+            rec.loose_v = seion(voiced)
         rec.dob = r.get("birth_date") or ""
         rec.gender = (r.get("gender") or "").strip()
         for text in r.get("phones") or ():

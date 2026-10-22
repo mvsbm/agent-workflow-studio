@@ -51,7 +51,7 @@ def channel_exact(records, cap=50) -> set:
         lambda r: [r.dob + "|sn|" + r.sur_n] if r.sur_n and r.dob else [],
         lambda r: [r.dob + "|sk|" + s for s in {r.sur_k} | r.aliases if s] if r.dob else [],
         lambda r: [swapped_md(r.dob) + "|n|" + r.full_n] if r.full_n and r.dob else [],  # swapped
-        lambda r: ["L|" + r.loose_n] if len(r.loose_n) >= 4 else [],
+        lambda r: ["L|" + k for k in {r.loose_n, r.loose_v} if len(k) >= 4],
         lambda r: ["K|" + r.full_k] if len(r.full_k) >= 3 else [],
     ]
     out = set()
@@ -101,7 +101,7 @@ def channel_similar(records, k=10, least=0.5) -> set:
     n = len(texts)
     for i, t in enumerate(texts):
         grams = bigrams(t) if len(t) > 2 else set()
-        w = {g: math.log(n / df[g]) for g in grams}
+        w = {g: math.log(n / df[g]) for g in sorted(grams)}  # same columns every run: same pairs
         norm = math.sqrt(sum(v * v for v in w.values())) or 1
         for g, v in w.items():
             rows.append(i)

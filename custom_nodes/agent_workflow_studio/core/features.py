@@ -92,7 +92,7 @@ def features(records, pairs, freq) -> np.ndarray:
             jaro_winkler(a.giv_n, b.giv_n),
             float(bool(a.sur_k) and a.sur_k == b.sur_k),
             float(bool(a.giv_k) and a.giv_k == b.giv_k),
-            float(bool(a.loose_n) and a.loose_n == b.loose_n),
+            float(bool(a.loose_n) and bool({a.loose_n, a.loose_v} & {b.loose_n, b.loose_v} - {""})),
             float(bool(swap)),
             float(bool(giv)),
             float(bool(sur)),
@@ -100,7 +100,9 @@ def features(records, pairs, freq) -> np.ndarray:
             float(both_dob and a.dob == b.dob),
             float(both_dob and swapped_md(a.dob) == b.dob),
             float(dd),
-            abs(year(a.dob) - year(b.dob)) if both_dob else 50.0,
+            min(abs(year(a.dob) - year(b.dob)), 50)
+            if both_dob
+            else 50.0,  # a year typo (1067): no outlier
             gender,
             float(len(shared_ph)),
             min((math.log(freq["phone"][p]) for p in shared_ph), default=-1.0),
