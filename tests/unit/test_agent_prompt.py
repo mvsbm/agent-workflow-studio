@@ -17,7 +17,7 @@ EXTENSION = (HERE / "pi_chat_extension.ts").read_text()
 class AgentPromptTests(unittest.TestCase):
     def test_every_registered_comfy_tool_is_documented(self) -> None:
         registered = {tool["name"] for tool in TOOLS}
-        self.assertEqual(len(registered), 19)
+        self.assertEqual(len(registered), 21)
         for tool in registered:
             with self.subTest(tool=tool):
                 self.assertIn(f"`{tool}`", PROMPT)

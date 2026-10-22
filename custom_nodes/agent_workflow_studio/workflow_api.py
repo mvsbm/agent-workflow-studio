@@ -14,6 +14,7 @@ import tempfile
 from pathlib import Path
 
 from .api_review import compatibility
+from .core.checks import compare_example
 from .standards import api_kind, resolve
 from .standards import value_problems as type_problems
 
@@ -178,15 +179,6 @@ def collect_data(outputs: dict) -> dict:
     }
 
 
-def _loose(value: object) -> str:
-    return " ".join(str(value).split()).lower()
-
-
-def _cells(value: object) -> str:
-    """Cell values in order, whatever separates them: "North,1500; South,800" = "North 1500, South 800"."""
-    return " " + re.sub(r"[\s,;|]+", " ", str(value)).strip().lower() + " "
-
-
 def run_error(history: dict | None) -> str:
     """Why a run failed, from ComfyUI's history: the node and its error message."""
     if not history:
@@ -196,43 +188,6 @@ def run_error(history: dict | None) -> str:
             node = detail.get("node_type") or detail.get("node_id") or "a node"
             return f": {node} said {str(detail.get('exception_message', '')).strip()[:300]}"
     return ""
-
-
-def rows_text(value: object) -> str:
-    """A table as a person writes it in an example: "North 1500, South 800" (numbers plain)."""
-    rows = value.get("rows") if isinstance(value, dict) else None
-    if not isinstance(rows, list):
-        return ""
-
-    def plain(v: object) -> str:
-        return str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)
-
-    return ", ".join(
-        " ".join(plain(v) for v in row.values()) for row in rows if isinstance(row, dict)
-    )
-
-
-def compare_example(expect: dict, data: dict, outputs: dict) -> list[str]:
-    """What an example expected and the run did not deliver (empty: it passed). An expected value
-    is found in the promised output of that name, or else anywhere in the output stages' results."""
-    misses = []
-    everything = _loose(json.dumps(outputs, ensure_ascii=False, default=str))
-    for key, want in expect.items():
-        got = data.get(key)
-        if got is not None and not isinstance(got, dict | list):
-            ok = _loose(got) == _loose(want) or _loose(want) in _loose(got)
-        else:
-            found = (
-                _loose(json.dumps(got, ensure_ascii=False, default=str))
-                if got is not None
-                else everything
-            )
-            ok = _loose(want) in found or _cells(want) in _cells(rows_text(got))
-        if not ok:
-            misses.append(
-                f"{key}: expected {want!r}, got {str(got)[:120] if got is not None else 'nothing'}"
-            )
-    return misses
 
 
 def next_version(previous: dict | None, signature: dict, design: str) -> str:
@@ -698,6 +653,21 @@ def install_api_routes() -> None:
                 str(evidence.get("author") or "user"),
             )
             return {**result, "version": sha[:8]}
+
+        return await guarded(request, handler)
+
+    @routes.post("/agent-workflow-studio/projects/{workflow_id}/export")
+    async def export_route(request):
+        """Export as Python: the latest release as a repo with a command line, tested and packaged
+        ({"check": true}: only whether it can be exported)."""
+
+        async def handler():
+            from .export_python import export_workflow
+
+            body = await request.json() if request.can_read_body else {}
+            return await asyncio.to_thread(
+                export_workflow, request.match_info["workflow_id"], bool((body or {}).get("check"))
+            )
 
         return await guarded(request, handler)
 

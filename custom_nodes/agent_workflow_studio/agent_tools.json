@@ -671,6 +671,26 @@
   "action": "contract_status"
  },
  {
+  "name": "comfy_export_check",
+  "label": "Check the export",
+  "description": "Whether this workflow can be exported as a plain Python repo with a command line (no ComfyUI): it needs a published release (published after its checks all passed), and every node in it must have a Python export. Returns ready, the blockers (each node that cannot run outside ComfyUI, or 'not published yet') and the to-dos (inputs without a description, no examples, the canvas changed since the release). Call it first when the user asks to export, and fix or explain each blocker before exporting.",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "export_check"
+ },
+ {
+  "name": "comfy_export_python",
+  "label": "Export as Python",
+  "description": "Export the latest release as a Python repo: the same core steps the studio runs, a command line (run with one option per App input or a config file; init writes the config; check runs the contract's examples and every stage Check; the review step as a CSV round trip), its examples as tests, a README and CI. The studio installs it in a fresh environment, runs its check, builds a wheel, an sdist and a zip, and returns the result with download links. Takes a few minutes. Never write the program yourself: report what this returns (installed, check_passed and its output, the downloads).",
+  "parameters": {
+   "type": "object",
+   "properties": {}
+  },
+  "action": "export_python"
+ },
+ {
   "name": "comfy_propose_tool",
   "label": "Propose tool",
   "description": "Ask the user to approve a Python tool you wrote at tools/<name>.py in this workflow's workspace, used when no installed node can do a step. Its ports use the studio's registered types (like a node's sockets); its examples are its tests: they run in the sandbox before the user sees it, and again in every Run checks. The user sees the full code and the test results; once approved, the Agent Tool node runs that exact code (stdlib only, confined, time-limited) and checks its outputs against the declared kinds. Any later change needs a new approval.",

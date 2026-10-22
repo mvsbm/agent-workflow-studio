@@ -382,6 +382,20 @@ def tool_workflow():
     )
 
 
+def export_workflow():
+    """Export as Python the way the skill says: check first, then export, then report what came back."""
+    found = tool("export_check", {})
+    if not found.get("ready"):
+        say("FAKE PI · cannot export yet: " + "; ".join(found.get("blockers", [])))
+        return
+    done = tool("export_python", {})
+    files = ", ".join(d["file"] for d in done.get("downloads", []))
+    say(
+        f"FAKE PI · exported release {done.get('release')}: installed {done.get('installed')}, "
+        f"check passed {done.get('check_passed')}. Files: {files}"
+    )
+
+
 def comfy_tools_notice():
     return {
         "type": "comfy_tools",
@@ -448,7 +462,9 @@ while line := sys.stdin.readline():
         structured_answer(record)
     elif kind == "prompt":
         emit({"type": "agent_start"})
-        if "tool" in record["message"].lower():
+        if "export" in record["message"].lower():
+            export_workflow()
+        elif "tool" in record["message"].lower():
             tool_workflow()
         elif "build" in record["message"].lower():
             build_and_run()

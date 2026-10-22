@@ -229,6 +229,8 @@ function createChat() {
   actions.append(attachButton,hint,stopButton,sendButton);form.append(attached,input,actions,archiveNote,picker);form.addEventListener('submit',event=>{event.preventDefault();const typed=input.value.trim();const text=typed&&attachments.length?`${typed}\n\n(Attached, in ComfyUI's input folder: ${attachments.join(', ')})`:typed;if(!text||busy||connecting||configuring||resetting)return;try{if(ready)transmitPrompt(text);else connect(text);input.value='';attachments=[];showAttached();update();}catch(error){row('notice',error.message);update();}});
   input.addEventListener('input',update);input.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();event.stopPropagation();form.requestSubmit();}});
   root.append(header,files,log,status,form,historyDialog);update();
+  // Another panel starts a turn with a request (Export as Python): the same path as typing it.
+  root.ask=text=>{input.value=text;update();form.requestSubmit();};
   window.addEventListener('pagehide',()=>{saveArchive();generation++;settleDialogs();socket?.close();bridge.dispose();},{once:true});
   return root;
 }
@@ -248,4 +250,10 @@ if(host?.registerSidebarTab){
     const sidebar=app.extensionManager?.sidebarTab;
     if(!(app.rootGraph?.nodes?.length)&&!sidebar?.activeSidebarTabId)void app.extensionManager?.command?.execute('Workspace.ToggleSidebarTab.pi-chat');
   }});
+  // window.dispatchEvent(new CustomEvent('aws:ask-agent',{detail:{text}})): open the agent, send the request.
+  window.addEventListener('aws:ask-agent',async event=>{
+    if(app.extensionManager?.sidebarTab?.activeSidebarTabId!=='pi-chat')await app.extensionManager?.command?.execute('Workspace.ToggleSidebarTab.pi-chat');
+    chat??=createChat();
+    chat.ask(String(event.detail?.text??''));
+  });
 }

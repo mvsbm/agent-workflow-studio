@@ -81,6 +81,8 @@ CONTRACT_ACTIONS = {
     "contract_status",
     "tool_propose",
     "loop_step",
+    "export_check",
+    "export_python",
 }
 # Ponytail ultra also questions the request before building, which suits planning first.
 PONYTAIL_MODE = "ultra"
@@ -771,6 +773,13 @@ class PiChatSession:
     async def contract_action(self, action, arguments):
         if action == "contract_get":
             return {"contract": self.contract}
+        if action in (
+            "export_check",
+            "export_python",
+        ):  # the release, not the canvas: no contract needed here
+            from .export_python import export_workflow
+
+            return await asyncio.to_thread(export_workflow, self.repo.id, action == "export_check")
         if action != "contract_propose" and self.contract is None:
             raise ValueError(
                 "This workflow has no approved contract yet: propose it first with comfy_propose_contract."

@@ -23,11 +23,22 @@ const STEP_SPECS = (gates, variant) => [
   {id: 'standardize', purpose: 'Make names, phones and addresses comparable.', approach: 'fixed', covers: ['R1'], takes: {contacts: 'read.contacts'}, gives: {records: 'CONTACT_RECORDS'}, uses: 'Standardize contacts', why: 'the same name is typed many ways', pattern: 'Standardization', gate: {says: gates.standardize.says, check: at('records', 'rows_at_least', gates.standardize.value)}},
   {id: 'find_candidates', purpose: 'Pair the contacts worth comparing.', approach: 'fixed', covers: ['R1', 'R2'], takes: {records: 'standardize.records'}, gives: {candidates: 'CANDIDATE_PAIRS'}, uses: 'Find contact candidates', why: 'comparing every pair is too slow', pattern: 'Blocking', gate: {says: gates.find_candidates.says, check: at('candidates', 'rows_at_least', gates.find_candidates.value)}},
   {id: 'compare', purpose: 'Measure how alike the two contacts of each pair are.', approach: 'fixed', covers: ['R1'], takes: {records: 'standardize.records', candidates: 'find_candidates.candidates'}, gives: {pairs: 'RECORD_PAIRS'}, uses: 'Compare contacts', why: 'a model needs measured evidence', pattern: 'Comparison vector', gate: {says: gates.compare.says, check: at('pairs', 'rows_at_least', gates.compare.value)}},
-  {id: 'learn', purpose: 'Score every pair from your reviews, and ask you about the pairs it is least sure of.', approach: 'fixed', covers: ['R3'], takes: {pairs: 'compare.pairs'}, gives: {scored: 'RECORD_PAIRS', summary: 'STRING'}, uses: 'Learn from your reviews', why: 'your data, not ours, decides the weights', pattern: 'Active learning', gate: {says: gates.learn.says, check: at('scored', 'rows_at_least', gates.learn.value)}},
-  {id: 'decide', purpose: 'Decide each pair: match, to review, or different.', approach: 'fixed', covers: ['R1', 'R3'], takes: {scored: 'learn.scored'}, gives: {decisions: 'PAIR_DECISIONS', queue: 'PAIR_DECISIONS', summary: 'STRING'}, uses: 'Decide by score', why: 'the business sets precision against recall', pattern: 'Threshold policy', gate: {says: gates.decide.says, check: at('decisions', 'rows_at_least', gates.decide.value)}},
-  {id: 'group', purpose: 'Group matched contacts into entities, refusing merges decided different.', approach: 'fixed', covers: ['R1', 'R2'], takes: {decisions: 'decide.decisions'}, gives: {clusters: 'RECORD_CLUSTERS'}, uses: 'Cluster guard', why: 'one wrong link must not chain many', pattern: 'Guarded clustering', gate: {says: gates.group.says, check: at('clusters', 'rows_at_least', gates.group.value)}},
-  {id: 'publish', purpose: 'Give every contact its entity id.', approach: 'fixed', covers: ['R1'], takes: {contacts: 'read.contacts', clusters: 'group.clusters'}, gives: {entities: 'RECORD_CLUSTERS'}, uses: 'Entity per contact', why: 'every contact needs an id, merged or not', pattern: 'Publish', gate: {says: gates.publish.says, check: at('entities', 'rows_at_least', gates.publish.value)}},
+  {id: 'learn', purpose: 'Score every pair from your reviews, and ask you about the pairs it is least sure of.', approach: 'fixed', covers: ['R3'], takes: variant === 'benchmark' ? {pairs: 'compare.pairs', answer_key_file: 'STRING'} : {pairs: 'compare.pairs'}, gives: {scored: 'RECORD_PAIRS'}, uses: 'Learn from your reviews', why: 'your data, not ours, decides the weights', pattern: 'Active learning', gate: {says: gates.learn.says, check: at('scored', 'rows_at_least', gates.learn.value)}},
+  {id: 'decide', purpose: 'Decide each pair: match, to review, or different.', approach: 'fixed', covers: ['R1', 'R3'], takes: {pairs: 'learn.scored'}, gives: {decisions: 'PAIR_DECISIONS', queue: 'PAIR_DECISIONS'}, uses: 'Decide by score', why: 'the business sets precision against recall', pattern: 'Threshold policy', gate: {says: gates.decide.says, check: at('decisions', 'rows_at_least', gates.decide.value)}},
+  {id: 'group', purpose: 'Group matched contacts into entities, refusing merges decided different.', approach: 'fixed', covers: ['R1', 'R2'], takes: {data: 'decide.decisions'}, gives: {clusters: 'RECORD_CLUSTERS'}, uses: 'Cluster guard', why: 'one wrong link must not chain many', pattern: 'Guarded clustering', gate: {says: gates.group.says, check: at('clusters', 'rows_at_least', gates.group.value)}},
+  {id: 'publish', purpose: 'Give every contact its entity id.', approach: 'fixed', covers: ['R1'], takes: {records: 'read.contacts', clusters: 'group.clusters'}, gives: {entities: 'RECORD_CLUSTERS'}, uses: 'Entity per contact', why: 'every contact needs an id, merged or not', pattern: 'Publish', gate: {says: gates.publish.says, check: at('entities', 'rows_at_least', gates.publish.value)}},
 ];
+// The production workflow runs on anyone's data: its gates say each stage gave data, never a count of ours.
+const ANY_DATA = {
+  read: {says: 'The exports are read: at least one contact (10,540 on the benchmark data).', value: 1},
+  standardize: {says: 'Every contact read is standardized.', value: 1},
+  find_candidates: {says: 'Candidate pairs are found (15,219 on the benchmark data).', value: 1},
+  compare: {says: 'Every candidate pair is compared.', value: 1},
+  learn: {says: 'Every compared pair gets a score.', value: 1},
+  decide: {says: 'Every scored pair is decided.', value: 1},
+  group: {says: 'The decided pairs are grouped.', value: 1},
+  publish: {says: 'Every contact gets an entity id.', value: 1},
+};
 const GATES = JSON.parse(process.env.GATES || 'null') || {
   read: {says: 'At least 9,000 contacts are read (10,540 on the default data).', value: 9000},
   standardize: {says: 'Every contact is standardized: at least 9,000.', value: 9000},
@@ -81,13 +92,13 @@ EX12,伊藤,健,イトウ,ケン,ITOU,KEN,1970-10-10,M,1
 // App mode and the API: what a business changes, in its words.
 const KNOBS = {
   read: [['AgentWorkflowReadContacts', 'columns', 'columns', 'text', 'The column map: which column of your exports holds the key, names, birth date, phones and addresses.']],
-  learn: [['AgentWorkflowLearnFromReviews', 'batch', 'reviews_per_round', 'integer', 'How many pairs to ask you about each run.']],
+  learn: [['AgentWorkflowLearnFromReviews', 'batch', 'batch', 'integer', 'How many pairs to ask you about each run.']],
   decide: [
     ['AgentWorkflowDecideByScore', 'match_at', 'match_at', 'number', 'Merge pairs at least this likely to be the same (raise it for fewer wrong merges).'],
     ['AgentWorkflowDecideByScore', 'review_from', 'review_from', 'number', 'Pairs from here up to Match at go to your review queue.'],
-    ['AgentWorkflowDecideByScore', 'corroboration', 'precision_first', 'boolean', 'A merge also needs a shared phone, house, town or alias, not only name and birth date.'],
+    ['AgentWorkflowDecideByScore', 'corroboration', 'corroboration', 'boolean', 'A merge also needs a shared phone, house, town or alias, not only name and birth date.'],
   ],
-  group: [['AgentWorkflowClusterGuard', 'max_size', 'largest_group', 'integer', 'The most contacts one entity may have.']],
+  group: [['AgentWorkflowClusterGuard', 'max_size', 'max_size', 'integer', 'The most contacts one entity may have.']],
 };
 const NOTE = {
   benchmark: [
@@ -135,7 +146,7 @@ const NOTE = {
         ? 'Measure contact matching on generated contacts with an answer key: the same stages as Contact matching, with a simulated reviewer.'
         : 'Give every contact one entity id: contacts of the same person or company share it, and uncertain pairs go to you.',
       requests: REQUESTS,
-      examples: variant === 'benchmark' ? [] : [{id: 'E1', covers: ['R1', 'R2'], given: {exports: 'sample'}, files: SAMPLE, expect: {result: '12 contacts → 10 entities'}, note: 'Day 0, no reviews: EX01/02 and EX03/04 merge; a family (EX05/06) and namesakes (EX09/10) stay apart. The company pair EX07/08 merges once reviews teach the model.'}],
+      examples: variant === 'benchmark' ? [] : [{id: 'E1', covers: ['R1', 'R2'], given: {exports: 'sample'}, files: SAMPLE, expect: {entities: 'EX01 EX01, EX02 EX01, EX03 EX03, EX04 EX03, EX05 EX05, EX06 EX06, EX07 EX07, EX08 EX08, EX09 EX09, EX10 EX10'}, note: 'Day 0, no reviews: EX01/02 and EX03/04 merge; a family (EX05/06) and namesakes (EX09/10) stay apart. The company pair EX07/08 merges once reviews teach the model.'}],
       promises: {
         inputs: variant === 'benchmark' ? [] : [
           {name: 'exports', kind: 'folder', description: 'The folder with your contact exports (contacts, phones and addresses CSV files).', example: DATA},
@@ -146,7 +157,7 @@ const NOTE = {
           ...(variant === 'benchmark' ? [] : [{name: 'review_queue', kind: 'file', description: 'The pairs for people to decide.', from: 'decide.queue'}]),
         ],
       },
-      steps: STEP_SPECS(GATES, variant),
+      steps: STEP_SPECS(variant === 'benchmark' ? GATES : ANY_DATA, variant),
       decisions: DECISIONS,
       not_now: ['Embeddings or a reranker (measured: no gain)', 'A registry lookup for merged or renamed companies'],
       open_questions: [],
@@ -224,13 +235,15 @@ const NOTE = {
         const stage = app.graph.nodes.find(n => n.properties?.aws_stage === id);
         for (const [type, widget, , , description] of list) {
           const node = stage.subgraph.nodes.find(n => n.type === type);
-          const label = promoteWidget(stage, node, widget);
-          inputs.push({node: stage.id, widget: label ?? widget, description});
+          const label = promoteWidget(stage, node, widget) ?? widget;
+          inputs.push({node: stage.id, widget: label, description});
+          Object.assign(contract.promises.inputs.find(i => i.name === label), {node: stage.id, widget: label});
         }
       }
       const outputs = contract.promises.outputs.map(p => app.graph.nodes.find(n => n.properties?.aws_output === p.name).id);
       if (variant === 'production') {
         const exports = app.graph.nodes.find(n => n.properties?.aws_input === 'exports');
+        Object.assign(contract.promises.inputs.find(i => i.name === 'exports'), {node: exports.id, widget: 'folder'});
         setSignature(app.graph, [{node: exports.id, widget: 'folder', description: contract.promises.inputs[0].description}, ...inputs], outputs);
       }
       const md = LiteGraph.createNode('MarkdownNote');

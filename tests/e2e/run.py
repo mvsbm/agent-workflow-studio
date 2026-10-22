@@ -20,6 +20,7 @@ SHARDS = {
         "fuzzy_node.cjs",
         "agent_tool.cjs",
         "graduation.cjs",
+        "export_python.cjs",
     ],
     # The workflow's data and tabs: review, decisions, matching, the API, design, data, the shell.
     "data": [

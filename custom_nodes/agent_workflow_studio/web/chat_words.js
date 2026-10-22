@@ -17,6 +17,8 @@ const PHRASES = {
   comfy_find_converter: 'Finding a converter',
   comfy_input_files: 'Looking at your files',
   comfy_contract_status: 'Checking progress',
+  comfy_export_check: 'Checking it can be exported',
+  comfy_export_python: 'Exporting as Python (install, test, package)',
   comfy_propose_tool: 'Proposing a code tool',
   comfy_workspace: 'Working with workflow files',
   read: 'Reading a file',

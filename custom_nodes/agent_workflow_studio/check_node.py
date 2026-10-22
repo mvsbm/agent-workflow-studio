@@ -15,82 +15,34 @@ from typing import Any
 
 from comfy_api.latest import io
 
-KINDS = [
-    "non_empty",
-    "rows_at_least",
-    "at_least",
-    "contains",
-    "equals",
-    "regex",
-    "image_count_at_least",
-]
+from .core.checks import KINDS, MAX_ROWS, file_rows
+from .core.checks import judge as core_judge
+from .core.checks import rows_of as core_rows_of
 
 
 def rows_of(value: Any) -> int | None:
     """How many rows / pairs / items a value holds, when it says."""
-    if isinstance(value, dict):
-        if isinstance(value.get("rows"), list):
-            return len(value["rows"])
-        if isinstance(value.get("row_count"), int):  # a dataset reference says its size
-            return value["row_count"]
-        if isinstance(value.get("count"), int):
-            return value["count"]
-        if value.get("file") and value.get("_run_folders"):  # a run-folder record: count its file
-            from .nayose_nodes import find_file
+    if isinstance(value, dict) and value.get("file") and value.get("_run_folders"):
+        from .nayose_nodes import find_file  # a run-folder record (before dataset references)
 
-            try:
-                path = find_file(value["file"], value)
-                return sum(
-                    1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
-                ) - (path.suffix == ".csv")
-            except (OSError, ValueError):
-                return None
-    if isinstance(value, list | tuple):
-        return len(value)
-    shape = getattr(value, "shape", None)
-    return int(shape[0]) if shape else None
-
-
-def text_of(value: Any) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, dict) and isinstance(value.get("text"), str):
-        return value["text"]
-    try:
-        return json.dumps(value, ensure_ascii=False, default=str)[:200_000]
-    except (TypeError, ValueError):
-        return str(value)[:200_000]
+        try:
+            path = find_file(value["file"], value)
+            return sum(
+                1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+            ) - (path.suffix == ".csv")
+        except (OSError, ValueError):
+            return None
+    return core_rows_of(value)
 
 
 def judge(value: Any, kind: str, expect: str) -> tuple[bool, str]:
     """(passed, evidence) for one check."""
-    if kind == "image_count_at_least":
-        n = rows_of(value) if getattr(value, "shape", None) is not None else 0
-        return n >= int(expect or 1), f"{n} image(s)"
-    if (
-        kind == "at_least"
-    ):  # a number (e.g. an accuracy from Compare to truth) at least the expected
-        number = value if isinstance(value, int | float) and not isinstance(value, bool) else None
-        if number is None:
-            return False, f"not a number: {text_of(value)[:60]}"
-        return number >= float(expect or 0), f"{number:g} (need ≥ {expect})"
-    if kind in ("non_empty", "rows_at_least"):
-        n = rows_of(value)
-        need = 1 if kind == "non_empty" else int(expect or 1)
-        if n is None:
-            empty = value is None or not text_of(value).strip()
-            return (not empty) and need <= 1, "a value" if not empty else "nothing"
-        return n >= need, f"{n:,} row(s)"
-    text = text_of(value)
-    passed = {
-        "contains": lambda: str(expect) in text,
-        "equals": lambda: text.strip() == str(expect).strip(),
-        "regex": lambda: re.search(str(expect), text) is not None,
-    }[kind]()
-    return passed, text[:200]
+    return core_judge(value, kind, expect, rows_of)
 
 
 class Check(io.ComfyNode):
+    EXPORT = "runner:check"  # what an exported Python repo runs for this node
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -146,23 +98,9 @@ class Check(io.ComfyNode):
         )
 
 
-MAX_ROWS = 10_000  # an API answer stays a reasonable size; the full table is in the written file
-
-
 def dataset_rows(value: dict) -> dict:
     """A dataset reference as its rows (capped), never the server's file path."""
-    path = Path(value["uri"])
-    with open(path, encoding="utf-8-sig", newline="") as file:
-        if value.get("format") == "csv":
-            reader = csv.DictReader(file)
-            rows = [row for _, row in zip(range(MAX_ROWS), reader, strict=False)]
-            total = len(rows) + sum(1 for _ in reader)
-            columns = list(reader.fieldnames or [])
-        else:
-            lines = [line for line in file if line.strip()]
-            rows, total = [json.loads(line) for line in lines[:MAX_ROWS]], len(lines)
-            columns = list(rows[0]) if rows else []
-    return {"name": value.get("name"), "columns": columns, "rows": rows, "total_rows": total}
+    return {"name": value.get("name"), **file_rows(Path(value["uri"]), value.get("format") or "")}
 
 
 def plain(value: Any) -> Any:
@@ -226,6 +164,8 @@ def app_file(name: str, value: Any, output_dir: Path) -> dict:
 
 class ApiOutput(io.ComfyNode):
     """A promised output's value, returned by the workflow's API (placed by the skeleton)."""
+
+    EXPORT = "runner:api_output"
 
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -294,6 +234,8 @@ def input_folders() -> list[str]:
 
 
 class DataFolder(io.ComfyNode):
+    EXPORT = "runner:data_folder"  # what an exported Python repo runs for this node
+
     """A promised data input: a folder of files in ComfyUI's input folder (claim check)."""
 
     @classmethod

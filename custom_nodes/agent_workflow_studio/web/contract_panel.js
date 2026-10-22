@@ -94,6 +94,9 @@ async function request(path, options) {
   return body;
 }
 
+// What the Export as Python button asks the agent (it uses comfy_export_check, then comfy_export_python).
+const EXPORT_REQUEST = 'Export this workflow as a Python program I can run without ComfyUI: check it is ready (published, every step exportable), tell me what blocks it, then export it, test it and give me the package.';
+
 // The workflow as an API: what is published (endpoint, version, a call to copy) and the button to
 // publish the current version. The server refuses until the structure and release items hold.
 function apiSection() {
@@ -105,13 +108,14 @@ function apiSection() {
   const publish = el('button', 'Publish as API', {type: 'button', className: 'aw-button aw-button-primary'});
   const examples = el('button', 'Run checks', {type: 'button', className: 'aw-button', title: "This workflow's CI: its design, every stage's Checks, the contract's examples and no regression since the last release, on exactly this graph. Publishing needs them all to pass."});
   const back = el('button', 'Roll back', {type: 'button', className: 'aw-button', hidden: true});
+  const exportPython = el('button', 'Export as Python', {type: 'button', className: 'aw-button', title: 'The published release as a Python program with a command line, without ComfyUI: the agent checks it is ready, exports it, tests it in a fresh environment and gives you the package.'});
   const result = el('p', null, {role: 'status', className: 'aw-contract-result'});
   // The outer loop: run the published workflow on a schedule; each run's Checks become a version.
   const every = el('input', null, {type: 'number', min: '0', step: '5', placeholder: 'minutes', className: 'aw-field', style: 'width: 7em; flex: none'});
   every.setAttribute('aria-label', 'Watch every N minutes (0 stops)');
   const watch = el('button', 'Watch', {type: 'button', className: 'aw-button', title: 'Run the published API on a schedule and record whether its Checks pass'});
   const row = (...items) => { const line = el('div', null, {className: 'aw-contract-row'}); line.append(...items); return line; };
-  apiBody.append(info, row(name, examples, publish), row(back, every, watch), result);
+  apiBody.append(info, row(name, examples, publish), row(back, exportPython, every, watch), result);
   watch.addEventListener('click', async () => {
     try {
       const response = await api.fetchApi(`/agent-workflow-studio/api/${encodeURIComponent(name.value.trim())}/watch`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({every_minutes: Number(every.value || 0)})});
@@ -162,6 +166,8 @@ function apiSection() {
     if (mine.length) show(mine.at(-1));
     else info.replaceChildren(el('div', 'Not published. Choose its inputs and outputs in App mode (or ask the agent to set the signature), then publish.'));
   };
+  // Export as Python: the agent checks the release, exports it, tests the program and hands it over.
+  exportPython.addEventListener('click', () => window.dispatchEvent(new CustomEvent('aws:ask-agent', {detail: {text: EXPORT_REQUEST}})));
   publish.addEventListener('click', async () => {
     result.textContent = 'Publishing…';
     try {

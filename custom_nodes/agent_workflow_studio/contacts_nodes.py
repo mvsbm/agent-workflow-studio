@@ -412,8 +412,8 @@ class EntityPerContact(io.ComfyNode):
             category=CATEGORY,
             search_aliases=["entity id", "nayose result", "golden record", "output"],
             description=(
-                "Every contact with its entity id: contacts Cluster guard grouped share their cluster's id; every "
-                "other contact is its own entity. Writes entities.csv (record, cluster)."
+                "Every contact with its entity id: contacts Cluster guard grouped share the lowest key among them; "
+                "every other contact is its own entity, under its own key. Writes entities.csv (record, cluster)."
             ),
             inputs=[
                 Contacts.Input(

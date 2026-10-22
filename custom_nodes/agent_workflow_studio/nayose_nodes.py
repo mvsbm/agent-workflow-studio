@@ -412,6 +412,8 @@ def find_file(name: str, result: Any) -> Path:
 
 
 class PreviewTable(io.ComfyNode):
+    EXPORT = None  # only shows a table: an export leaves it out
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -398,18 +398,17 @@ def cluster_guard(
 
 # --- 8 publish -----------------------------------------------------------------------------------
 def entity_per_contact(ctx: Context, records, clusters) -> tuple:
-    """Every contact with its entity: grouped contacts share their cluster's id, the rest get their
-    own."""
-    grouped = {r["record"]: r["cluster"] for r in read_csv(clusters)}
-    keys = [r["key"] for r in C.load_jsonl(Path(records))]
-    numbers = [int(c[1:]) for c in grouped.values() if c[1:].isdigit()]
-    fresh = max(numbers, default=0)
-    rows = []
-    for key in keys:
-        if key not in grouped:
-            fresh += 1
-            grouped[key] = f"C{fresh:06d}"
-        rows.append({"record": key, "cluster": grouped[key]})
+    """Every contact with its entity id: the lowest key of the contacts grouped with it (its
+    own key when alone), the same however often it runs."""
+    members = defaultdict(list)
+    for r in read_csv(clusters):
+        members[r["cluster"]].append(r["record"])
+    lowest = lambda keys: min(keys, key=lambda k: (len(k), k))  # noqa: E731  numeric order for digit keys
+    entity = {key: lowest(keys) for keys in members.values() for key in keys}
+    rows = [
+        {"record": key, "cluster": entity.get(key, key)}
+        for key in (r["key"] for r in C.load_jsonl(Path(records)))
+    ]
     path = ctx.run_dir / "entities.csv"
     write_csv(path, rows, ["record", "cluster"])
     entities = len({r["cluster"] for r in rows})
