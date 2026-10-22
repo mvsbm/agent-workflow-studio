@@ -67,6 +67,10 @@ export function promoteWidget(stage, node, name) {
   const shown = input.label || input.localized_name || node.widgets?.find(w => w.name === name)?.label;
   if (shown && shown !== label) sg.inputs.at(-1).label = shown;
   if (!sg.inputNode.slots.at(-1).connect(input, node)) throw Error(`Could not put ${name} on the stage card.`);
+  // The card's own input and widget carry the shown name too: App mode titles an input by it.
+  if (shown && shown !== label) {
+    for (const item of [stage.inputs?.find(i => i.name === label), stage.widgets?.find(w => w.name === label)]) if (item) item.label = shown;
+  }
   return label;
 }
 

@@ -22,7 +22,8 @@ const folder = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_
     await setting.set('Comfy.Graph.CanvasMenu', false);
     await command.execute('Workspace.ToggleFocusMode');
   });
-  for (const file of fs.readdirSync(folder).filter(f => f.endsWith('.json'))) {
+  // ONLY=<part of a name>: just those templates (the others keep their pictures).
+  for (const file of fs.readdirSync(folder).filter(f => f.endsWith('.json') && f.includes(process.env.ONLY || ''))) {
     const workflow = JSON.parse(fs.readFileSync(path.join(folder, file), 'utf8'));
     await page.evaluate(async ([w, name]) => {
       const app = window.comfyAPI.app.app;

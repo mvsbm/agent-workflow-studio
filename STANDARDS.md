@@ -47,6 +47,9 @@ keep working as aliases. A type that is not registered is refused, never guessed
 
 | Domain | Class | Socket | Storage | File | Was | What it is |
 |---|---|---|---|---|---|---|
+| contacts | contacts | CONTACTS | file | contacts.jsonl |  | One contact per key as the exports gave it, mapped to the standard field names, with its phones and addresses attached. |
+| contacts | contact_records | CONTACT_RECORDS | file | records.jsonl |  | Contacts standardized for matching: name keys in both scripts, company name core, phones canonical, addresses parsed to town, house and unit. |
+| matching | candidate_pairs | CANDIDATE_PAIRS | file | candidates.csv |  | Pairs of records worth comparing (blocking), with the passes that found each; not compared yet. |
 | matching | record_pairs | RECORD_PAIRS | file | pairs.jsonl | PAIRS | Candidate pairs of records, compared field by field (one level per field), not decided yet. |
 | matching | pair_decisions | PAIR_DECISIONS | file | decisions.csv | DECISIONS | Decided pairs: match or different, with the rule or score band that decided and why. |
 | matching | record_clusters | RECORD_CLUSTERS | file | clusters.csv | CUSTOMERS | Records grouped into clusters (one entity each), built strongest-first from the decisions, refusing merges decided different. |

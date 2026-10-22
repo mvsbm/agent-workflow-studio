@@ -91,8 +91,9 @@ class RegistryTests(unittest.TestCase):
         types = copy.deepcopy(types)
         domains = copy.deepcopy(domains)
         types["types"]["TABLE"]["aliases"].append("PAIRS")  # a name two things claim
-        domains[0]["classes"]["record_pairs"]["storage"] = "cloud"
-        domains[0]["classes"]["pair_decisions"]["socket"] = "RECORD_PAIRS"
+        matching = next(d for d in domains if d["domain"] == "matching")
+        matching["classes"]["record_pairs"]["storage"] = "cloud"
+        matching["classes"]["pair_decisions"]["socket"] = "RECORD_PAIRS"
         with self.assertRaises(ValueError) as caught:
             build(types, domains)
         message = str(caught.exception)

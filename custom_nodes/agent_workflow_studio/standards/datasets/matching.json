@@ -3,6 +3,21 @@
  "domain": "matching",
  "description": "Record matching (entity resolution, deduplication): candidate pairs, the decisions on them, and the clusters they form.",
  "classes": {
+  "candidate_pairs": {
+   "description": "Pairs of records worth comparing (blocking), with the passes that found each; not compared yet.",
+   "socket": "CANDIDATE_PAIRS",
+   "format": "csv",
+   "file": "candidates.csv",
+   "row": {
+    "type": "object",
+    "required": ["left", "right"],
+    "properties": {
+     "left": {"type": "string"},
+     "right": {"type": "string"},
+     "found_by": {"type": "string", "description": "The passes that found the pair, joined with +."}
+    }
+   }
+  },
   "record_pairs": {
    "description": "Candidate pairs of records, compared field by field (one level per field), not decided yet.",
    "socket": "RECORD_PAIRS",

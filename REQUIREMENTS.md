@@ -197,3 +197,10 @@ text one click away; a file is attached in the chat into ComfyUI's input folder;
 the whole workflow after each build; contract examples bring their own sample files, so they run
 before the user's data exists; an approved contract names and saves the workflow, and App mode
 labels its inputs in the contract's words. ✅
+
+**R41 · A finished workflow becomes a plain Python program.** A node's logic lives in the studio's
+core (no ComfyUI inside); its node only shows what it did. "Export as Python" turns a published,
+green workflow into a small repo with a command line: one option per App input, its column map
+and settings in a file, the review step as a CSV round trip, its examples as tests. The agent
+checks the workflow is ready, runs the export, tests the command line in a fresh environment and
+hands over the package; it never writes the program by hand. 🚧

@@ -1,0 +1,51 @@
+{
+ "$comment": "Dataset classes of the contacts domain: CRM contacts (one key, names in kanji/kana/romaji, a birth date, several phones and addresses) on their way to entity resolution.",
+ "domain": "contacts",
+ "description": "CRM contacts read through a column map, and the same contacts standardized for matching.",
+ "classes": {
+  "contacts": {
+   "description": "One contact per key as the exports gave it, mapped to the standard field names, with its phones and addresses attached.",
+   "socket": "CONTACTS",
+   "format": "jsonl",
+   "file": "contacts.jsonl",
+   "row": {
+    "type": "object",
+    "required": ["key", "birth_date", "phones", "addresses"],
+    "properties": {
+     "key": {"type": "string", "description": "The contact's key (CONT_ID, or key columns joined with |)."},
+     "sur_kanji": {"type": "string"},
+     "giv_kanji": {"type": "string"},
+     "sur_kana": {"type": "string"},
+     "giv_kana": {"type": "string"},
+     "sur_romaji": {"type": "string"},
+     "giv_romaji": {"type": "string"},
+     "birth_date": {"type": "string", "description": "YYYY-MM-DD, or empty when unreadable."},
+     "gender": {"type": "string"},
+     "flag": {"type": "string", "description": "1 person, 2 company, as recorded."},
+     "phones": {"type": "array", "items": {"type": "string"}},
+     "addresses": {"type": "array", "items": {"type": "string"}}
+    }
+   }
+  },
+  "contact_records": {
+   "description": "Contacts standardized for matching: name keys in both scripts, company name core, phones canonical, addresses parsed to town, house and unit.",
+   "socket": "CONTACT_RECORDS",
+   "format": "jsonl",
+   "file": "records.jsonl",
+   "row": {
+    "type": "object",
+    "required": ["key"],
+    "properties": {
+     "key": {"type": "string"},
+     "full_k": {"type": "string", "description": "Name in kanji, variants folded."},
+     "full_n": {"type": "string", "description": "Name in kana, small kana and long vowels folded."},
+     "dob": {"type": "string"},
+     "core_k": {"type": "string", "description": "A company's name without legal form or branch."},
+     "phones": {"type": "array", "items": {"type": "string"}},
+     "houses": {"type": "array", "items": {"type": "string"}},
+     "localities": {"type": "array", "items": {"type": "string"}}
+    }
+   }
+  }
+ }
+}

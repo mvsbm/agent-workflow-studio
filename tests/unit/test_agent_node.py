@@ -93,6 +93,13 @@ class PiStructuredAgentTests(unittest.TestCase):
                 "AgentWorkflowNayoseExport",
                 "AgentWorkflowNayoseScore",
                 "AgentWorkflowPreviewTable",
+                *(
+                    f"AgentWorkflow{name}"
+                    for name in (
+                        "ReadContacts StandardizeContacts FindContactCandidates CompareContacts "
+                        "LearnFromReviews DecideByScore EntityPerContact SyntheticContacts ScoreContacts"
+                    ).split()
+                ),
             },
         )
 

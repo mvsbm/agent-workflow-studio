@@ -9,7 +9,7 @@ import os, subprocess, sys
 sys.path.insert(0, "tests/e2e")
 from fixture import REPO, ComfyFixture
 with ComfyFixture({}) as comfy:
-    for script in ("tests/e2e/build_templates.cjs", "tests/e2e/build_reference.cjs", "tests/e2e/template_thumbnails.cjs"):
+    for script in ("tests/e2e/build_templates.cjs", "tests/e2e/build_reference.cjs", "tests/e2e/build_contacts.cjs", "tests/e2e/template_thumbnails.cjs"):
         done = subprocess.run(["node", script], cwd=REPO, env={**os.environ, "BASE": comfy.url}, timeout=900)
         if done.returncode:
             print(comfy.log_tail(40))

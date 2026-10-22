@@ -149,11 +149,29 @@ class Check(io.ComfyNode):
 MAX_ROWS = 10_000  # an API answer stays a reasonable size; the full table is in the written file
 
 
+def dataset_rows(value: dict) -> dict:
+    """A dataset reference as its rows (capped), never the server's file path."""
+    path = Path(value["uri"])
+    with open(path, encoding="utf-8-sig", newline="") as file:
+        if value.get("format") == "csv":
+            reader = csv.DictReader(file)
+            rows = [row for _, row in zip(range(MAX_ROWS), reader, strict=False)]
+            total = len(rows) + sum(1 for _ in reader)
+            columns = list(reader.fieldnames or [])
+        else:
+            lines = [line for line in file if line.strip()]
+            rows, total = [json.loads(line) for line in lines[:MAX_ROWS]], len(lines)
+            columns = list(rows[0]) if rows else []
+    return {"name": value.get("name"), "columns": columns, "rows": rows, "total_rows": total}
+
+
 def plain(value: Any) -> Any:
-    """The value as JSON an API caller can use: text and numbers as they are, a table as columns and
-    rows (capped), a run-folder record as its file and counts."""
+    """The value as JSON an API caller can use: text and numbers as they are, a table or a dataset
+    as columns and rows (capped), a run-folder record as its file and counts."""
     if value is None or isinstance(value, str | int | float | bool):
         return value
+    if isinstance(value, dict) and value.get("kind") == "studio#dataset" and value.get("uri"):
+        return dataset_rows(value)
     if isinstance(value, dict) and isinstance(value.get("rows"), list):
         return {
             "columns": value.get("columns"),
@@ -176,6 +194,8 @@ def app_file(name: str, value: Any, output_dir: Path) -> dict:
     """The promised output as a file App mode can show: a file the workflow already wrote under the
     output folder as it is, else the value written as CSV (a table), JSON (data) or text."""
     root = output_dir.resolve()
+    if isinstance(value, dict) and value.get("kind") == "studio#dataset" and value.get("uri"):
+        value = str(value["uri"])  # a dataset written under output/: shown as its own file
     if isinstance(value, str) and value.strip():
         found = (root / value.strip()).resolve()
         if found.is_file() and root in found.parents and found.suffix[1:].lower() in PREVIEWABLE:
@@ -252,7 +272,7 @@ class ApiOutput(io.ComfyNode):
         )
 
 
-NOT_DATA = {"3d", "clipspace", "examples"}
+NOT_DATA = {"3d", "clipspace", "examples", "reference"}
 
 
 def input_folders() -> list[str]:

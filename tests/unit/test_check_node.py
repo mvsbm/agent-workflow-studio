@@ -47,6 +47,16 @@ class CheckTests(unittest.TestCase):
             self.assertTrue(
                 app_file("x", "../../etc/passwd", out)["filename"].endswith(".txt")
             )  # never outside
+            # A dataset answers with its rows (never the server's path) and shows as its own file.
+            from custom_nodes.agent_workflow_studio.check_node import plain
+
+            ref = {"kind": "studio#dataset", "class": "record_clusters", "name": "entities",
+                   "uri": str(out / "nayose" / "result.csv"), "format": "csv", "_run_folders": []}  # fmt: skip
+            self.assertEqual(
+                plain(ref),
+                {"name": "entities", "columns": ["a"], "rows": [{"a": "1"}], "total_rows": 1},
+            )
+            self.assertEqual(app_file("entities", ref, out)["subfolder"], "nayose")
 
 
 if __name__ == "__main__":

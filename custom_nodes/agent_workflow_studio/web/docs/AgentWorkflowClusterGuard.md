@@ -16,6 +16,7 @@ Builds clusters from the match decisions, strongest first, and refuses any merge
 | Different 3 (optional) | `PAIR_DECISIONS,DICT` | A stage's different branch (Decision rules, Your review decisions). |
 | Different 4 (optional) | `PAIR_DECISIONS,DICT` | A stage's different branch (Decision rules, Your review decisions). |
 | Max records per cluster | `INT` | 0 = no cap. Default: `60`. |
+| Scores keep apart (optional) | `BOOLEAN` | A pair the score decided different also keeps its records apart (a learned score is proof enough); off: only rules and your reviews do. Default: ``. |
 
 ## Outputs
 

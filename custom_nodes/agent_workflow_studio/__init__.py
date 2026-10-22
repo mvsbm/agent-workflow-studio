@@ -9,6 +9,7 @@ from comfy_api.latest import ComfyExtension
 from .agent_node import PiStructuredAgent
 from .agent_tool_node import AgentToolNode
 from .check_node import NODES as CHECK_NODES
+from .contacts_nodes import NODES as CONTACTS_NODES
 from .decision_rules import DecisionRules
 from .eda_node import NODES as EDA_NODES
 from .fuzzy_node import FuzzyNode
@@ -38,6 +39,7 @@ class AgentWorkflowStudioExtension(ComfyExtension):
             *CALC_NODES,
             *SYNTH_NODES,
             *MATCHING_NODES,
+            *CONTACTS_NODES,
             *SEMANTIC_NODES,
             *NAYOSE_NODES,
         ]

@@ -151,7 +151,7 @@ class TypedToolTests(unittest.TestCase):
                 "outputs", [{"name": "shade", "kind": "colour"}, {"name": "Bad", "kind": "INT"}]
             ),
             [
-                "outputs: shade has kind 'colour'; use a registered type: STRING, INT, FLOAT, BOOLEAN, DICT, TABLE, RECORD_PAIRS, PAIR_DECISIONS, RECORD_CLUSTERS.",
+                "outputs: shade has kind 'colour'; use a registered type: STRING, INT, FLOAT, BOOLEAN, DICT, TABLE, CONTACTS, CONTACT_RECORDS, CANDIDATE_PAIRS, RECORD_PAIRS, PAIR_DECISIONS, RECORD_CLUSTERS.",
                 "outputs: 'Bad' is not a short lowercase name.",
             ],
         )

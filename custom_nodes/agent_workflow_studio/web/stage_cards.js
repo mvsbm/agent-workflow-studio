@@ -9,7 +9,7 @@ import {designLabels, stageSummary} from './stage_summary.js';
 const CHANGED = 'agent-workflow-studio:versions-changed';
 const KINDS = {data: ['#24496b', '#1a3550'], stage: ['#3d4a5c', '#2b3340'], decision: ['#5b3d7a', '#3a2a4f'], code: ['#7a5c14', '#4d3a0e']};
 const STATES = {planned: '#5a6b80', built: '#4a6fa5', fuzzy: '#7a52a8', verified: '#2f8a4a', failing: '#b04040'};
-const DECIDERS = new Set(['AgentWorkflowLearnWeights', 'AgentWorkflowDecisionRules', 'AgentWorkflowLLMSuggestions', 'AgentWorkflowReviewDecisions', 'AgentWorkflowClusterGuard']);
+const DECIDERS = new Set(['AgentWorkflowLearnWeights', 'AgentWorkflowDecisionRules', 'AgentWorkflowLLMSuggestions', 'AgentWorkflowReviewDecisions', 'AgentWorkflowClusterGuard', 'AgentWorkflowLearnFromReviews', 'AgentWorkflowDecideByScore']);
 function kindOf(node) {
   const types = node.subgraph?.nodes?.map(n => n.type) ?? [];
   if (types.some(t => DECIDERS.has(t))) return 'decision';

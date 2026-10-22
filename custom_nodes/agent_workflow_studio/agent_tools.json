@@ -704,6 +704,9 @@
          "BOOLEAN",
          "DICT",
          "TABLE",
+         "CONTACTS",
+         "CONTACT_RECORDS",
+         "CANDIDATE_PAIRS",
          "RECORD_PAIRS",
          "PAIR_DECISIONS",
          "RECORD_CLUSTERS"
@@ -740,6 +743,9 @@
          "BOOLEAN",
          "DICT",
          "TABLE",
+         "CONTACTS",
+         "CONTACT_RECORDS",
+         "CANDIDATE_PAIRS",
          "RECORD_PAIRS",
          "PAIR_DECISIONS",
          "RECORD_CLUSTERS"
