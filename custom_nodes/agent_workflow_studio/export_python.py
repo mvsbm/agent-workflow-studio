@@ -287,7 +287,9 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
         ),  # fmt: skip
         encoding="utf-8",
     )
-    (target / "README.md").write_text(readme(release, contract, pkg, inputs), encoding="utf-8")
+    (target / "README.md").write_text(
+        readme(release, contract, pkg, inputs, package), encoding="utf-8"
+    )
     (target / ".gitignore").write_text(
         "out/\n*.egg-info/\n__pycache__/\ndist/\nbuild/\n.venv/\n", encoding="utf-8"
     )
@@ -315,11 +317,26 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
     return target
 
 
-def readme(release: dict, contract: dict, pkg: str, inputs: dict) -> str:
+def readme(
+    release: dict, contract: dict, pkg: str, inputs: dict, pkg_dir: Path | None = None
+) -> str:
     name = release["name"]
+
+    def shown(v) -> str:  # a multi-line default (the column map) lives in the config file
+        return "in config.yaml (`init` writes it)" if isinstance(v, str) and "\n" in v else f"`{v}`"
+
     rows = "\n".join(
-        f"| `--{k.replace('_', '-')}` | {d or ''} | `{str(v)[:40]!s}` |".replace("\n", " ")
-        for k, (v, _, d) in inputs.items()
+        f"| `--{k.replace('_', '-')}` | {d or ''} | {shown(v)} |" for k, (v, _, d) in inputs.items()
+    )
+    files = sorted(p.name for p in (Path(pkg_dir) / "reference").glob("*")) if pkg_dir else []
+    reference = (
+        "\n## Reference data\n\nShipped in `"
+        + pkg
+        + "/reference/`, as the studio used it: "
+        + ", ".join(f"`{f}`" for f in files)
+        + ".\n"
+        if files
+        else ""
     )
     steps = "\n".join(
         f"{i + 1}. **{s['id']}**: {s['purpose']}" for i, s in enumerate(contract.get("steps") or [])
@@ -328,6 +345,7 @@ def readme(release: dict, contract: dict, pkg: str, inputs: dict) -> str:
         title=contract.get("title") or name, purpose=contract.get("purpose") or release.get("description") or "",
         name=name, pkg=pkg, semver=release["semver"], rows=rows, steps=steps or "(no contract)",
         outputs=", ".join(f"`{o['name']}`" for o in release["signature"]["outputs"]),
+        reference=reference,
     )  # fmt: skip
 
 
@@ -336,8 +354,9 @@ def run(command: list, cwd: Path | None = None, timeout: int = 900) -> subproces
     return subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout)
 
 
-def install(repo: Path, venv: Path) -> tuple[bool, str]:
-    """A fresh environment with the repo installed: uv, offline from its cache first."""
+def install(target: Path, venv: Path) -> tuple[bool, str]:
+    """A fresh environment with `target` (the built wheel, or the repo) installed: uv, offline from
+    its cache first."""
     uv = shutil.which("uv")
     if uv:
         made = run(
@@ -353,13 +372,13 @@ def install(repo: Path, venv: Path) -> tuple[bool, str]:
             return False, made.stderr[-800:]
         python = venv / "bin" / "python"
         for extra in (["--offline"], []):
-            done = run([uv, "pip", "install", "--python", str(python), *extra, str(repo)])
+            done = run([uv, "pip", "install", "--python", str(python), *extra, str(target)])
             if done.returncode == 0:
                 return True, "installed with uv" + (" (offline)" if extra else "")
         return False, done.stderr[-800:]
     made = run([sys.executable, "-m", "venv", str(venv)])
     done = (
-        run([str(venv / "bin" / "python"), "-m", "pip", "install", str(repo)])
+        run([str(venv / "bin" / "python"), "-m", "pip", "install", str(target)])
         if not made.returncode
         else made
     )
@@ -367,11 +386,22 @@ def install(repo: Path, venv: Path) -> tuple[bool, str]:
 
 
 def test_and_package(repo: Path, dist: Path, name: str) -> dict:
-    """Install in a fresh environment, run `<name> check`, then build the wheel, sdist and zip."""
+    """Build the wheel and sdist, install the wheel in a fresh environment, run `<name> check`,
+    then zip the repo (the source tree is never built in place)."""
+    dist.mkdir(parents=True, exist_ok=True)
+    uv, built = shutil.which("uv"), None
+    for extra in (["--offline"], []) if uv else ():
+        built = run([uv, "build", "--out-dir", str(dist), *extra, str(repo)])
+        if built.returncode == 0:
+            break
+    result = {"built": bool(built and built.returncode == 0)}
+    if built and built.returncode:
+        result["build"] = built.stderr[-800:]
+    wheel = next(iter(sorted(dist.glob("*.whl"))), None)
     venv = repo.parent / "venv"
     shutil.rmtree(venv, ignore_errors=True)
-    ok, how = install(repo, venv)
-    result = {"installed": ok, "install": how}
+    ok, how = install(wheel or repo, venv)
+    result |= {"installed": ok, "install": how}
     if ok:
         checked = run([str(venv / "bin" / name), "check"], cwd=repo.parent)
         result |= {
@@ -380,20 +410,11 @@ def test_and_package(repo: Path, dist: Path, name: str) -> dict:
         }
     else:
         result |= {"check_passed": False, "check": "not run: the install failed"}
-    dist.mkdir(parents=True, exist_ok=True)
-    uv = shutil.which("uv")
-    built = None
-    for extra in (["--offline"], []) if uv else ():
-        built = run([uv, "build", "--out-dir", str(dist), *extra, str(repo)])
-        if built.returncode == 0:
-            break
-    result["built"] = bool(built and built.returncode == 0)
-    if built and built.returncode:
-        result["build"] = built.stderr[-800:]
     archive = dist / f"{repo.name}.zip"
+    skip = {"__pycache__", "build", ".venv"}
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         for path in sorted(repo.rglob("*")):
-            if path.is_file() and "__pycache__" not in path.parts and ".egg-info" not in str(path):
+            if path.is_file() and not skip & set(path.parts) and ".egg-info" not in str(path):
                 z.write(path, Path(repo.name) / path.relative_to(repo))
     result["files"] = sorted(p.name for p in dist.iterdir() if not p.name.startswith("."))
     shutil.rmtree(venv, ignore_errors=True)
@@ -610,10 +631,10 @@ editing `{pkg}/pipeline.py`.
 ## Install and run
 
 ```bash
-pip install .                     # or: pip install dist/*.whl
-{name} init                       # writes config.yaml: every input, described, to edit
+pip install .                          # or the wheel the studio built
+{name} init                    # config.yaml: every input, described, to edit
 {name} run --config config.yaml --out out
-{name} check                      # the examples and every stage Check
+{name} check                   # the examples and every stage Check
 ```
 
 Results go to `out/`: {outputs}. When the workflow asks you to review pairs, it writes
@@ -629,7 +650,7 @@ Results go to `out/`: {outputs}. When the workflow asks you to review pairs, it 
 ## Steps
 
 {steps}
-"""
+{reference}"""
 
 CI = """name: test
 on: [push, pull_request]
