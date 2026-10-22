@@ -76,6 +76,25 @@ addresses: {kanji: [都道府県, 住所]}
                 C.standardize(a, {})[1].core_k, C.standardize(b, {})[1].core_k
             )  # the same company core either way
 
+    def test_shift_jis_exports_and_reviews_saved_from_excel_are_read(self) -> None:
+        from custom_nodes.agent_workflow_studio.core.runner import read_reviews
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "input/sjis").mkdir(parents=True)
+            text = "CONT_ID,姓,生年月日\n1,山田,1980-01-02\n2,髙橋,1975-05-05\n"
+            (root / "input/sjis/顧客.csv").write_bytes(text.encode("cp932"))
+            rows, _ = C.read_contacts(
+                step_ctx(root, "a"),
+                "sjis",
+                "key: CONT_ID\ncontacts: 顧客.csv\nsurname: {kanji: 姓}\nbirth_date: 生年月日\n",
+            )
+            self.assertEqual([r["sur_kanji"] for r in rows], ["山田", "髙橋"])
+            (root / "reviews.csv").write_bytes(
+                "id,decision,a_name\n1|2,different,山田\n".encode("cp932")
+            )
+            self.assertEqual(read_reviews(root / "reviews.csv"), {"1|2": "different"})
+
     def test_a_missing_column_is_named_with_what_to_map(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

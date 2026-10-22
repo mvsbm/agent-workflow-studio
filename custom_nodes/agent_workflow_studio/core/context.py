@@ -2,8 +2,27 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def read_csv_any(path: Path) -> tuple[list[str], list[dict]]:
+    """A CSV file's header and rows, in UTF-8 (with or without a BOM) or else Shift_JIS as Windows
+    writes it in Japan (cp932): what CRM exports and Excel's plain "CSV" save are."""
+    data = Path(path).read_bytes()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        try:
+            text = data.decode("cp932")
+        except UnicodeDecodeError:
+            raise ValueError(
+                f"{Path(path).name} is neither UTF-8 nor Shift_JIS: save it as CSV UTF-8."
+            ) from None
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    return list(reader.fieldnames or []), list(reader)
 
 
 @dataclass

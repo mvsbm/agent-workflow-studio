@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 
 from .checks import file_rows, judge
-from .context import Context
+from .context import Context, read_csv_any
 
 DECIDED = {
     "same": "same",
@@ -100,12 +100,11 @@ def read_reviews(path: Path) -> dict[str, str]:
     """pair id -> same | different, from a review CSV whose decision column you filled in."""
     if not path or not Path(path).is_file():
         return {}
-    with open(path, encoding="utf-8-sig", newline="") as f:
-        return {
-            r["id"]: DECIDED[(r.get("decision") or "").strip().lower()]
-            for r in csv.DictReader(f)
-            if r.get("id") and (r.get("decision") or "").strip().lower() in DECIDED
-        }
+    return {  # saved from Excel as plain CSV on Japanese Windows it is Shift_JIS: read either
+        r["id"]: DECIDED[(r.get("decision") or "").strip().lower()]
+        for r in read_csv_any(path)[1]
+        if r.get("id") and (r.get("decision") or "").strip().lower() in DECIDED
+    }
 
 
 def write_reviews(path: Path, labels: dict[str, str]) -> None:

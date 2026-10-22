@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from .context import Context
+from .context import Context, read_csv_any
 
 # --- the column map -------------------------------------------------------------------------------
 COLUMNS = """# Which column holds what. Files are in the data folder. Only key, birth_date and one name
@@ -60,9 +60,7 @@ def _cols(value) -> list[str]:
 
 
 def _read(path: Path) -> tuple[list[str], list[dict]]:
-    with open(path, encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        return list(reader.fieldnames or []), list(reader)
+    return read_csv_any(path)
 
 
 def _need(header: list[str], columns: list[str], file: str, what: str) -> None:
