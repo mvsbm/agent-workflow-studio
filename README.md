@@ -91,6 +91,10 @@ cd agent-workflow-studio
 
 The nayose workflows ship with the package and appear in ComfyUI's own **Templates** browser (under this node pack): **Studio - Record matching benchmark** (the synthetic exports and the hidden-key score) and **Studio - Record matching reference** (the whole matching pipeline built from the studio's own nodes only, no workflow code, published as an API that takes your exports). They always match the installed version. Override the runtime location with `AGENT_WORKFLOW_STUDIO_HOME`. Restart ComfyUI after changing backend code.
 
+**Studio - Contact matching** gives every CRM contact (contacts, phones and addresses joined on a key such as CONT_ID; names in kanji, kana and romaji) one entity id, with uncertain pairs reviewed by you in the Review tab; a model learns from your reviews (logistic regression, active learning), measured in `research/contacts_er/RESULTS.md`. Its **column map** reads other layouts: other column names, a key of several columns, date formats, gender and type codes, phones as columns, an address in parts. **Studio - Contact matching benchmark** runs the same stages on generated contacts with an answer key and a simulated reviewer.
+
+**Export as Python** (Contract tab → API) turns a published workflow into a small repo that runs without ComfyUI: the agent checks it is ready, then the studio generates it from the release (the same `core/` steps the nodes wrap, a command line with `run`, `init` and `check`, the review step as a CSV round trip, the contract's examples as tests), installs it in a fresh environment, runs its check and packages it (wheel, sdist, zip). A node without a Python export blocks it, by name.
+
 ComfyUI is set up as a data and text studio, with its own switches (`studio_defaults.py`, filled in only where you have not chosen): a new tab starts empty instead of ComfyUI's image example; the Templates browser lists only this pack's templates; ComfyUI's image, 3D and audio editors are off (Settings → Extension turns any back on); and `run-local.sh` loads only this node pack (`--whitelist-custom-nodes`).
 
 ## Development
