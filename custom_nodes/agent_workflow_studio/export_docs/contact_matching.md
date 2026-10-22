@@ -155,7 +155,7 @@ One person, four contacts (hard profile, seed 7):
 ```mermaid
 flowchart LR
     A["1000323<br/>八ラダ ナシミ"] ---|"same house in 広島 · 1.00"| B["1010109<br/>原田 夏美, date swapped"]
-    A ---|"birth date + ハラダ after OCR repair · 0.98"| C["1017508<br/>原田 夏美"]
+    A ---|"birth date + ハラダ after OCR repair · 0.96"| C["1017508<br/>原田 夏美"]
     B ---|"swapped date + name · 1.00"| C
     B ---|"same flat in 浜松 · 1.00"| D["1029765<br/>近藤 奈津美"]
     C ---|"birth date + learned reading ナツミ, 2 phones · 1.00"| D
