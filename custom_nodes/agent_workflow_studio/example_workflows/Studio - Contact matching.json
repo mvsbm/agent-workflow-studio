@@ -1,5 +1,5 @@
 {
- "id": "687ef588-18dd-46a2-a4d2-83a14053e5fe",
+ "id": "7786e1ce-827b-49ed-b95a-9efb688e1dee",
  "revision": 0,
  "last_node_id": 28,
  "last_link_id": 48,
@@ -142,7 +142,7 @@
   },
   {
    "id": 12,
-   "type": "422023da-f893-4690-9bec-87e499e92fe3",
+   "type": "d8a58866-5e60-40b9-9fa1-c1aca52ff1ff",
    "pos": [
     480,
     10
@@ -236,7 +236,7 @@
   },
   {
    "id": 14,
-   "type": "131db817-bb76-46b2-8430-477341b2bb92",
+   "type": "cc268731-9eec-455d-99fa-8cd57ed4a026",
    "pos": [
     1000,
     10
@@ -311,7 +311,7 @@
   },
   {
    "id": 16,
-   "type": "e004cacc-8588-49c4-bf7a-21a98ef42240",
+   "type": "13f3b6fb-b1f2-4fa8-bb1f-5e1be6417848",
    "pos": [
     1520,
     10
@@ -386,7 +386,7 @@
   },
   {
    "id": 18,
-   "type": "cc801353-6bee-478d-a30d-20e13d3b72be",
+   "type": "e1040948-cb54-489b-9450-ba791e6c4301",
    "pos": [
     2040,
     10
@@ -467,7 +467,7 @@
   },
   {
    "id": 20,
-   "type": "cd06a826-c7e6-4357-bec2-df3853fe5eb7",
+   "type": "4c831612-5d02-4599-9ebb-af5e7f4410d4",
    "pos": [
     2560,
     10
@@ -565,7 +565,7 @@
   },
   {
    "id": 22,
-   "type": "c9629a68-d8ca-4a72-86f0-7574b241002e",
+   "type": "3f365560-5869-42c2-9aa7-f7d4b7f0584d",
    "pos": [
     3080,
     10
@@ -684,7 +684,7 @@
   },
   {
    "id": 24,
-   "type": "bdcd77e6-09d6-4a7a-bb13-a396ac5f8eec",
+   "type": "b6f3ba9d-a97c-4fbf-b8a3-a86ca3f48fed",
    "pos": [
     3600,
     10
@@ -776,7 +776,7 @@
   },
   {
    "id": 26,
-   "type": "cb5ae68d-ecbb-4beb-883c-d3120b86ac30",
+   "type": "d59ce0ca-f918-43c7-93b2-4c4f7a4988ca",
    "pos": [
     4120,
     10
@@ -985,7 +985,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "422023da-f893-4690-9bec-87e499e92fe3",
+    "id": "d8a58866-5e60-40b9-9fa1-c1aca52ff1ff",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1016,7 +1016,7 @@
     },
     "inputs": [
      {
-      "id": "21d43fc9-c9ed-478a-b4d4-8cc35ba45088",
+      "id": "5695107d-4416-4484-a50b-115e1058e0e0",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -1029,7 +1029,7 @@
       ]
      },
      {
-      "id": "3f3bc658-7edb-407b-aa5a-6f77c138d803",
+      "id": "a936ddc6-b3ab-4a6c-93fc-25102bdf63b1",
       "name": "columns",
       "type": "STRING",
       "linkIds": [
@@ -1044,7 +1044,7 @@
     ],
     "outputs": [
      {
-      "id": "8200f907-2d11-4d99-969a-1941b1d4aeab",
+      "id": "f46d155e-a61a-459d-862e-b3b3df319870",
       "name": "contacts",
       "type": "CONTACTS",
       "linkIds": [
@@ -1115,7 +1115,7 @@
          {
           "class": "contacts",
           "name": "contacts",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/read_contacts-20261022-092824175/contacts.jsonl",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/read_contacts-20261022-102114312/contacts.jsonl",
           "format": "jsonl",
           "row_count": 10540
          }
@@ -1289,7 +1289,7 @@
     "description": "Does: Read your contact exports through the column map: one contact per key, phones and addresses attached using Read contacts\nTakes: folder (your input)\nGives: contacts (CONTACTS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R4 · Any export with this shape: you said “the pipeline should work on any data that matches the shape”\nVerified when: The exports are read: at least one contact (10,540 on the benchmark data).\nBecause: every CRM names its columns its own way"
    },
    {
-    "id": "131db817-bb76-46b2-8430-477341b2bb92",
+    "id": "cc268731-9eec-455d-99fa-8cd57ed4a026",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1320,7 +1320,7 @@
     },
     "inputs": [
      {
-      "id": "9d573641-b410-4c15-8e52-eab358a410a8",
+      "id": "6d7484af-a330-46e9-aae3-a9b0336812bb",
       "name": "contacts",
       "type": "CONTACTS",
       "linkIds": [
@@ -1335,7 +1335,7 @@
     ],
     "outputs": [
      {
-      "id": "f06fc132-557e-4329-919d-1ea6c3d1161a",
+      "id": "2f84d887-aaec-4eae-b700-6673d989093b",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
@@ -1448,7 +1448,7 @@
          {
           "class": "contact_records",
           "name": "records",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/standardize_contacts-20261022-092824272/records.jsonl",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/standardize_contacts-20261022-102114407/records.jsonl",
           "format": "jsonl",
           "row_count": 10540
          }
@@ -1622,7 +1622,7 @@
     "description": "Does: Make names, phones and addresses comparable using Standardize contacts\nTakes: contacts from 1 · Read\nGives: records (CONTACT_RECORDS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every contact read is standardized.\nBecause: the same name is typed many ways"
    },
    {
-    "id": "e004cacc-8588-49c4-bf7a-21a98ef42240",
+    "id": "13f3b6fb-b1f2-4fa8-bb1f-5e1be6417848",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1653,7 +1653,7 @@
     },
     "inputs": [
      {
-      "id": "21c0794d-507c-4d98-9dcb-dc8d98aa898f",
+      "id": "95c031c6-3377-427c-ac29-97c2ee5ef58c",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
@@ -1668,7 +1668,7 @@
     ],
     "outputs": [
      {
-      "id": "8d8bd8db-7314-47de-b7b9-7f9a682a9325",
+      "id": "1c59b815-6773-4a73-8502-dd5d3967fb35",
       "name": "candidates",
       "type": "CANDIDATE_PAIRS",
       "linkIds": [
@@ -1790,7 +1790,7 @@
          {
           "class": "candidate_pairs",
           "name": "candidates",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/find_contact_candidates-20261022-092824914/candidates.csv",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/find_contact_candidates-20261022-102115041/candidates.csv",
           "format": "csv",
           "row_count": 15219
          }
@@ -1958,7 +1958,7 @@
     "description": "Does: Pair the contacts worth comparing using Find contact candidates\nTakes: records from 2 · Standardize\nGives: candidates (CANDIDATE_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: Candidate pairs are found (15,219 on the benchmark data).\nBecause: comparing every pair is too slow"
    },
    {
-    "id": "cc801353-6bee-478d-a30d-20e13d3b72be",
+    "id": "e1040948-cb54-489b-9450-ba791e6c4301",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -1989,7 +1989,7 @@
     },
     "inputs": [
      {
-      "id": "2e6fd87c-ccb4-4c06-9840-6c75714a9c62",
+      "id": "ca48ddfd-7d02-4013-8e11-7351c56222b9",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
@@ -2002,7 +2002,7 @@
       ]
      },
      {
-      "id": "d9ea73f2-8bc4-49a1-97f5-a24ebfa8d349",
+      "id": "aa53d648-db0a-479d-aad0-c6cd7d23470d",
       "name": "candidates",
       "type": "CANDIDATE_PAIRS",
       "linkIds": [
@@ -2017,7 +2017,7 @@
     ],
     "outputs": [
      {
-      "id": "f5831636-47b2-4493-b490-a5e4b2f0f71a",
+      "id": "21757cf2-9fc2-4fa8-9767-d298dd233923",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2082,7 +2082,7 @@
          {
           "class": "record_pairs",
           "name": "pairs",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/compare_contacts-20261022-092825408/pairs.jsonl",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/compare_contacts-20261022-102115540/pairs.jsonl",
           "format": "jsonl",
           "row_count": 15219
          }
@@ -2241,7 +2241,7 @@
     "description": "Does: Measure how alike the two contacts of each pair are using Compare contacts\nTakes: records from 2 · Standardize, candidates from 3 · Find candidates\nGives: pairs (RECORD_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every candidate pair is compared.\nBecause: a model needs measured evidence"
    },
    {
-    "id": "cd06a826-c7e6-4357-bec2-df3853fe5eb7",
+    "id": "4c831612-5d02-4599-9ebb-af5e7f4410d4",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -2272,7 +2272,7 @@
     },
     "inputs": [
      {
-      "id": "e23c32a3-717c-486f-b12f-aea7fef5c1d9",
+      "id": "a83d0722-6eb9-4f80-8025-0728787dc6ec",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2285,7 +2285,7 @@
       ]
      },
      {
-      "id": "17ff5e79-cc53-4bb3-b27a-6900155bc3c8",
+      "id": "22915510-c47a-4190-8d7e-a198e7cad43b",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -2297,7 +2297,7 @@
       ]
      },
      {
-      "id": "343e55f3-5e5c-456e-812e-f25450d3e0d4",
+      "id": "da405fed-b82e-47c6-b2b3-53ad35623508",
       "name": "batch",
       "type": "INT",
       "linkIds": [
@@ -2312,7 +2312,7 @@
     ],
     "outputs": [
      {
-      "id": "55ddf986-5295-408a-aab1-ce2c2edf07fb",
+      "id": "0b42fa4d-6f97-45f6-9e61-b213db0dd72e",
       "name": "scored",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2426,7 +2426,7 @@
          {
           "class": "record_pairs",
           "name": "scored",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/learn_from_reviews-20261022-092826633/scores.jsonl",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/learn_from_reviews-20261022-102116778/scores.jsonl",
           "format": "jsonl",
           "row_count": 15219
          }
@@ -2610,7 +2610,7 @@
     "description": "Does: Score every pair from your reviews, and ask you about the pairs it is least sure of using Learn from your reviews\nTakes: pairs from 4 · Compare\nGives: scored (RECORD_PAIRS)\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every compared pair gets a score.\nBecause: your data, not ours, decides the weights"
    },
    {
-    "id": "c9629a68-d8ca-4a72-86f0-7574b241002e",
+    "id": "3f365560-5869-42c2-9aa7-f7d4b7f0584d",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -2641,7 +2641,7 @@
     },
     "inputs": [
      {
-      "id": "c1dea870-0bdb-4996-9478-2c850aa9f790",
+      "id": "8b698b44-9164-4f35-93c2-9591766c4177",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2654,7 +2654,7 @@
       ]
      },
      {
-      "id": "205713bc-285f-47da-8c82-dd6274479d64",
+      "id": "51f6f983-94d5-4382-b9be-e32c38534b6b",
       "name": "match_at",
       "type": "FLOAT",
       "linkIds": [
@@ -2667,7 +2667,7 @@
       ]
      },
      {
-      "id": "4ba1a972-c817-4bb0-a490-4a201b781d07",
+      "id": "15757e8c-362a-4d44-b9a0-303bcba89ad8",
       "name": "review_from",
       "type": "FLOAT",
       "linkIds": [
@@ -2680,7 +2680,7 @@
       ]
      },
      {
-      "id": "80ab2057-7c1f-4dc7-96b5-26c4ea62c969",
+      "id": "56d54341-74d3-4046-844c-4ae056cdef00",
       "name": "corroboration",
       "type": "BOOLEAN",
       "linkIds": [
@@ -2695,7 +2695,7 @@
     ],
     "outputs": [
      {
-      "id": "bc892227-8e3e-4cbf-85f2-53910424f593",
+      "id": "048a54ed-3567-491f-9445-34ca14799c6e",
       "name": "decisions",
       "type": "PAIR_DECISIONS",
       "linkIds": [
@@ -2708,7 +2708,7 @@
       ]
      },
      {
-      "id": "01b8b1b1-4085-4d2c-8767-5edbeaf865a7",
+      "id": "2b31a915-4072-4d5f-879d-77e12aea7119",
       "name": "queue",
       "type": "PAIR_DECISIONS",
       "linkIds": [
@@ -2810,7 +2810,7 @@
          {
           "class": "pair_decisions",
           "name": "decisions",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/decide_by_score-20261022-092826949/decisions.csv",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/decide_by_score-20261022-102117096/decisions.csv",
           "format": "csv",
           "row_count": 15219
          }
@@ -2820,7 +2820,7 @@
          {
           "class": "pair_decisions",
           "name": "review_queue",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/decide_by_score-20261022-092826949/review_queue.csv",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/decide_by_score-20261022-102117096/review_queue.csv",
           "format": "csv",
           "row_count": 310
          }
@@ -3001,7 +3001,7 @@
     "description": "Does: Decide each pair: match, to review, or different using Decide by score\nTakes: pairs from 5 · Learn\nGives: decisions (PAIR_DECISIONS), queue (PAIR_DECISIONS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every scored pair is decided.\nBecause: the business sets precision against recall"
    },
    {
-    "id": "bdcd77e6-09d6-4a7a-bb13-a396ac5f8eec",
+    "id": "b6f3ba9d-a97c-4fbf-b8a3-a86ca3f48fed",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -3032,7 +3032,7 @@
     },
     "inputs": [
      {
-      "id": "5f10c0f7-ee5a-4964-9758-3e8a2b238f75",
+      "id": "d28cfb34-4802-40c0-905e-ccb99561fd3a",
       "name": "data",
       "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
@@ -3046,7 +3046,7 @@
       ]
      },
      {
-      "id": "b670297a-3f97-4c70-aace-505a136b7634",
+      "id": "f5a7d407-423a-45ba-8b00-4b381c8657c3",
       "name": "max_size",
       "type": "INT",
       "linkIds": [
@@ -3061,7 +3061,7 @@
     ],
     "outputs": [
      {
-      "id": "2d9adf8d-dbd5-4d90-9523-446d45765bdd",
+      "id": "3c2983be-a074-4166-95b5-ddca945e1180",
       "name": "clusters",
       "type": "RECORD_CLUSTERS",
       "linkIds": [
@@ -3197,7 +3197,7 @@
          {
           "class": "record_clusters",
           "name": "clusters",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/cluster_guard-20261022-092827004/clusters.csv",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/cluster_guard-20261022-102117144/clusters.csv",
           "format": "csv",
           "row_count": 8877
          }
@@ -3255,7 +3255,7 @@
            "Score ≥ 0.5",
            "0.9996",
            "100% likely the same",
-           "would join 1005139 and 1034630, decided different"
+           "would join 1005139 and 1059088, decided different"
           ],
           [
            "1008212|1017984",
@@ -3703,7 +3703,7 @@
     "description": "Does: Group matched contacts into entities, refusing merges decided different using Cluster guard\nTakes: data from 6 · Decide\nGives: clusters (RECORD_CLUSTERS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: The decided pairs are grouped.\nBecause: one wrong link must not chain many"
    },
    {
-    "id": "cb5ae68d-ecbb-4beb-883c-d3120b86ac30",
+    "id": "d59ce0ca-f918-43c7-93b2-4c4f7a4988ca",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -3734,7 +3734,7 @@
     },
     "inputs": [
      {
-      "id": "63f7b07c-93f7-4dbb-b7a1-2fcf94ac1cd5",
+      "id": "e61cc8b5-6e03-4bd5-bb03-c283e121e3c9",
       "name": "records",
       "type": "CONTACTS",
       "linkIds": [
@@ -3747,7 +3747,7 @@
       ]
      },
      {
-      "id": "5e5f1014-0e6f-4d77-9c7a-627fee4d5633",
+      "id": "c6b2481e-1503-41e3-8586-46e8f102cfb2",
       "name": "clusters",
       "type": "RECORD_CLUSTERS",
       "linkIds": [
@@ -3762,7 +3762,7 @@
     ],
     "outputs": [
      {
-      "id": "32c00a87-4b58-4b58-bd33-ab81447e9566",
+      "id": "758285d7-9283-44cf-a472-e24d1263e10a",
       "name": "entities",
       "type": "RECORD_CLUSTERS",
       "linkIds": [
@@ -3827,7 +3827,7 @@
          {
           "class": "record_clusters",
           "name": "entities",
-          "file": "agent_tools/687ef588-18dd-46a2-a4d2-83a14053e5fe/entity_per_contact-20261022-092827193/entities.csv",
+          "file": "agent_tools/7786e1ce-827b-49ed-b95a-9efb688e1dee/entity_per_contact-20261022-102117258/entities.csv",
           "format": "csv",
           "row_count": 10540
          }
@@ -4116,7 +4116,7 @@
     ]
    },
    "open": {},
-   "at": "2026-10-22T09:28"
+   "at": "2026-10-22T10:21"
   },
   "ds": {
    "scale": 0.3325942350332594,
@@ -4280,6 +4280,14 @@
      "instead_of": "auto-deciding everything",
      "by": "agent",
      "pattern": "Human in the loop"
+    },
+    {
+     "id": "D4",
+     "decision": "Its quality comes from your reviews: about 1,000 make it good. Review a round, run again; a larger round (reviews per round 200) means fewer runs.",
+     "why": "measured on the hard 10k benchmark: no reviews F1 0.54 (precision 0.85, recall 0.39); 1,000 reviews F1 0.96 (precision 0.99, recall 0.94)",
+     "instead_of": "fixed weights tuned on synthetic data, which would not fit yours",
+     "by": "agent",
+     "principle": "learn from the data it runs on"
     }
    ],
    "order": [

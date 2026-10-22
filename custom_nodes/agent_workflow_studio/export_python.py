@@ -150,19 +150,13 @@ def descriptions(release: dict) -> dict[str, str]:
     }
 
 
-def generate(release: dict, contract: dict | None, target: Path, input_dir: Path) -> Path:
-    """Write the repo into `target` (replaced). Returns its path."""
+def program(
+    release: dict, contract: dict, package: Path, input_dir: Path, module: str, home: str
+) -> dict:
+    """One release as a module of the package (pipeline.py, or pipeline_<command>.py for a companion):
+    its nodes as calls to their core steps, its inputs, its examples (sample files under
+    examples/<home>/). Returns what the package needs from it."""
     nodes, prompt = pack_nodes(), release["prompt"]
-    name, pkg = release["name"], slug(release["name"])
-    contract = contract or {}
-    if target.exists():
-        shutil.rmtree(target)
-    package = target / pkg
-    shutil.copytree(CORE, package / "core", ignore=shutil.ignore_patterns("__pycache__"))
-    (package / "__init__.py").write_text(
-        f'"""{contract.get("title") or name}, exported from Agent Workflow Studio."""\n',
-        encoding="utf-8",
-    )
     bound = {}  # (node, widget) -> input name
     folders = set()  # inputs that are a data folder
     for item in release["signature"]["inputs"]:
@@ -173,16 +167,21 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
     if (
         len(folders) > 1
     ):  # shortcut: one data folder per workflow; upgrade when a workflow takes two
-        raise ValueError("This export handles one data folder input; this workflow has several.")
-    lines, bundled = [], {}
+        raise ValueError(
+            f"{release['name']}: the export handles one data folder input; it has several."
+        )
+    lines, packages, extras, used = [], set(), {}, {"runner"}
     for node_id in order(prompt):
         node = prompt[node_id]
         cls = nodes.get(node["class_type"])
         if node["class_type"] in UI_ONLY or not getattr(cls, "EXPORT", None):
             continue
-        module, function = cls.EXPORT.split(":")
+        packages |= set(getattr(cls, "PACKAGES", ()))
+        extras |= getattr(cls, "EXTRAS", {})
+        step_module, function = cls.EXPORT.split(":")
+        used.add(step_module)
         accepts = inspect.signature(
-            getattr(importlib.import_module(f"{__package__}.core.{module}"), function)
+            getattr(importlib.import_module(f"{__package__}.core.{step_module}"), function)
         ).parameters
         takes_any = any(p.kind is p.VAR_KEYWORD for p in accepts.values())
         args = []
@@ -196,26 +195,24 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
             elif key in getattr(cls, "FILES", ()) and isinstance(value, str) and value:
                 source = (input_dir / value).resolve()
                 if source.is_file():  # a reference file the step reads: shipped with the package
-                    bundled[source.name] = source
+                    (package / "reference").mkdir(exist_ok=True)
+                    shutil.copyfile(source, package / "reference" / source.name)
                     args.append(f'{key}=str(HERE / "reference" / {source.name!r})')
                 else:
                     args.append(f"{key}={value!r}")
             else:
                 args.append(f"{key}={value!r}")
         lines.append(
-            f"    {var(node_id)} = {module}.{function}(rt.ctx({function!r}), {', '.join(args)})"
+            f"    {var(node_id)} = {step_module}.{function}(rt.ctx({function!r}), {', '.join(args)})"
             f"  # {title_of(release, node_id)}"
         )
-    if bundled:
-        (package / "reference").mkdir()
-        for file_name, source in bundled.items():
-            shutil.copyfile(source, package / "reference" / file_name)
     examples = []
     for example in contract.get("examples") or []:
-        home = package / "examples" / example["id"]
+        where = "/".join(x for x in (home, example["id"]) if x)
         for rel, text in (example.get("files") or {}).items():
-            (home / rel).parent.mkdir(parents=True, exist_ok=True)
-            (home / rel).write_text(text, encoding="utf-8")
+            path = package / "examples" / where / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
         named = {
             "/".join(rel.split("/")[: i + 1])
             for rel in example.get("files") or {}
@@ -223,7 +220,7 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
         }
         given = {
             k: (
-                f"@examples/{example['id']}/{v.strip('/')}"
+                f"@examples/{where}/{v.strip('/')}"
                 if isinstance(v, str) and v.strip("/") in named
                 else v
             )
@@ -238,27 +235,82 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
             }
         )
     about = descriptions(release)
-    inputs = {
+    inputs = {  # a data folder is any path on the user's machine, not the studio's folder list
         item["name"]: [
             item.get("default"),
-            (item.get("type") or "STRING"),
+            item.get("type") or "STRING",
             about.get(item["name"], ""),
+            None if item["name"] in folders else item.get("choices"),
         ]
         for item in release["signature"]["inputs"]
     }
     literal = lambda value: pprint.pformat(value, width=100, sort_dicts=False)  # noqa: E731
-    (package / "pipeline.py").write_text(
+    (package / f"{module}.py").write_text(
         PIPELINE.format(
-            title=literal(contract.get("title") or name),
+            title=literal(contract.get("title") or release["name"]),
             semver=literal(release["semver"]),
             inputs=literal(inputs),
             outputs=literal([o["name"] for o in release["signature"]["outputs"]]),
             folders=literal(sorted(folders)),
             examples=literal(examples),
             purpose=literal(contract.get("purpose") or release.get("description") or ""),
-            doc=(contract.get("title") or name).replace('"', "'"),
+            doc=(contract.get("title") or release["name"]).replace('"', "'"),
             body="\n".join(lines) or "    pass",
+            modules=", ".join(sorted(used)),
         ),
+        encoding="utf-8",
+    )
+    return {
+        "inputs": inputs,
+        "examples": examples,
+        "packages": packages,
+        "extras": extras,
+        "release": release,
+        "contract": contract,
+    }
+
+
+def command_of(main: str, other: str) -> str:
+    """A companion's command: contacts-nayose-generate -> generate."""
+    return other[len(main) + 1 :] if other.startswith(f"{main}-") else other
+
+
+def generate(
+    release: dict, contract: dict | None, target: Path, input_dir: Path, also: list | tuple = ()
+) -> Path:
+    """Write the repo into `target` (replaced): the release as the program, each release in `also`
+    (with its contract) as one more command. Returns its path."""
+    name, pkg = release["name"], slug(release["name"])
+    contract = contract or {}
+    if target.exists():
+        shutil.rmtree(target)
+    package = target / pkg
+    shutil.copytree(CORE, package / "core", ignore=shutil.ignore_patterns("__pycache__"))
+    (package / "__init__.py").write_text(
+        f'"""{contract.get("title") or name}, exported from Agent Workflow Studio."""\n',
+        encoding="utf-8",
+    )
+    main = program(release, contract, package, input_dir, "pipeline", "")
+    commands = {}
+    for other, other_contract in also:
+        command = command_of(name, other["name"])
+        commands[command] = program(
+            other, other_contract or {}, package, input_dir, f"pipeline_{slug(command)}", command
+        )
+    packages, extras = set(main["packages"]), dict(main["extras"])
+    for part in commands.values():
+        packages |= part["packages"]
+        extras |= part["extras"]
+    for part_name in sorted(packages):  # pack code a step needs, copied as it is
+        shutil.copytree(
+            HERE / part_name, package / part_name, ignore=shutil.ignore_patterns("__pycache__")
+        )
+    (package / "commands.py").write_text(
+        '"""The program\'s other commands: one published workflow each (generated)."""\n\n'
+        + "".join(f"from . import pipeline_{slug(c)}\n" for c in commands)
+        + "\nCOMMANDS = {"
+        + ", ".join(f"{c!r}: pipeline_{slug(c)}" for c in commands)
+        + "}\n",
         encoding="utf-8",
     )
     (package / "cli.py").write_text(CLI.replace("{prog}", name), encoding="utf-8")
@@ -267,17 +319,22 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
     (target / "tests" / "test_examples.py").write_text(
         TESTS.replace("{pkg}", pkg), encoding="utf-8"
     )
+    sources = [p for part in ("core", *sorted(packages)) for p in (package / part).glob("*.py")]
     deps = sorted(
         {
             DEPENDENCIES[m]
             for m in DEPENDENCIES
             if any(
                 re.search(rf"^\s*(import|from) {m}\b", p.read_text(encoding="utf-8"), re.M)
-                for p in (package / "core").glob("*.py")
+                for p in sources
             )
         }
     )
     pins = [f'"{d}=={metadata.version(d)}"' for d in deps]
+    optional = "".join(
+        f"{extra} = [{', '.join(json.dumps(r) for r in spec['requires'])}]\n"
+        for extra, spec in extras.items()
+    )
     (target / "pyproject.toml").write_text(
         PYPROJECT.format(
             name=name,
@@ -287,11 +344,12 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
             description=json.dumps(
                 (contract.get("purpose") or release.get("description") or name)[:200]
             ),
+            optional=f"\n[project.optional-dependencies]\n{optional}" if optional else "",
         ),  # fmt: skip
         encoding="utf-8",
     )
     (target / "README.md").write_text(
-        readme(release, contract, pkg, inputs, package), encoding="utf-8"
+        readme(main, commands, extras, pkg, package), encoding="utf-8"
     )
     (target / ".gitignore").write_text(
         "out/\n*.egg-info/\n__pycache__/\ndist/\nbuild/\n.venv/\n", encoding="utf-8"
@@ -300,7 +358,7 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
     # CI also runs the program the way a user does, on the first example's data (init, then run).
     folders_given = [
         f"--{k.replace('_', '-')} {v.replace('@examples', f'{pkg}/examples')}"
-        for k, v in (examples[0]["given"].items() if examples else [])
+        for k, v in (main["examples"][0]["given"].items() if main["examples"] else [])
         if isinstance(v, str) and v.startswith("@examples")
     ]
     as_user = (
@@ -320,6 +378,10 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
                 "release": release["semver"],
                 "workflow_id": release.get("workflow_id"),
                 "studio_version": release.get("version"),
+                "commands": {
+                    c: {"api": part["release"]["name"], "release": part["release"]["semver"]}
+                    for c, part in commands.items()
+                },
                 "core": {
                     p.name: hashlib.sha256(p.read_bytes()).hexdigest()[:16]
                     for p in sorted((package / "core").glob("*.py"))
@@ -332,35 +394,50 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
     return target
 
 
-def readme(
-    release: dict, contract: dict, pkg: str, inputs: dict, pkg_dir: Path | None = None
-) -> str:
-    name = release["name"]
-
+def options_table(inputs: dict) -> str:
     def shown(v) -> str:  # a multi-line default (the column map) lives in the config file
         return "in config.yaml (`init` writes it)" if isinstance(v, str) and "\n" in v else f"`{v}`"
 
     rows = "\n".join(
-        f"| `--{k.replace('_', '-')}` | {d or ''} | {shown(v)} |" for k, (v, _, d) in inputs.items()
+        f"| `--{k.replace('_', '-')}` | {d or ''} | {shown(v)} |"
+        for k, (v, _, d, *_) in inputs.items()
     )
-    files = sorted(p.name for p in (Path(pkg_dir) / "reference").glob("*")) if pkg_dir else []
-    reference = (
-        "\n## Reference data\n\nShipped in `"
-        + pkg
-        + "/reference/`, as the studio used it: "
-        + ", ".join(f"`{f}`" for f in files)
-        + ".\n"
-        if files
-        else ""
-    )
+    return "| Option | What it is | Default |\n|---|---|---|\n" + rows
+
+
+def sentence(text: str) -> str:
+    return text[:1].upper() + text[1:] if text else ""
+
+
+def readme(main: dict, commands: dict, extras: dict, pkg: str, package: Path) -> str:
+    release, contract = main["release"], main["contract"]
+    name = release["name"]
     steps = "\n".join(
         f"{i + 1}. **{s['id']}**: {s['purpose']}" for i, s in enumerate(contract.get("steps") or [])
     )
+    decided = "\n".join(
+        f"- **{d['decision']}** {sentence(d.get('why', ''))}."
+        + (f" Instead of: {d['instead_of']}." if d.get("instead_of") else "")
+        for d in contract.get("decisions") or []
+    )
+    more = "".join(
+        f"\n### `{name} {c}`\n\n{part['contract'].get('purpose') or part['release'].get('description') or ''}\n\n"
+        f"{options_table(part['inputs'])}\n| `--out` | Where its results and run folders go | `{c}` |\n"
+        for c, part in commands.items()
+    )
+    files = sorted(p.name for p in (package / "reference").glob("*"))
     return README.format(
         title=contract.get("title") or name, purpose=contract.get("purpose") or release.get("description") or "",
-        name=name, pkg=pkg, semver=release["semver"], rows=rows, steps=steps or "(no contract)",
+        name=name, pkg=pkg, semver=release["semver"], rows=options_table(main["inputs"]), steps=steps or "(no contract)",
         outputs=", ".join(f"`{o['name']}`" for o in release["signature"]["outputs"]),
-        reference=reference,
+        commands=f"\n## More commands\n{more}" if more else "",
+        extras="".join(f"\n## Optional: {e}\n\n`pip install \".[{e}]\"`, then {spec['how'].replace('{pkg}', pkg)}\n" for e, spec in extras.items()),
+        decisions=f"\n## Decisions\n\n{decided}\n" if decided else "",
+        reference=(
+            f"\n## Reference data\n\nShipped in `{pkg}/reference/`, as the studio used it: "
+            + ", ".join(f"`{f}`" for f in files) + ".\n"
+            if files else ""
+        ),
     )  # fmt: skip
 
 
@@ -441,13 +518,19 @@ def test_and_package(repo: Path, dist: Path, name: str) -> dict:
     return result
 
 
-def export(release: dict, contract: dict | None, output_dir: Path, input_dir: Path) -> dict:
+def export(
+    release: dict, contract: dict | None, output_dir: Path, input_dir: Path, also: list | tuple = ()
+) -> dict:
     """The whole export: readiness, the repo, its test in a fresh environment, the packages."""
     ready = readiness(release, contract)
+    for other, other_contract in also:  # each companion command must be exportable too
+        more = readiness(other, other_contract)
+        ready["blockers"] += [f"{other['name']}: {b}" for b in more["blockers"]]
+        ready["ready"] = ready["ready"] and more["ready"]
     if not ready["ready"]:
         return ready
     home = output_dir / "exports" / f"{release['name']}-{release['semver']}"
-    repo = generate(release, contract, home / release["name"], input_dir)
+    repo = generate(release, contract, home / release["name"], input_dir, also)
     result = test_and_package(repo, home / "dist", release["name"])
     return {
         **ready,
@@ -464,12 +547,12 @@ release; export again rather than edit (the steps it calls are in core/, unchang
 
 from pathlib import Path
 
-from .core import runner, steps  # noqa: F401
+from .core import {modules}  # noqa: F401
 
 HERE = Path(__file__).parent
 TITLE, VERSION = {title}, {semver}
 PURPOSE = {purpose}
-# The workflow's App inputs: name -> [default, type, description].
+# The workflow's App inputs: name -> [default, type, description, choices].
 INPUTS = {inputs}
 OUTPUTS = {outputs}
 FOLDERS = {folders}  # inputs that name a data folder
@@ -478,7 +561,7 @@ EXAMPLES = {examples}
 
 def run(out, labels=None, **given):
     """Run the workflow; `given` overrides any input. Returns the runtime (checks, outputs, lines)."""
-    values = {{k: (given[k] if given.get(k) is not None else d) for k, (d, _, _) in INPUTS.items()}}
+    values = {{k: (given[k] if given.get(k) is not None else d) for k, (d, *_) in INPUTS.items()}}
     input_dir = Path(out)
     for name in FOLDERS:
         folder = Path(str(values[name]).replace("@examples", str(HERE / "examples"), 1)).resolve()
@@ -490,7 +573,8 @@ def run(out, labels=None, **given):
     return rt
 '''
 
-CLI = '''"""The command line: run on your data, review in a CSV, check the examples, write a config file."""
+CLI = """\"\"\"The command line: run on your data, review in a CSV, check the examples, write a config file;
+and one command per companion workflow (commands.py).\"\"\"
 
 import argparse
 import json
@@ -501,6 +585,7 @@ from pathlib import Path
 import yaml
 
 from . import pipeline
+from .commands import COMMANDS
 from .core import runner
 from .core.checks import compare_example
 
@@ -520,10 +605,11 @@ def cast(value, kind):
     return value
 
 
-def given(args) -> dict:
-    """Input values: the config file, then the options (an option wins)."""
-    values = yaml.safe_load(Path(args.config).read_text(encoding="utf-8")) or {} if args.config else {}
-    for name, (_, kind, _) in pipeline.INPUTS.items():
+def given(args, module) -> dict:
+    \"\"\"Input values: the config file, then the options (an option wins).\"\"\"
+    config = getattr(args, "config", None)
+    values = (yaml.safe_load(Path(config).read_text(encoding="utf-8")) or {}) if config else {}
+    for name, (_, kind, *_) in module.INPUTS.items():
         if getattr(args, name, None) is not None:
             values[name] = getattr(args, name)
         if name in values:
@@ -531,17 +617,16 @@ def given(args) -> dict:
     return values
 
 
-def run(args) -> int:
+def run(args, module=pipeline) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     store = out / "reviews.csv"  # every decision so far
-    labels = runner.read_reviews(store) | runner.read_reviews(Path(args.reviews) if args.reviews else None)
+    labels = runner.read_reviews(store) | runner.read_reviews(Path(args.reviews) if getattr(args, "reviews", None) else None)
     runner.write_reviews(store, labels)
-    rt = pipeline.run(out, labels, **given(args))
+    rt = module.run(out, labels, **given(args, module))
     for line in rt.lines:
         print(line)
-    written = runner.write_outputs(rt, out)
-    for name, path in written.items():
+    for name, path in runner.write_outputs(rt, out).items():
         print(f"→ {name}: {path}")
     asked = runner.review_batch(rt, out / "review_batch.csv")
     if asked:
@@ -553,36 +638,39 @@ def run(args) -> int:
 
 
 def check_examples() -> list[str]:
-    """Every example's expectations and every stage Check, on the shipped example data."""
+    \"\"\"Every example's expectations and every stage Check, on the shipped example data.\"\"\"
     problems = []
-    for example in pipeline.EXAMPLES:
-        with tempfile.TemporaryDirectory() as tmp:
-            rt = pipeline.run(Path(tmp), {}, **example["given"])
-            data = {name: runner.plain(value) for name, value in rt.outputs.items()}
-            problems += [f"{example['id']}: {m}" for m in compare_example(example["expect"], data, {"lines": rt.lines})]
-            problems += [f"{example['id']}: check failed · {c['says']} · {c['evidence']}" for c in rt.checks if not c["passed"]]
+    for command, module in [("run", pipeline), *COMMANDS.items()]:
+        for example in module.EXAMPLES:
+            with tempfile.TemporaryDirectory() as tmp:
+                rt = module.run(Path(tmp), {}, **example["given"])
+                data = {name: runner.plain(value) for name, value in rt.outputs.items()}
+                where = f"{command} {example['id']}"
+                problems += [f"{where}: {m}" for m in compare_example(example["expect"], data, {"lines": rt.lines})]
+                problems += [f"{where}: check failed · {c['says']} · {c['evidence']}" for c in rt.checks if not c["passed"]]
     return problems
 
 
 def check(_args) -> int:
-    if not pipeline.EXAMPLES:
+    total = len(pipeline.EXAMPLES) + sum(len(m.EXAMPLES) for m in COMMANDS.values())
+    if not total:
         print("No examples to run.")
         return 0
     problems = check_examples()
     for p in problems:
         print("✗", p)
-    print(f"{len(pipeline.EXAMPLES)} example(s): " + ("all passed" if not problems else f"{len(problems)} problem(s)"))
+    print(f"{total} example(s): " + ("all passed" if not problems else f"{len(problems)} problem(s)"))
     return 1 if problems else 0
 
 
 def init(args) -> int:
-    """A config file with every input, its description and its default, to edit."""
+    \"\"\"A config file with every input, its description and its default, to edit.\"\"\"
     path = Path(args.path)
     if path.exists():
         print(f"{path} exists; not overwritten.")
         return 1
     lines = [f"# {pipeline.TITLE} {pipeline.VERSION}: input values. Edit, then: {PROG} run --config {path}"]
-    for name, (default, _, description) in pipeline.INPUTS.items():
+    for name, (default, _, description, *_) in pipeline.INPUTS.items():
         lines.append(f"\\n# {description}" if description else "")
         if isinstance(default, str) and "\\n" in default:
             lines.append(f"{name}: |\\n" + "\\n".join("  " + x for x in default.splitlines()))
@@ -593,6 +681,15 @@ def init(args) -> int:
     return 0
 
 
+def options(parser, module) -> None:
+    \"\"\"One option per input of a workflow, with its description, default and choices.\"\"\"
+    for name, (default, kind, description, *rest) in module.INPUTS.items():
+        shown = str(default).splitlines()[0][:40] if default not in (None, "") else ""
+        tip = f"{description} (default: {shown})".replace("%", "%%")
+        choices = rest[0] if rest and rest[0] else None
+        parser.add_argument(f"--{name.replace('_', '-')}", dest=name, default=None, help=tip, choices=choices)
+
+
 def main(argv=None) -> None:
     for stream in (sys.stdout, sys.stderr):  # Windows writes a pipe or file in its code page otherwise
         if hasattr(stream, "reconfigure"):
@@ -600,19 +697,22 @@ def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog=PROG, description=pipeline.PURPOSE.replace("%", "%%"))
     sub = parser.add_subparsers(dest="command", required=True)
     go = sub.add_parser("run", help="run on your data")
-    for name, (default, kind, description) in pipeline.INPUTS.items():
-        shown = str(default).splitlines()[0][:40] if default not in (None, "") else ""
-        tip = f"{description} (default: {shown})".replace("%", "%%")
-        go.add_argument(f"--{name.replace('_', '-')}", dest=name, default=None, help=tip)
+    options(go, pipeline)
     go.add_argument("--config", help=f"a YAML file of input values (write one with: {PROG} init)")
     go.add_argument("--reviews", help="your filled-in review CSV (decision: same / different)")
     go.add_argument("--out", default="out", help="where results, reviews and run folders go")
     sub.add_parser("check", help="run the examples and every stage Check; exit 1 if any fails")
     start = sub.add_parser("init", help="write a config file with every input to edit")
     start.add_argument("path", nargs="?", default="config.yaml")
+    for command, module in COMMANDS.items():
+        more = sub.add_parser(command, help=module.PURPOSE.replace("%", "%%"))
+        options(more, module)
+        more.add_argument("--out", default=command, help="where its results and run folders go")
     args = parser.parse_args(argv)
+    if args.command in COMMANDS:
+        sys.exit(run(args, COMMANDS[args.command]))
     sys.exit({"run": run, "check": check, "init": init}[args.command](args))
-'''
+"""
 
 TESTS = '''"""The workflow's own tests: its contract's examples and stage Checks (the studio ran the same)."""
 
@@ -630,6 +730,7 @@ description = {description}
 requires-python = ">=3.12"
 dependencies = [{deps}]
 
+{optional}
 [project.scripts]
 {name} = "{pkg}.cli:main"
 
@@ -670,14 +771,13 @@ Results go to `out/`: {outputs}. When the workflow asks you to review pairs, it 
 
 ## Inputs
 
-| Option | What it is | Default |
-|---|---|---|
 {rows}
+{commands}
 
 ## Steps
 
 {steps}
-{reference}"""
+{decisions}{extras}{reference}"""
 
 CI = """name: test
 on: [push, pull_request]
@@ -715,8 +815,23 @@ def latest_release(workflow_id: str) -> dict | None:
     return max(found, key=lambda s: s.get("published_at", ""), default=None)
 
 
+def companions(name: str) -> list[dict]:
+    """Published releases named <name>-<command>: each becomes `<name> <command>` in the program."""
+    from .project_repo import projects_root
+    from .workflow_api import published_dir
+
+    found = []
+    for path in sorted(published_dir(projects_root()).glob(f"{name}-*.json")):
+        try:
+            found.append(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    return found
+
+
 def export_workflow(workflow_id: str, check_only: bool = False) -> dict:
-    """The button's and the agent's export: readiness only, or the whole export with download links."""
+    """The button's and the agent's export: readiness only, or the whole export with download links.
+    Releases published as <name>-<command> (a data generator, a benchmark) come along as commands."""
     import folder_paths
 
     from .native_layers import layers
@@ -728,7 +843,14 @@ def export_workflow(workflow_id: str, check_only: bool = False) -> dict:
     contract = (layers(release["workflow"]) if release else None) or repo.load_contract()
     runs = repo.records("pipeline")
     latest = runs[-1].get("prompt_hash", "") if runs else ""
+    also = (
+        [(other, layers(other["workflow"])) for other in companions(release["name"])]
+        if release
+        else []
+    )
     ready = readiness(release, contract)
+    if also:
+        ready["commands"] = {command_of(release["name"], o["name"]): o["semver"] for o, _ in also}
     if release and latest and latest != prompt_hash(release["prompt"]):
         ready["todo"].append(
             f"The workflow changed since release {release['semver']} was published: publish again to export the changes."
@@ -736,7 +858,7 @@ def export_workflow(workflow_id: str, check_only: bool = False) -> dict:
     if check_only or not ready["ready"]:
         return ready
     output = Path(folder_paths.get_output_directory())
-    result = export(release, contract, output, Path(folder_paths.get_input_directory()))
+    result = export(release, contract, output, Path(folder_paths.get_input_directory()), also)
     if "folder" in result:
         dist = f"{result['folder']}/dist"
         result["downloads"] = [

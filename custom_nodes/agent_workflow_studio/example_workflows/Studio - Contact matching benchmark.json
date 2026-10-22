@@ -1,124 +1,14 @@
 {
- "id": "107d6224-001f-4ee6-b428-8890c17d8320",
+ "id": "7dc9605e-6069-47fb-a282-95c5bca509ec",
  "revision": 0,
- "last_node_id": 28,
- "last_link_id": 45,
+ "last_node_id": 31,
+ "last_link_id": 55,
  "nodes": [
-  {
-   "id": 1,
-   "type": "AgentWorkflowSyntheticContacts",
-   "pos": [
-    4170,
-    10
-   ],
-   "size": [
-    560,
-    430
-   ],
-   "flags": {},
-   "order": 0,
-   "mode": 0,
-   "inputs": [
-    {
-     "localized_name": "Profile",
-     "name": "profile",
-     "type": "COMBO",
-     "widget": {
-      "name": "profile"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "Contacts",
-     "name": "contacts",
-     "type": "INT",
-     "widget": {
-      "name": "contacts"
-     },
-     "link": null
-    },
-    {
-     "localized_name": "Seed",
-     "name": "seed",
-     "type": "INT",
-     "widget": {
-      "name": "seed"
-     },
-     "link": null
-    }
-   ],
-   "outputs": [
-    {
-     "localized_name": "folder",
-     "name": "folder",
-     "type": "STRING",
-     "links": [
-      15
-     ]
-    },
-    {
-     "localized_name": "answer key",
-     "name": "answer key",
-     "type": "STRING",
-     "links": [
-      14,
-      31
-     ]
-    }
-   ],
-   "title": "Synthetic contacts",
-   "properties": {
-    "aws_headline": "contacts 10,540 · people 5,457 · phones 14,719 · addresses 16,777",
-    "aws_tables": [
-     {
-      "title": "Synthetic contacts",
-      "columns": [
-       "",
-       "value"
-      ],
-      "rows": [
-       [
-        "contacts",
-        "10540"
-       ],
-       [
-        "people",
-        "5457"
-       ],
-       [
-        "phones",
-        "14719"
-       ],
-       [
-        "addresses",
-        "16777"
-       ],
-       [
-        "tags",
-        "{\"address_kana_missing\": 4377, \"company\": 4315, \"gender_missing\": 2927, \"no_pho…"
-       ]
-      ]
-     }
-    ]
-   },
-   "widgets_values": [
-    "company_hard",
-    10000,
-    7,
-    ""
-   ],
-   "widgets_values_named": {
-    "profile": "company_hard",
-    "contacts": 10000,
-    "seed": 7,
-    "table_view": ""
-   }
-  },
   {
    "id": 10,
    "type": "AgentWorkflowApiOutput",
    "pos": [
-    3650,
+    4170,
     360
    ],
    "size": [
@@ -133,7 +23,7 @@
      "localized_name": "Value",
      "name": "value",
      "type": "*",
-     "link": 43
+     "link": 48
     },
     {
      "localized_name": "Name",
@@ -159,284 +49,119 @@
    }
   },
   {
-   "id": 11,
-   "type": "AgentWorkflowScoreContacts",
+   "id": 12,
+   "type": "330e22aa-ca52-4a4a-9c9b-b5cc5bdc4bfa",
    "pos": [
-    4170,
-    550
+    10,
+    10
    ],
    "size": [
-    560,
-    362
+    320,
+    258
    ],
    "flags": {},
-   "order": 11,
+   "order": 0,
    "mode": 0,
    "inputs": [
     {
-     "localized_name": "Entities",
-     "name": "entities",
-     "type": "RECORD_CLUSTERS",
-     "link": 44
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
     },
     {
-     "localized_name": "Answer key",
-     "name": "answer_key",
-     "type": "STRING",
+     "label": "Profile",
+     "name": "profile",
+     "type": "COMBO",
      "widget": {
-      "name": "answer_key"
+      "name": "profile"
      },
-     "link": 14
+     "link": null
+    },
+    {
+     "label": "Contacts",
+     "name": "contacts",
+     "type": "INT",
+     "widget": {
+      "name": "contacts"
+     },
+     "link": null
     }
    ],
-   "outputs": [],
-   "title": "Score contacts",
+   "outputs": [
+    {
+     "localized_name": "folder",
+     "name": "folder",
+     "type": "STRING",
+     "links": [
+      20
+     ]
+    },
+    {
+     "localized_name": "answer_key",
+     "name": "answer_key",
+     "type": "STRING",
+     "links": [
+      36,
+      52
+     ]
+    }
+   ],
+   "title": "1 · Generate contacts",
    "properties": {
-    "aws_headline": "F1 0.962 · precision 0.99 · recall 0.936",
-    "aws_tables": [
-     {
-      "title": "Score",
-      "columns": [
-       "",
-       "value"
-      ],
-      "rows": [
-       [
-        "pairwise precision",
-        "0.99"
-       ],
-       [
-        "pairwise recall",
-        "0.936"
-       ],
-       [
-        "pairwise f1",
-        "0.962"
-       ],
-       [
-        "bcubed precision",
-        "0.995"
-       ],
-       [
-        "bcubed recall",
-        "0.967"
-       ],
-       [
-        "bcubed f1",
-        "0.981"
-       ]
-      ]
+    "aws_stage": "generate",
+    "aws_stage_order": 1,
+    "aws_card": {
+     "purpose": "",
+     "lines": [],
+     "state": ""
+    },
+    "previewExposures": [],
+    "aws_step": {
+     "id": "generate",
+     "purpose": "Generate CRM-shaped contacts (contacts, phones and addresses on CONT_ID) with realistic dirt, and their answer key.",
+     "approach": "fixed",
+     "covers": [
+      "R5"
+     ],
+     "gives": {
+      "folder": "STRING",
+      "answer_key": "STRING"
      },
-     {
-      "title": "Recall by dirt (first 40 of 65)",
-      "columns": [
-       "",
-       "value"
-      ],
-      "rows": [
-       [
-        "address_kana_missing",
-        "0.925"
-       ],
-       [
-        "company",
-        "0.987"
-       ],
-       [
-        "kana_missing",
-        "0.884"
-       ],
-       [
-        "gender_missing",
-        "0.879"
-       ],
-       [
-        "no_phone",
-        "0.87"
-       ],
-       [
-        "typo",
-        "0.92"
-       ],
-       [
-        "ocr",
-        "0.92"
-       ],
-       [
-        "no_address",
-        "0.841"
-       ],
-       [
-        "company_branch",
-        "0.988"
-       ],
-       [
-        "loanword_variant",
-        "0.991"
-       ],
-       [
-        "reading_guess",
-        "0.88"
-       ],
-       [
-        "onchu",
-        "0.983"
-       ],
-       [
-        "zengin_kana",
-        "0.987"
-       ],
-       [
-        "legal_form_omitted",
-        "0.984"
-       ],
-       [
-        "wild_gender_code",
-        "0.915"
-       ],
-       [
-        "company_no_date",
-        "0.984"
-       ],
-       [
-        "company_department",
-        "0.984"
-       ],
-       [
-        "long_vowel",
-        "0.868"
-       ],
-       [
-        "kanji_missing",
-        "0.749"
-       ],
-       [
-        "type_flag_wrong",
-        "0.95"
-       ],
-       [
-        "phone_lost_zero",
-        "0.926"
-       ],
-       [
-        "many_values",
-        "0.911"
-       ],
-       [
-        "kana_only",
-        "0.838"
-       ],
-       [
-        "founding_year_only",
-        "0.989"
-       ],
-       [
-        "company_gender_filled",
-        "0.99"
-       ],
-       [
-        "legal_form_moved",
-        "0.985"
-       ],
-       [
-        "itaiji",
-        "0.877"
-       ],
-       [
-        "wild_phone_note",
-        "0.915"
-       ],
-       [
-        "given_missing",
-        "0.895"
-       ],
-       [
-        "address_partial",
-        "0.899"
-       ],
-       [
-        "old_surname",
-        "0.82"
-       ],
-       [
-        "registration_date",
-        "0.961"
-       ],
-       [
-        "same_name_company",
-        "0.989"
-       ],
-       [
-        "phone_placeholder",
-        "0.935"
-       ],
-       [
-        "group_company",
-        "0.989"
-       ],
-       [
-        "fax_in_phone",
-        "0.987"
-       ],
-       [
-        "gender_wrong",
-        "0.866"
-       ],
-       [
-        "recipient_person",
-        "0.988"
-       ],
-       [
-        "wild_one_field",
-        "0.873"
-       ],
-       [
-        "dob_typo",
-        "0.789"
-       ]
-      ]
-     },
-     {
-      "title": "Wrong merges",
-      "columns": [
-       "",
-       "value"
-      ],
-      "rows": [
-       [
-        "same name and birth date",
-        "31"
-       ],
-       [
-        "same household",
-        "27"
-       ],
-       [
-        "same name",
-        "23"
-       ],
-       [
-        "other",
-        "11"
-       ]
-      ]
+     "uses": "Synthetic contacts",
+     "why": "a measurement needs data whose answers are known",
+     "pattern": "Synthetic data with ground truth",
+     "gate": {
+      "says": "The data folder is written (with its answer key beside it).",
+      "check": {
+       "output": "folder",
+       "kind": "contains",
+       "value": "contacts_benchmark"
+      }
      }
-    ]
+    }
    },
    "widgets_values": [
-    "",
-    ""
+    7,
+    "company_hard",
+    10000
    ],
    "widgets_values_named": {
-    "answer_key": "",
-    "table_view": ""
-   }
+    "seed": 7,
+    "profile": "company_hard",
+    "contacts": 10000,
+    "stage_card": ""
+   },
+   "color": "#3d4a5c",
+   "bgcolor": "#2b3340"
   },
   {
-   "id": 12,
-   "type": "d1d5bfb0-a109-45d6-a570-24c417f96862",
+   "id": 14,
+   "type": "be130a84-6ae9-4b0d-8de3-78797a6e4c4f",
    "pos": [
-    10,
+    530,
     10
    ],
    "size": [
@@ -454,7 +179,7 @@
      "widget": {
       "name": "folder"
      },
-     "link": 15
+     "link": 20
     }
    ],
    "outputs": [
@@ -463,15 +188,15 @@
      "name": "contacts",
      "type": "CONTACTS",
      "links": [
-      19,
-      41
+      24,
+      46
      ]
     }
    ],
-   "title": "1 · Read the exports",
+   "title": "2 · Read the exports",
    "properties": {
     "aws_stage": "read",
-    "aws_stage_order": 1,
+    "aws_stage_order": 2,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -487,7 +212,7 @@
       "R4"
      ],
      "takes": {
-      "folder": "STRING"
+      "folder": "generate.folder"
      },
      "gives": {
       "contacts": "CONTACTS"
@@ -496,11 +221,11 @@
      "why": "every CRM names its columns its own way",
      "pattern": "Canonical data model",
      "gate": {
-      "says": "At least 9,000 contacts are read (10,540 on the default data).",
+      "says": "The exports are read: at least one contact (10,540 on the benchmark data).",
       "check": {
        "output": "contacts",
        "kind": "rows_at_least",
-       "value": 9000
+       "value": 1
       }
      }
     }
@@ -516,10 +241,10 @@
    "bgcolor": "#2b3340"
   },
   {
-   "id": 14,
-   "type": "04192d9d-f7bf-4ff2-9d37-a573d2dd93ec",
+   "id": 16,
+   "type": "2f6af6d8-4ecf-49ec-8519-3d639b39d52a",
    "pos": [
-    530,
+    1050,
     10
    ],
    "size": [
@@ -534,7 +259,7 @@
      "localized_name": "Contacts",
      "name": "contacts",
      "type": "CONTACTS",
-     "link": 19
+     "link": 24
     }
    ],
    "outputs": [
@@ -543,15 +268,15 @@
      "name": "records",
      "type": "CONTACT_RECORDS",
      "links": [
-      23,
-      26
+      28,
+      31
      ]
     }
    ],
-   "title": "2 · Standardize",
+   "title": "3 · Standardize",
    "properties": {
     "aws_stage": "standardize",
-    "aws_stage_order": 2,
+    "aws_stage_order": 3,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -575,11 +300,11 @@
      "why": "the same name is typed many ways",
      "pattern": "Standardization",
      "gate": {
-      "says": "Every contact is standardized: at least 9,000.",
+      "says": "Every contact read is standardized.",
       "check": {
        "output": "records",
        "kind": "rows_at_least",
-       "value": 9000
+       "value": 1
       }
      }
     }
@@ -591,10 +316,10 @@
    "bgcolor": "#2b3340"
   },
   {
-   "id": 16,
-   "type": "2e804773-a115-4be3-b494-aca5a1420bc9",
+   "id": 18,
+   "type": "aa12ece7-293e-4e8c-8b50-9dafd05b7db4",
    "pos": [
-    1050,
+    1570,
     10
    ],
    "size": [
@@ -609,7 +334,7 @@
      "localized_name": "Records",
      "name": "records",
      "type": "CONTACT_RECORDS",
-     "link": 23
+     "link": 28
     }
    ],
    "outputs": [
@@ -618,14 +343,14 @@
      "name": "candidates",
      "type": "CANDIDATE_PAIRS",
      "links": [
-      27
+      32
      ]
     }
    ],
-   "title": "3 · Find candidates",
+   "title": "4 · Find candidates",
    "properties": {
     "aws_stage": "find_candidates",
-    "aws_stage_order": 3,
+    "aws_stage_order": 4,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -650,11 +375,11 @@
      "why": "comparing every pair is too slow",
      "pattern": "Blocking",
      "gate": {
-      "says": "At least 12,000 candidate pairs (15,219 on the default data).",
+      "says": "Candidate pairs are found (15,219 on the benchmark data).",
       "check": {
        "output": "candidates",
        "kind": "rows_at_least",
-       "value": 12000
+       "value": 1
       }
      }
     }
@@ -666,10 +391,10 @@
    "bgcolor": "#2b3340"
   },
   {
-   "id": 18,
-   "type": "fd153168-0d5e-40f2-8028-56fb0042ee39",
+   "id": 20,
+   "type": "42ae630f-a9dd-4585-8f09-dea099c982d8",
    "pos": [
-    1570,
+    2090,
     10
    ],
    "size": [
@@ -684,13 +409,13 @@
      "localized_name": "Records",
      "name": "records",
      "type": "CONTACT_RECORDS",
-     "link": 26
+     "link": 31
     },
     {
      "localized_name": "Candidates",
      "name": "candidates",
      "type": "CANDIDATE_PAIRS",
-     "link": 27
+     "link": 32
     }
    ],
    "outputs": [
@@ -699,14 +424,14 @@
      "name": "pairs",
      "type": "RECORD_PAIRS",
      "links": [
-      30
+      35
      ]
     }
    ],
-   "title": "4 · Compare",
+   "title": "5 · Compare",
    "properties": {
     "aws_stage": "compare",
-    "aws_stage_order": 4,
+    "aws_stage_order": 5,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -731,11 +456,11 @@
      "why": "a model needs measured evidence",
      "pattern": "Comparison vector",
      "gate": {
-      "says": "Every candidate pair is compared: at least 12,000.",
+      "says": "Every candidate pair is compared.",
       "check": {
        "output": "pairs",
        "kind": "rows_at_least",
-       "value": 12000
+       "value": 1
       }
      }
     }
@@ -747,10 +472,10 @@
    "bgcolor": "#2b3340"
   },
   {
-   "id": 20,
-   "type": "0547da08-0b6f-4393-bceb-d80bb92066c0",
+   "id": 22,
+   "type": "0e4e17ce-beef-439a-b8c2-7f46408a0bad",
    "pos": [
-    2090,
+    2610,
     10
    ],
    "size": [
@@ -765,7 +490,7 @@
      "localized_name": "Pairs",
      "name": "pairs",
      "type": "RECORD_PAIRS",
-     "link": 30
+     "link": 35
     },
     {
      "localized_name": "Answer key (benchmark)",
@@ -775,7 +500,7 @@
      "widget": {
       "name": "answer_key_file"
      },
-     "link": 31
+     "link": 36
     },
     {
      "name": "seed",
@@ -783,6 +508,16 @@
      "type": "INT",
      "widget": {
       "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "label": "Simulated reviews",
+     "name": "budget",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "budget"
      },
      "link": null
     }
@@ -793,14 +528,14 @@
      "name": "scored",
      "type": "RECORD_PAIRS",
      "links": [
-      35
+      40
      ]
     }
    ],
-   "title": "5 · Learn from your reviews",
+   "title": "6 · Learn from your reviews",
    "properties": {
     "aws_stage": "learn",
-    "aws_stage_order": 5,
+    "aws_stage_order": 6,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -816,7 +551,7 @@
      ],
      "takes": {
       "pairs": "compare.pairs",
-      "answer_key_file": "STRING"
+      "answer_key_file": "generate.answer_key"
      },
      "gives": {
       "scored": "RECORD_PAIRS"
@@ -825,32 +560,34 @@
      "why": "your data, not ours, decides the weights",
      "pattern": "Active learning",
      "gate": {
-      "says": "Every compared pair gets a score: at least 12,000.",
+      "says": "Every compared pair gets a score.",
       "check": {
        "output": "scored",
        "kind": "rows_at_least",
-       "value": 12000
+       "value": 1
       }
      }
     }
    },
    "widgets_values": [
     "",
-    0
+    0,
+    1000
    ],
    "widgets_values_named": {
     "answer_key_file": "",
     "seed": 0,
+    "budget": 1000,
     "stage_card": ""
    },
    "color": "#5b3d7a",
    "bgcolor": "#3a2a4f"
   },
   {
-   "id": 22,
-   "type": "556adf66-803d-4842-a9e1-0f022df56348",
+   "id": 24,
+   "type": "24f5a04f-4f29-4ab4-9299-744c2b812894",
    "pos": [
-    2610,
+    3130,
     10
    ],
    "size": [
@@ -865,7 +602,7 @@
      "localized_name": "Scored pairs",
      "name": "pairs",
      "type": "RECORD_PAIRS",
-     "link": 35
+     "link": 40
     }
    ],
    "outputs": [
@@ -874,14 +611,14 @@
      "name": "decisions",
      "type": "PAIR_DECISIONS",
      "links": [
-      38
+      43
      ]
     }
    ],
-   "title": "6 · Decide",
+   "title": "7 · Decide",
    "properties": {
     "aws_stage": "decide",
-    "aws_stage_order": 6,
+    "aws_stage_order": 7,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -900,18 +637,17 @@
       "pairs": "learn.scored"
      },
      "gives": {
-      "decisions": "PAIR_DECISIONS",
-      "queue": "PAIR_DECISIONS"
+      "decisions": "PAIR_DECISIONS"
      },
      "uses": "Decide by score",
      "why": "the business sets precision against recall",
      "pattern": "Threshold policy",
      "gate": {
-      "says": "Every scored pair is decided: at least 12,000.",
+      "says": "Every scored pair is decided.",
       "check": {
        "output": "decisions",
        "kind": "rows_at_least",
-       "value": 12000
+       "value": 1
       }
      }
     }
@@ -923,10 +659,10 @@
    "bgcolor": "#3a2a4f"
   },
   {
-   "id": 24,
-   "type": "852029aa-9a08-48ce-80e8-d766aa98cc57",
+   "id": 26,
+   "type": "41303dbc-7aaa-4a7b-9faa-3d107533f5c1",
    "pos": [
-    3130,
+    3650,
     10
    ],
    "size": [
@@ -942,7 +678,7 @@
      "name": "data",
      "shape": 7,
      "type": "PAIR_DECISIONS,DICT",
-     "link": 38
+     "link": 43
     }
    ],
    "outputs": [
@@ -951,14 +687,14 @@
      "name": "clusters",
      "type": "RECORD_CLUSTERS",
      "links": [
-      42
+      47
      ]
     }
    ],
-   "title": "7 · Group into entities",
+   "title": "8 · Group into entities",
    "properties": {
     "aws_stage": "group",
-    "aws_stage_order": 7,
+    "aws_stage_order": 8,
     "aws_card": {
      "purpose": "",
      "lines": [
@@ -986,11 +722,11 @@
      "why": "one wrong link must not chain many",
      "pattern": "Guarded clustering",
      "gate": {
-      "says": "At least 8,000 contacts take part in a decided pair (9,028 on the default data).",
+      "says": "The decided pairs are grouped.",
       "check": {
        "output": "clusters",
        "kind": "rows_at_least",
-       "value": 8000
+       "value": 1
       }
      }
     }
@@ -1002,10 +738,10 @@
    "bgcolor": "#3a2a4f"
   },
   {
-   "id": 26,
-   "type": "f5a8ccb0-2c6e-4f7e-b13c-b237a834c48f",
+   "id": 28,
+   "type": "efbfcd9d-1567-4ab1-aaa7-95b2cfdedc5f",
    "pos": [
-    3650,
+    4170,
     10
    ],
    "size": [
@@ -1020,13 +756,13 @@
      "localized_name": "Contacts",
      "name": "records",
      "type": "CONTACTS",
-     "link": 41
+     "link": 46
     },
     {
      "localized_name": "Clusters",
      "name": "clusters",
      "type": "RECORD_CLUSTERS",
-     "link": 42
+     "link": 47
     }
    ],
    "outputs": [
@@ -1035,15 +771,15 @@
      "name": "entities",
      "type": "RECORD_CLUSTERS",
      "links": [
-      43,
-      44
+      48,
+      51
      ]
     }
    ],
-   "title": "8 · Publish",
+   "title": "9 · Publish",
    "properties": {
     "aws_stage": "publish",
-    "aws_stage_order": 8,
+    "aws_stage_order": 9,
     "aws_card": {
      "purpose": "",
      "lines": [],
@@ -1068,11 +804,11 @@
      "why": "every contact needs an id, merged or not",
      "pattern": "Publish",
      "gate": {
-      "says": "Every contact gets an entity id: at least 9,000.",
+      "says": "Every contact gets an entity id.",
       "check": {
        "output": "entities",
        "kind": "rows_at_least",
-       "value": 9000
+       "value": 1
       }
      }
     }
@@ -1084,7 +820,78 @@
    "bgcolor": "#2b3340"
   },
   {
-   "id": 28,
+   "id": 30,
+   "type": "7dc8aa68-436c-4841-ab7d-2d7a5db8e11d",
+   "pos": [
+    4690,
+    10
+   ],
+   "size": [
+    320,
+    240
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Entities",
+     "name": "entities",
+     "type": "RECORD_CLUSTERS",
+     "link": 51
+    },
+    {
+     "localized_name": "Answer key",
+     "name": "answer_key",
+     "type": "STRING",
+     "widget": {
+      "name": "answer_key"
+     },
+     "link": 52
+    }
+   ],
+   "outputs": [],
+   "title": "10 · Score",
+   "properties": {
+    "aws_stage": "score",
+    "aws_stage_order": 10,
+    "aws_card": {
+     "purpose": "",
+     "lines": [],
+     "state": ""
+    },
+    "previewExposures": [],
+    "aws_step": {
+     "id": "score",
+     "purpose": "Score the entities against the answer key: precision, recall and F1, totals only.",
+     "approach": "fixed",
+     "covers": [
+      "R5"
+     ],
+     "takes": {
+      "entities": "publish.entities",
+      "answer_key": "generate.answer_key"
+     },
+     "uses": "Score contacts",
+     "why": "the result is measured, not assumed",
+     "pattern": "Evaluation against ground truth",
+     "gate": {
+      "says": "The score is shown, totals only (nothing flows on, so no step can tune itself to the answer key)."
+     }
+    }
+   },
+   "widgets_values": [
+    ""
+   ],
+   "widgets_values_named": {
+    "answer_key": "",
+    "stage_card": ""
+   },
+   "color": "#3d4a5c",
+   "bgcolor": "#2b3340"
+  },
+  {
+   "id": 31,
    "type": "MarkdownNote",
    "pos": [
     10,
@@ -1102,10 +909,10 @@
    "title": "How to use this workflow",
    "properties": {},
    "widgets_values": [
-    "# Contact matching benchmark\n\nGenerated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).\n\n1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.\n2. Change the profile, size or seed on **Synthetic contacts**. Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.\n3. The data lands in input/contacts_benchmark/company_hard_10000_7 (for Studio - Contact matching to read)."
+    "# Contact matching benchmark\n\nGenerated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).\n\n1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.\n2. Change the profile, size, seed or the reviews it makes on the stage cards (or open it as an App). Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.\n3. The data lands in input/contacts_benchmark/company_hard_10000_7 (for Studio - Contact matching to read)."
    ],
    "widgets_values_named": {
-    "text": "# Contact matching benchmark\n\nGenerated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).\n\n1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.\n2. Change the profile, size or seed on **Synthetic contacts**. Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.\n3. The data lands in input/contacts_benchmark/company_hard_10000_7 (for Studio - Contact matching to read)."
+    "text": "# Contact matching benchmark\n\nGenerated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).\n\n1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.\n2. Change the profile, size, seed or the reviews it makes on the stage cards (or open it as an App). Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.\n3. The data lands in input/contacts_benchmark/company_hard_10000_7 (for Studio - Contact matching to read)."
    },
    "color": "#432",
    "bgcolor": "#653"
@@ -1113,68 +920,44 @@
  ],
  "links": [
   [
-   14,
-   1,
-   1,
-   11,
-   1,
-   "STRING"
-  ],
-  [
-   15,
-   1,
-   0,
+   20,
    12,
+   0,
+   14,
    0,
    "STRING"
   ],
   [
-   19,
-   12,
-   0,
+   24,
    14,
+   0,
+   16,
    0,
    "CONTACTS"
   ],
   [
-   23,
-   14,
-   0,
+   28,
    16,
-   0,
-   "CONTACT_RECORDS"
-  ],
-  [
-   26,
-   14,
    0,
    18,
    0,
    "CONTACT_RECORDS"
-  ],
-  [
-   27,
-   16,
-   0,
-   18,
-   1,
-   "CANDIDATE_PAIRS"
-  ],
-  [
-   30,
-   18,
-   0,
-   20,
-   0,
-   "RECORD_PAIRS"
   ],
   [
    31,
-   1,
-   1,
+   16,
+   0,
+   20,
+   0,
+   "CONTACT_RECORDS"
+  ],
+  [
+   32,
+   18,
+   0,
    20,
    1,
-   "STRING"
+   "CANDIDATE_PAIRS"
   ],
   [
    35,
@@ -1185,61 +968,419 @@
    "RECORD_PAIRS"
   ],
   [
-   38,
+   36,
+   12,
+   1,
+   22,
+   1,
+   "STRING"
+  ],
+  [
+   40,
    22,
    0,
    24,
    0,
+   "RECORD_PAIRS"
+  ],
+  [
+   43,
+   24,
+   0,
+   26,
+   0,
    "PAIR_DECISIONS"
   ],
   [
-   41,
-   12,
+   46,
+   14,
    0,
-   26,
+   28,
    0,
    "CONTACTS"
   ],
   [
-   42,
-   24,
-   0,
+   47,
    26,
+   0,
+   28,
    1,
    "RECORD_CLUSTERS"
   ],
   [
-   43,
-   26,
+   48,
+   28,
    0,
    10,
    0,
    "RECORD_CLUSTERS"
   ],
   [
-   44,
-   26,
+   51,
+   28,
    0,
-   11,
+   30,
    0,
    "RECORD_CLUSTERS"
+  ],
+  [
+   52,
+   12,
+   1,
+   30,
+   1,
+   "STRING"
   ]
  ],
  "groups": [],
  "definitions": {
   "subgraphs": [
    {
-    "id": "d1d5bfb0-a109-45d6-a570-24c417f96862",
+    "id": "330e22aa-ca52-4a4a-9c9b-b5cc5bdc4bfa",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "1 · Read the exports",
+    "name": "1 · Generate contacts",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      48
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      88
+     ]
+    },
+    "inputs": [
+     {
+      "id": "23c16921-106e-43b2-aa48-41fda4badc08",
+      "name": "seed",
+      "type": "INT",
+      "linkIds": [
+       18
+      ],
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "1dfb593a-78b5-4c01-974a-05bc1eb8cf08",
+      "name": "profile",
+      "type": "COMBO",
+      "linkIds": [
+       53
+      ],
+      "label": "Profile",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "75c123c9-3f8d-4c43-95cf-c4366693f397",
+      "name": "contacts",
+      "type": "INT",
+      "linkIds": [
+       54
+      ],
+      "label": "Contacts",
+      "pos": [
+       0,
+       0
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "fc9f7cfa-eaf0-4d9d-a341-da9263db460f",
+      "name": "folder",
+      "type": "STRING",
+      "linkIds": [
+       1
+      ],
+      "localized_name": "folder",
+      "pos": [
+       24,
+       24
+      ]
+     },
+     {
+      "id": "80a1dc2b-0bcf-437c-aae0-ffb475c5d103",
+      "name": "answer_key",
+      "type": "STRING",
+      "linkIds": [
+       7
+      ],
+      "localized_name": "answer_key",
+      "pos": [
+       24,
+       44
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 1,
+      "type": "AgentWorkflowSyntheticContacts",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       430
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Profile",
+        "name": "profile",
+        "type": "COMBO",
+        "widget": {
+         "name": "profile"
+        },
+        "link": 53
+       },
+       {
+        "localized_name": "Contacts",
+        "name": "contacts",
+        "type": "INT",
+        "widget": {
+         "name": "contacts"
+        },
+        "link": 54
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 18
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "folder",
+        "name": "folder",
+        "type": "STRING",
+        "links": [
+         1,
+         19
+        ]
+       },
+       {
+        "localized_name": "answer_key",
+        "name": "answer_key",
+        "type": "STRING",
+        "links": [
+         7
+        ]
+       }
+      ],
+      "title": "Synthetic contacts",
+      "properties": {
+       "aws_headline": "company_hard · contacts 10,540 · people 5,457 · phones 14,719 · addresses 16,777",
+       "aws_tables": [
+        {
+         "title": "Synthetic contacts",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "contacts",
+           "10540"
+          ],
+          [
+           "people",
+           "5457"
+          ],
+          [
+           "phones",
+           "14719"
+          ],
+          [
+           "addresses",
+           "16777"
+          ]
+         ]
+        }
+       ],
+       "aws_realizes": [
+        "gives answer_key",
+        "gives folder",
+        "does"
+       ]
+      },
+      "widgets_values": [
+       "company_hard",
+       10000,
+       7,
+       ""
+      ],
+      "widgets_values_named": {
+       "profile": "company_hard",
+       "contacts": 10000,
+       "seed": 7,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 13,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       10,
+       550
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 19
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · folder",
+      "properties": {
+       "aws_watches": "folder",
+       "aws_headline": "✓ passed · The data folder is written (with its answer key beside it). · contacts_benchmark/company_hard_10000_7"
+      },
+      "widgets_values": [
+       "contains",
+       "contacts_benchmark",
+       "The data folder is written (with its answer key beside it).",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "contains",
+       "expect": "contacts_benchmark",
+       "says": "The data folder is written (with its answer key beside it).",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 1,
+      "origin_id": 1,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 7,
+      "origin_id": 1,
+      "origin_slot": 1,
+      "target_id": -20,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 18,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 1,
+      "target_slot": 2,
+      "type": "INT"
+     },
+     {
+      "id": 19,
+      "origin_id": 1,
+      "origin_slot": 0,
+      "target_id": 13,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 53,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 1,
+      "target_slot": 0,
+      "type": "COMBO"
+     },
+     {
+      "id": 54,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 1,
+      "target_slot": 1,
+      "type": "INT"
+     }
+    ],
+    "extra": {},
+    "description": "Does: Generate CRM-shaped contacts (contacts, phones and addresses on CONT_ID) with realistic dirt, and their answer key using Synthetic contacts\nGives: folder (STRING), answer_key (STRING)\nServes R5 · Measured on generated data: you said “we need that data generator”\nVerified when: The data folder is written (with its answer key beside it).\nBecause: a measurement needs data whose answers are known"
+   },
+   {
+    "id": "be130a84-6ae9-4b0d-8de3-78797a6e4c4f",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "2 · Read the exports",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -1260,11 +1401,11 @@
     },
     "inputs": [
      {
-      "id": "89717672-15be-433d-9f5e-b642dad3392f",
+      "id": "93bc7658-5bd8-4088-8baf-42e716dc414e",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
-       1
+       15
       ],
       "localized_name": "Folder",
       "pos": [
@@ -1275,7 +1416,7 @@
     ],
     "outputs": [
      {
-      "id": "5a52be79-b2cb-417a-ac9a-9a0734b713bf",
+      "id": "894782b5-9ae2-4703-b6b7-d86f78a5e7cb",
       "name": "contacts",
       "type": "CONTACTS",
       "linkIds": [
@@ -1312,7 +1453,7 @@
         "widget": {
          "name": "folder"
         },
-        "link": 1
+        "link": 15
        },
        {
         "localized_name": "Column map",
@@ -1331,7 +1472,7 @@
         "type": "CONTACTS",
         "links": [
          2,
-         18
+         23
         ]
        }
       ],
@@ -1346,7 +1487,7 @@
          {
           "class": "contacts",
           "name": "contacts",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/read_contacts-20261022-092816150/contacts.jsonl",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/read_contacts-20261022-102106170/contacts.jsonl",
           "format": "jsonl",
           "row_count": 10540
          }
@@ -1413,7 +1554,7 @@
       }
      },
      {
-      "id": 13,
+      "id": 15,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -1431,7 +1572,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 18
+        "link": 23
        },
        {
         "localized_name": "Must hold",
@@ -1465,18 +1606,18 @@
       "title": "Check · contacts",
       "properties": {
        "aws_watches": "contacts",
-       "aws_headline": "✓ passed · At least 9,000 contacts are read (10,540 on the default data). · 10,540 row(s)"
+       "aws_headline": "✓ passed · The exports are read: at least one contact (10,540 on the benchmark data). · 10,540 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "9000",
-       "At least 9,000 contacts are read (10,540 on the default data).",
+       "1",
+       "The exports are read: at least one contact (10,540 on the benchmark data).",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "9000",
-       "says": "At least 9,000 contacts are read (10,540 on the default data).",
+       "expect": "1",
+       "says": "The exports are read: at least one contact (10,540 on the benchmark data).",
        "table_view": ""
       }
      }
@@ -1484,7 +1625,7 @@
     "groups": [],
     "links": [
      {
-      "id": 1,
+      "id": 15,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 2,
@@ -1500,29 +1641,29 @@
       "type": "CONTACTS"
      },
      {
-      "id": 18,
+      "id": 23,
       "origin_id": 2,
       "origin_slot": 0,
-      "target_id": 13,
+      "target_id": 15,
       "target_slot": 0,
       "type": "CONTACTS"
      }
     ],
     "extra": {},
-    "description": "Does: Read your contact exports through the column map: one contact per key, phones and addresses attached using Read contacts\nTakes: folder (STRING)\nGives: contacts (CONTACTS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R4 · Any export with this shape: you said “the pipeline should work on any data that matches the shape”\nVerified when: At least 9,000 contacts are read (10,540 on the default data).\nBecause: every CRM names its columns its own way"
+    "description": "Does: Read your contact exports through the column map: one contact per key, phones and addresses attached using Read contacts\nTakes: folder from 1 · Generate\nGives: contacts (CONTACTS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R4 · Any export with this shape: you said “the pipeline should work on any data that matches the shape”\nVerified when: The exports are read: at least one contact (10,540 on the benchmark data).\nBecause: every CRM names its columns its own way"
    },
    {
-    "id": "04192d9d-f7bf-4ff2-9d37-a573d2dd93ec",
+    "id": "2f6af6d8-4ecf-49ec-8519-3d639b39d52a",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "2 · Standardize",
+    "name": "3 · Standardize",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -1543,11 +1684,11 @@
     },
     "inputs": [
      {
-      "id": "107b0072-b460-4f05-89b0-e562e666bf7c",
+      "id": "76a65331-7017-49f5-9652-7b5e834dcdbb",
       "name": "contacts",
       "type": "CONTACTS",
       "linkIds": [
-       16
+       21
       ],
       "localized_name": "Contacts",
       "pos": [
@@ -1558,7 +1699,7 @@
     ],
     "outputs": [
      {
-      "id": "12960944-b8fc-489d-a6ec-ed7b7074a32f",
+      "id": "d2c18a14-43c1-4d49-88aa-6522f8b8c4ae",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
@@ -1592,7 +1733,7 @@
         "localized_name": "Contacts",
         "name": "contacts",
         "type": "CONTACTS",
-        "link": 16
+        "link": 21
        },
        {
         "localized_name": "Town registry",
@@ -1656,7 +1797,7 @@
         "type": "CONTACT_RECORDS",
         "links": [
          3,
-         22
+         27
         ]
        }
       ],
@@ -1671,7 +1812,7 @@
          {
           "class": "contact_records",
           "name": "records",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/standardize_contacts-20261022-092816311/records.jsonl",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/standardize_contacts-20261022-102106334/records.jsonl",
           "format": "jsonl",
           "row_count": 10540
          }
@@ -1746,7 +1887,7 @@
       }
      },
      {
-      "id": 15,
+      "id": 17,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -1764,7 +1905,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 22
+        "link": 27
        },
        {
         "localized_name": "Must hold",
@@ -1798,18 +1939,18 @@
       "title": "Check · records",
       "properties": {
        "aws_watches": "records",
-       "aws_headline": "✓ passed · Every contact is standardized: at least 9,000. · 10,540 row(s)"
+       "aws_headline": "✓ passed · Every contact read is standardized. · 10,540 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "9000",
-       "Every contact is standardized: at least 9,000.",
+       "1",
+       "Every contact read is standardized.",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "9000",
-       "says": "Every contact is standardized: at least 9,000.",
+       "expect": "1",
+       "says": "Every contact read is standardized.",
        "table_view": ""
       }
      }
@@ -1817,7 +1958,7 @@
     "groups": [],
     "links": [
      {
-      "id": 16,
+      "id": 21,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 3,
@@ -1833,29 +1974,29 @@
       "type": "CONTACT_RECORDS"
      },
      {
-      "id": 22,
+      "id": 27,
       "origin_id": 3,
       "origin_slot": 0,
-      "target_id": 15,
+      "target_id": 17,
       "target_slot": 0,
       "type": "CONTACT_RECORDS"
      }
     ],
     "extra": {},
-    "description": "Does: Make names, phones and addresses comparable using Standardize contacts\nTakes: contacts from 1 · Read\nGives: records (CONTACT_RECORDS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every contact is standardized: at least 9,000.\nBecause: the same name is typed many ways"
+    "description": "Does: Make names, phones and addresses comparable using Standardize contacts\nTakes: contacts from 2 · Read\nGives: records (CONTACT_RECORDS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every contact read is standardized.\nBecause: the same name is typed many ways"
    },
    {
-    "id": "2e804773-a115-4be3-b494-aca5a1420bc9",
+    "id": "aa12ece7-293e-4e8c-8b50-9dafd05b7db4",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "3 · Find candidates",
+    "name": "4 · Find candidates",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -1876,11 +2017,11 @@
     },
     "inputs": [
      {
-      "id": "96a3ac84-64af-4071-9b97-5e83fb027ddd",
+      "id": "42e68805-7fc3-4152-a8e7-3a08f36a11f9",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
-       20
+       25
       ],
       "localized_name": "Records",
       "pos": [
@@ -1891,7 +2032,7 @@
     ],
     "outputs": [
      {
-      "id": "27167cbd-f113-4659-921b-e1c833e131f1",
+      "id": "cd6ab2e3-a416-4da9-aeef-f4af404f8c04",
       "name": "candidates",
       "type": "CANDIDATE_PAIRS",
       "linkIds": [
@@ -1925,7 +2066,7 @@
         "localized_name": "Records",
         "name": "records",
         "type": "CONTACT_RECORDS",
-        "link": 20
+        "link": 25
        },
        {
         "localized_name": "Exact keys",
@@ -1998,7 +2139,7 @@
         "type": "CANDIDATE_PAIRS",
         "links": [
          5,
-         25
+         30
         ]
        }
       ],
@@ -2013,7 +2154,7 @@
          {
           "class": "candidate_pairs",
           "name": "candidates",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/find_contact_candidates-20261022-092816973/candidates.csv",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/find_contact_candidates-20261022-102106996/candidates.csv",
           "format": "csv",
           "row_count": 15219
          }
@@ -2082,7 +2223,7 @@
       }
      },
      {
-      "id": 17,
+      "id": 19,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -2100,7 +2241,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 25
+        "link": 30
        },
        {
         "localized_name": "Must hold",
@@ -2134,18 +2275,18 @@
       "title": "Check · candidates",
       "properties": {
        "aws_watches": "candidates",
-       "aws_headline": "✓ passed · At least 12,000 candidate pairs (15,219 on the default data). · 15,219 row(s)"
+       "aws_headline": "✓ passed · Candidate pairs are found (15,219 on the benchmark data). · 15,219 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "12000",
-       "At least 12,000 candidate pairs (15,219 on the default data).",
+       "1",
+       "Candidate pairs are found (15,219 on the benchmark data).",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "12000",
-       "says": "At least 12,000 candidate pairs (15,219 on the default data).",
+       "expect": "1",
+       "says": "Candidate pairs are found (15,219 on the benchmark data).",
        "table_view": ""
       }
      }
@@ -2153,7 +2294,7 @@
     "groups": [],
     "links": [
      {
-      "id": 20,
+      "id": 25,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 4,
@@ -2169,29 +2310,29 @@
       "type": "CANDIDATE_PAIRS"
      },
      {
-      "id": 25,
+      "id": 30,
       "origin_id": 4,
       "origin_slot": 0,
-      "target_id": 17,
+      "target_id": 19,
       "target_slot": 0,
       "type": "CANDIDATE_PAIRS"
      }
     ],
     "extra": {},
-    "description": "Does: Pair the contacts worth comparing using Find contact candidates\nTakes: records from 2 · Standardize\nGives: candidates (CANDIDATE_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: At least 12,000 candidate pairs (15,219 on the default data).\nBecause: comparing every pair is too slow"
+    "description": "Does: Pair the contacts worth comparing using Find contact candidates\nTakes: records from 3 · Standardize\nGives: candidates (CANDIDATE_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: Candidate pairs are found (15,219 on the benchmark data).\nBecause: comparing every pair is too slow"
    },
    {
-    "id": "fd153168-0d5e-40f2-8028-56fb0042ee39",
+    "id": "42ae630f-a9dd-4585-8f09-dea099c982d8",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "4 · Compare",
+    "name": "5 · Compare",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -2212,11 +2353,11 @@
     },
     "inputs": [
      {
-      "id": "8fe535a2-161d-4f42-9f3c-45ad10c962cf",
+      "id": "80e7b0b7-ef07-4e4e-b7b6-77d1f530fbaa",
       "name": "records",
       "type": "CONTACT_RECORDS",
       "linkIds": [
-       21
+       26
       ],
       "localized_name": "Records",
       "pos": [
@@ -2225,11 +2366,11 @@
       ]
      },
      {
-      "id": "561c6a91-baa1-4ae1-8f72-c55b729bcf39",
+      "id": "db2bd8b6-a040-4eb7-85ec-9c428edf7ef3",
       "name": "candidates",
       "type": "CANDIDATE_PAIRS",
       "linkIds": [
-       24
+       29
       ],
       "localized_name": "Candidates",
       "pos": [
@@ -2240,7 +2381,7 @@
     ],
     "outputs": [
      {
-      "id": "f5b4f5a0-4a51-4968-92eb-776c55fca459",
+      "id": "9e626732-767e-499c-90ab-4150081a1333",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2274,13 +2415,13 @@
         "localized_name": "Records",
         "name": "records",
         "type": "CONTACT_RECORDS",
-        "link": 21
+        "link": 26
        },
        {
         "localized_name": "Candidates",
         "name": "candidates",
         "type": "CANDIDATE_PAIRS",
-        "link": 24
+        "link": 29
        }
       ],
       "outputs": [
@@ -2290,7 +2431,7 @@
         "type": "RECORD_PAIRS",
         "links": [
          6,
-         29
+         34
         ]
        }
       ],
@@ -2305,7 +2446,7 @@
          {
           "class": "record_pairs",
           "name": "pairs",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/compare_contacts-20261022-092817550/pairs.jsonl",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/compare_contacts-20261022-102107581/pairs.jsonl",
           "format": "jsonl",
           "row_count": 15219
          }
@@ -2357,7 +2498,7 @@
       }
      },
      {
-      "id": 19,
+      "id": 21,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -2375,7 +2516,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 29
+        "link": 34
        },
        {
         "localized_name": "Must hold",
@@ -2409,18 +2550,18 @@
       "title": "Check · pairs",
       "properties": {
        "aws_watches": "pairs",
-       "aws_headline": "✓ passed · Every candidate pair is compared: at least 12,000. · 15,219 row(s)"
+       "aws_headline": "✓ passed · Every candidate pair is compared. · 15,219 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "12000",
-       "Every candidate pair is compared: at least 12,000.",
+       "1",
+       "Every candidate pair is compared.",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "12000",
-       "says": "Every candidate pair is compared: at least 12,000.",
+       "expect": "1",
+       "says": "Every candidate pair is compared.",
        "table_view": ""
       }
      }
@@ -2428,7 +2569,7 @@
     "groups": [],
     "links": [
      {
-      "id": 21,
+      "id": 26,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 5,
@@ -2436,7 +2577,7 @@
       "type": "CONTACT_RECORDS"
      },
      {
-      "id": 24,
+      "id": 29,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 5,
@@ -2452,29 +2593,29 @@
       "type": "RECORD_PAIRS"
      },
      {
-      "id": 29,
+      "id": 34,
       "origin_id": 5,
       "origin_slot": 0,
-      "target_id": 19,
+      "target_id": 21,
       "target_slot": 0,
       "type": "RECORD_PAIRS"
      }
     ],
     "extra": {},
-    "description": "Does: Measure how alike the two contacts of each pair are using Compare contacts\nTakes: records from 2 · Standardize, candidates from 3 · Find candidates\nGives: pairs (RECORD_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every candidate pair is compared: at least 12,000.\nBecause: a model needs measured evidence"
+    "description": "Does: Measure how alike the two contacts of each pair are using Compare contacts\nTakes: records from 3 · Standardize, candidates from 4 · Find candidates\nGives: pairs (RECORD_PAIRS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every candidate pair is compared.\nBecause: a model needs measured evidence"
    },
    {
-    "id": "0547da08-0b6f-4393-bceb-d80bb92066c0",
+    "id": "0e4e17ce-beef-439a-b8c2-7f46408a0bad",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "5 · Learn from your reviews",
+    "name": "6 · Learn from your reviews",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -2495,11 +2636,11 @@
     },
     "inputs": [
      {
-      "id": "c2e59d8a-18b6-4a0a-8b39-9cd282fd1d60",
+      "id": "0c30bd3f-e08c-46a2-b683-61066719598c",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
-       28
+       33
       ],
       "localized_name": "Pairs",
       "pos": [
@@ -2508,11 +2649,11 @@
       ]
      },
      {
-      "id": "043a6197-832b-44d0-93b8-87a167a3f6c1",
+      "id": "e31757a9-b457-4ca9-9118-f7ac2cc66529",
       "name": "answer_key_file",
       "type": "STRING",
       "linkIds": [
-       7
+       16
       ],
       "localized_name": "Answer key (benchmark)",
       "shape": 7,
@@ -2522,12 +2663,25 @@
       ]
      },
      {
-      "id": "7148ff2b-9e28-4c27-b81c-c9f6bc659d78",
+      "id": "35c98215-2a20-418d-a3e5-5d50a4aaf3b3",
       "name": "seed",
       "type": "INT",
       "linkIds": [
-       33
+       38
       ],
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "4529b61c-3403-4c23-bed6-6e4d34f3d082",
+      "name": "budget",
+      "type": "INT",
+      "linkIds": [
+       55
+      ],
+      "label": "Simulated reviews",
       "pos": [
        0,
        0
@@ -2536,7 +2690,7 @@
     ],
     "outputs": [
      {
-      "id": "0a221297-90b8-46de-a1a5-26f605db7057",
+      "id": "2657dc2e-72e3-4c5c-ae28-904737da9774",
       "name": "scored",
       "type": "RECORD_PAIRS",
       "linkIds": [
@@ -2570,7 +2724,7 @@
         "localized_name": "Pairs",
         "name": "pairs",
         "type": "RECORD_PAIRS",
-        "link": 28
+        "link": 33
        },
        {
         "localized_name": "Reviews per round",
@@ -2598,7 +2752,7 @@
         "widget": {
          "name": "answer_key_file"
         },
-        "link": 7
+        "link": 16
        },
        {
         "localized_name": "Simulated reviews",
@@ -2608,7 +2762,7 @@
         "widget": {
          "name": "budget"
         },
-        "link": null
+        "link": 55
        },
        {
         "localized_name": "Seed",
@@ -2618,7 +2772,7 @@
         "widget": {
          "name": "seed"
         },
-        "link": 33
+        "link": 38
        }
       ],
       "outputs": [
@@ -2628,7 +2782,7 @@
         "type": "RECORD_PAIRS",
         "links": [
          8,
-         34
+         39
         ]
        },
        {
@@ -2650,7 +2804,7 @@
          {
           "class": "record_pairs",
           "name": "scored",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/learn_from_reviews-20261022-092818735/scores.jsonl",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/learn_from_reviews-20261022-102108856/scores.jsonl",
           "format": "jsonl",
           "row_count": 15219
          }
@@ -2720,7 +2874,7 @@
       }
      },
      {
-      "id": 21,
+      "id": 23,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -2738,7 +2892,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 34
+        "link": 39
        },
        {
         "localized_name": "Must hold",
@@ -2772,18 +2926,18 @@
       "title": "Check · scored",
       "properties": {
        "aws_watches": "scored",
-       "aws_headline": "✓ passed · Every compared pair gets a score: at least 12,000. · 15,219 row(s)"
+       "aws_headline": "✓ passed · Every compared pair gets a score. · 15,219 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "12000",
-       "Every compared pair gets a score: at least 12,000.",
+       "1",
+       "Every compared pair gets a score.",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "12000",
-       "says": "Every compared pair gets a score: at least 12,000.",
+       "expect": "1",
+       "says": "Every compared pair gets a score.",
        "table_view": ""
       }
      }
@@ -2791,7 +2945,7 @@
     "groups": [],
     "links": [
      {
-      "id": 28,
+      "id": 33,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 6,
@@ -2799,7 +2953,7 @@
       "type": "RECORD_PAIRS"
      },
      {
-      "id": 7,
+      "id": 16,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 6,
@@ -2815,7 +2969,7 @@
       "type": "RECORD_PAIRS"
      },
      {
-      "id": 33,
+      "id": 38,
       "origin_id": -10,
       "origin_slot": 2,
       "target_id": 6,
@@ -2823,29 +2977,37 @@
       "type": "INT"
      },
      {
-      "id": 34,
+      "id": 39,
       "origin_id": 6,
       "origin_slot": 0,
-      "target_id": 21,
+      "target_id": 23,
       "target_slot": 0,
       "type": "RECORD_PAIRS"
+     },
+     {
+      "id": 55,
+      "origin_id": -10,
+      "origin_slot": 3,
+      "target_id": 6,
+      "target_slot": 4,
+      "type": "INT"
      }
     ],
     "extra": {},
-    "description": "Does: Score every pair from your reviews, and ask you about the pairs it is least sure of using Learn from your reviews\nTakes: pairs from 4 · Compare, answer_key_file (STRING)\nGives: scored (RECORD_PAIRS)\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every compared pair gets a score: at least 12,000.\nBecause: your data, not ours, decides the weights"
+    "description": "Does: Score every pair from your reviews, and ask you about the pairs it is least sure of using Learn from your reviews\nTakes: pairs from 5 · Compare, answer_key_file from 1 · Generate\nGives: scored (RECORD_PAIRS)\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every compared pair gets a score.\nBecause: your data, not ours, decides the weights"
    },
    {
-    "id": "556adf66-803d-4842-a9e1-0f022df56348",
+    "id": "24f5a04f-4f29-4ab4-9299-744c2b812894",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "6 · Decide",
+    "name": "7 · Decide",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -2866,11 +3028,11 @@
     },
     "inputs": [
      {
-      "id": "8193b7a1-8c0c-4670-8e2b-59794bde08a6",
+      "id": "d0975c83-6ec2-46c7-9fb6-8cbc6a286e34",
       "name": "pairs",
       "type": "RECORD_PAIRS",
       "linkIds": [
-       32
+       37
       ],
       "localized_name": "Scored pairs",
       "pos": [
@@ -2881,7 +3043,7 @@
     ],
     "outputs": [
      {
-      "id": "b2205967-c2b8-4557-8933-f8e92acf2101",
+      "id": "09c927fc-c6cd-456c-aef4-b607641a2488",
       "name": "decisions",
       "type": "PAIR_DECISIONS",
       "linkIds": [
@@ -2915,7 +3077,7 @@
         "localized_name": "Scored pairs",
         "name": "pairs",
         "type": "RECORD_PAIRS",
-        "link": 32
+        "link": 37
        },
        {
         "localized_name": "Match at",
@@ -2952,7 +3114,7 @@
         "type": "PAIR_DECISIONS",
         "links": [
          9,
-         37
+         42
         ]
        },
        {
@@ -2981,7 +3143,7 @@
          {
           "class": "pair_decisions",
           "name": "decisions",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/decide_by_score-20261022-092818935/decisions.csv",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/decide_by_score-20261022-102109054/decisions.csv",
           "format": "csv",
           "row_count": 15219
          }
@@ -2991,7 +3153,7 @@
          {
           "class": "pair_decisions",
           "name": "review_queue",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/decide_by_score-20261022-092818935/review_queue.csv",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/decide_by_score-20261022-102109054/review_queue.csv",
           "format": "csv",
           "row_count": 459
          }
@@ -3048,7 +3210,7 @@
       }
      },
      {
-      "id": 23,
+      "id": 25,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
@@ -3066,7 +3228,7 @@
         "localized_name": "Value",
         "name": "value",
         "type": "*",
-        "link": 37
+        "link": 42
        },
        {
         "localized_name": "Must hold",
@@ -3100,18 +3262,18 @@
       "title": "Check · decisions",
       "properties": {
        "aws_watches": "decisions",
-       "aws_headline": "✓ passed · Every scored pair is decided: at least 12,000. · 15,219 row(s)"
+       "aws_headline": "✓ passed · Every scored pair is decided. · 15,219 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "12000",
-       "Every scored pair is decided: at least 12,000.",
+       "1",
+       "Every scored pair is decided.",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "12000",
-       "says": "Every scored pair is decided: at least 12,000.",
+       "expect": "1",
+       "says": "Every scored pair is decided.",
        "table_view": ""
       }
      }
@@ -3119,7 +3281,7 @@
     "groups": [],
     "links": [
      {
-      "id": 32,
+      "id": 37,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 7,
@@ -3135,29 +3297,29 @@
       "type": "PAIR_DECISIONS"
      },
      {
-      "id": 37,
+      "id": 42,
       "origin_id": 7,
       "origin_slot": 0,
-      "target_id": 23,
+      "target_id": 25,
       "target_slot": 0,
       "type": "PAIR_DECISIONS"
      }
     ],
     "extra": {},
-    "description": "Does: Decide each pair: match, to review, or different using Decide by score\nTakes: pairs from 5 · Learn\nGives: decisions (PAIR_DECISIONS), queue (PAIR_DECISIONS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every scored pair is decided: at least 12,000.\nBecause: the business sets precision against recall"
+    "description": "Does: Decide each pair: match, to review, or different using Decide by score\nTakes: pairs from 6 · Learn\nGives: decisions (PAIR_DECISIONS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R3 · You review uncertain pairs: you said “uncertain pairs go to human review”\nVerified when: Every scored pair is decided.\nBecause: the business sets precision against recall"
    },
    {
-    "id": "852029aa-9a08-48ce-80e8-d766aa98cc57",
+    "id": "41303dbc-7aaa-4a7b-9faa-3d107533f5c1",
     "version": 1,
     "state": {
      "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
      "lastRerouteId": 0
     },
     "revision": 0,
     "config": {},
-    "name": "7 · Group into entities",
+    "name": "8 · Group into entities",
     "inputNode": {
      "id": -10,
      "bounding": [
@@ -3178,11 +3340,11 @@
     },
     "inputs": [
      {
-      "id": "b96f1cbe-3aa2-4455-9fe3-8809d5758b27",
+      "id": "fe5432d5-5b04-4233-aac7-fc7154672c5c",
       "name": "data",
       "type": "PAIR_DECISIONS,DICT",
       "linkIds": [
-       36
+       41
       ],
       "localized_name": "All decisions",
       "shape": 7,
@@ -3194,7 +3356,7 @@
     ],
     "outputs": [
      {
-      "id": "6ec37b6e-860d-46a6-9c1d-671228e04ff4",
+      "id": "04f4edd0-be52-441d-b579-bcd6a09f2cb1",
       "name": "clusters",
       "type": "RECORD_CLUSTERS",
       "linkIds": [
@@ -3229,7 +3391,7 @@
         "name": "data",
         "shape": 7,
         "type": "PAIR_DECISIONS,DICT",
-        "link": 36
+        "link": 41
        },
        {
         "localized_name": "Matched 1",
@@ -3314,7 +3476,7 @@
         "type": "RECORD_CLUSTERS",
         "links": [
          11,
-         40
+         45
         ]
        }
       ],
@@ -3330,7 +3492,7 @@
          {
           "class": "record_clusters",
           "name": "clusters",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/cluster_guard-20261022-092818979/clusters.csv",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/cluster_guard-20261022-102109097/clusters.csv",
           "format": "csv",
           "row_count": 8877
          }
@@ -3746,278 +3908,11 @@
       }
      },
      {
-      "id": 25,
-      "type": "AgentWorkflowCheck",
-      "pos": [
-       10,
-       846
-      ],
-      "size": [
-       560,
-       410
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [
-       {
-        "localized_name": "Value",
-        "name": "value",
-        "type": "*",
-        "link": 40
-       },
-       {
-        "localized_name": "Must hold",
-        "name": "kind",
-        "type": "COMBO",
-        "widget": {
-         "name": "kind"
-        },
-        "link": null
-       },
-       {
-        "localized_name": "Expect",
-        "name": "expect",
-        "type": "STRING",
-        "widget": {
-         "name": "expect"
-        },
-        "link": null
-       },
-       {
-        "localized_name": "Says",
-        "name": "says",
-        "type": "STRING",
-        "widget": {
-         "name": "says"
-        },
-        "link": null
-       }
-      ],
-      "outputs": [],
-      "title": "Check · clusters",
-      "properties": {
-       "aws_watches": "clusters",
-       "aws_headline": "✓ passed · At least 8,000 contacts take part in a decided pair (9,028 on the default data). · 8,877 row(s)"
-      },
-      "widgets_values": [
-       "rows_at_least",
-       "8000",
-       "At least 8,000 contacts take part in a decided pair (9,028 on the default data).",
-       ""
-      ],
-      "widgets_values_named": {
-       "kind": "rows_at_least",
-       "expect": "8000",
-       "says": "At least 8,000 contacts take part in a decided pair (9,028 on the default data).",
-       "table_view": ""
-      }
-     }
-    ],
-    "groups": [],
-    "links": [
-     {
-      "id": 36,
-      "origin_id": -10,
-      "origin_slot": 0,
-      "target_id": 8,
-      "target_slot": 0,
-      "type": "PAIR_DECISIONS"
-     },
-     {
-      "id": 11,
-      "origin_id": 8,
-      "origin_slot": 0,
-      "target_id": -20,
-      "target_slot": 0,
-      "type": "RECORD_CLUSTERS"
-     },
-     {
-      "id": 40,
-      "origin_id": 8,
-      "origin_slot": 0,
-      "target_id": 25,
-      "target_slot": 0,
-      "type": "RECORD_CLUSTERS"
-     }
-    ],
-    "extra": {},
-    "description": "Does: Group matched contacts into entities, refusing merges decided different using Cluster guard\nTakes: data from 6 · Decide\nGives: clusters (RECORD_CLUSTERS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: At least 8,000 contacts take part in a decided pair (9,028 on the default data).\nBecause: one wrong link must not chain many"
-   },
-   {
-    "id": "f5a8ccb0-2c6e-4f7e-b13c-b237a834c48f",
-    "version": 1,
-    "state": {
-     "lastGroupId": 0,
-     "lastNodeId": 28,
-     "lastLinkId": 45,
-     "lastRerouteId": 0
-    },
-    "revision": 0,
-    "config": {},
-    "name": "8 · Publish",
-    "inputNode": {
-     "id": -10,
-     "bounding": [
-      -250,
-      10,
-      128,
-      88
-     ]
-    },
-    "outputNode": {
-     "id": -20,
-     "bounding": [
-      650,
-      10,
-      128,
-      68
-     ]
-    },
-    "inputs": [
-     {
-      "id": "e3fbddbd-b07d-4b98-bbe5-5c6c78762937",
-      "name": "records",
-      "type": "CONTACTS",
-      "linkIds": [
-       17
-      ],
-      "localized_name": "Contacts",
-      "pos": [
-       51,
-       24
-      ]
-     },
-     {
-      "id": "b28659ac-3ea0-4438-9765-5dc82874a78e",
-      "name": "clusters",
-      "type": "RECORD_CLUSTERS",
-      "linkIds": [
-       39
-      ],
-      "localized_name": "Clusters",
-      "pos": [
-       51,
-       44
-      ]
-     }
-    ],
-    "outputs": [
-     {
-      "id": "4b0c9d6a-faaa-4659-8b20-03e12fa5bc1d",
-      "name": "entities",
-      "type": "RECORD_CLUSTERS",
-      "linkIds": [
-       12
-      ],
-      "localized_name": "entities",
-      "pos": [
-       24,
-       24
-      ]
-     }
-    ],
-    "widgets": [],
-    "nodes": [
-     {
-      "id": 9,
-      "type": "AgentWorkflowEntityPerContact",
-      "pos": [
-       10,
-       10
-      ],
-      "size": [
-       560,
-       358
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [
-       {
-        "localized_name": "Contacts",
-        "name": "records",
-        "type": "CONTACTS",
-        "link": 17
-       },
-       {
-        "localized_name": "Clusters",
-        "name": "clusters",
-        "type": "RECORD_CLUSTERS",
-        "link": 39
-       }
-      ],
-      "outputs": [
-       {
-        "localized_name": "entities",
-        "name": "entities",
-        "type": "RECORD_CLUSTERS",
-        "links": [
-         12,
-         45
-        ]
-       }
-      ],
-      "properties": {
-       "aws_wires": [
-        "5,698 entities"
-       ],
-       "aws_headline": "10,540 contacts → 5,698 entities",
-       "aws_datasets": [
-        [
-         0,
-         {
-          "class": "record_clusters",
-          "name": "entities",
-          "file": "agent_tools/107d6224-001f-4ee6-b428-8890c17d8320/entity_per_contact-20261022-092819093/entities.csv",
-          "format": "csv",
-          "row_count": 10540
-         }
-        ]
-       ],
-       "aws_tables": [
-        {
-         "title": "Entity per contact",
-         "columns": [
-          "",
-          "value"
-         ],
-         "rows": [
-          [
-           "contacts",
-           "10,540"
-          ],
-          [
-           "entities",
-           "5,698"
-          ],
-          [
-           "contacts merged away",
-           "4,842"
-          ]
-         ]
-        }
-       ],
-       "aws_realizes": [
-        "gives entities",
-        "takes clusters",
-        "takes records",
-        "does"
-       ]
-      },
-      "widgets_values": [
-       ""
-      ],
-      "widgets_values_named": {
-       "table_view": ""
-      }
-     },
-     {
       "id": 27,
       "type": "AgentWorkflowCheck",
       "pos": [
        10,
-       478
+       846
       ],
       "size": [
        560,
@@ -4062,21 +3957,21 @@
        }
       ],
       "outputs": [],
-      "title": "Check · entities",
+      "title": "Check · clusters",
       "properties": {
-       "aws_watches": "entities",
-       "aws_headline": "✓ passed · Every contact gets an entity id: at least 9,000. · 10,540 row(s)"
+       "aws_watches": "clusters",
+       "aws_headline": "✓ passed · The decided pairs are grouped. · 8,877 row(s)"
       },
       "widgets_values": [
        "rows_at_least",
-       "9000",
-       "Every contact gets an entity id: at least 9,000.",
+       "1",
+       "The decided pairs are grouped.",
        ""
       ],
       "widgets_values_named": {
        "kind": "rows_at_least",
-       "expect": "9000",
-       "says": "Every contact gets an entity id: at least 9,000.",
+       "expect": "1",
+       "says": "The decided pairs are grouped.",
        "table_view": ""
       }
      }
@@ -4084,7 +3979,274 @@
     "groups": [],
     "links": [
      {
-      "id": 17,
+      "id": 41,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 8,
+      "target_slot": 0,
+      "type": "PAIR_DECISIONS"
+     },
+     {
+      "id": 11,
+      "origin_id": 8,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "RECORD_CLUSTERS"
+     },
+     {
+      "id": 45,
+      "origin_id": 8,
+      "origin_slot": 0,
+      "target_id": 27,
+      "target_slot": 0,
+      "type": "RECORD_CLUSTERS"
+     }
+    ],
+    "extra": {},
+    "description": "Does: Group matched contacts into entities, refusing merges decided different using Cluster guard\nTakes: data from 7 · Decide\nGives: clusters (RECORD_CLUSTERS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nServes R2 · Never merged on a phone alone: you said “a family shares a phone and an address”\nVerified when: The decided pairs are grouped.\nBecause: one wrong link must not chain many"
+   },
+   {
+    "id": "efbfcd9d-1567-4ab1-aaa7-95b2cfdedc5f",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "9 · Publish",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      88
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      68
+     ]
+    },
+    "inputs": [
+     {
+      "id": "fc12485e-26dc-426d-a07a-66c1cd94f52b",
+      "name": "records",
+      "type": "CONTACTS",
+      "linkIds": [
+       22
+      ],
+      "localized_name": "Contacts",
+      "pos": [
+       51,
+       24
+      ]
+     },
+     {
+      "id": "406e3e6b-fa0c-4778-8927-4e168e617f3d",
+      "name": "clusters",
+      "type": "RECORD_CLUSTERS",
+      "linkIds": [
+       44
+      ],
+      "localized_name": "Clusters",
+      "pos": [
+       51,
+       44
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "710e8193-7552-421f-9589-09a1d54e97d6",
+      "name": "entities",
+      "type": "RECORD_CLUSTERS",
+      "linkIds": [
+       12
+      ],
+      "localized_name": "entities",
+      "pos": [
+       24,
+       24
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 9,
+      "type": "AgentWorkflowEntityPerContact",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       358
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Contacts",
+        "name": "records",
+        "type": "CONTACTS",
+        "link": 22
+       },
+       {
+        "localized_name": "Clusters",
+        "name": "clusters",
+        "type": "RECORD_CLUSTERS",
+        "link": 44
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "entities",
+        "name": "entities",
+        "type": "RECORD_CLUSTERS",
+        "links": [
+         12,
+         50
+        ]
+       }
+      ],
+      "properties": {
+       "aws_wires": [
+        "5,698 entities"
+       ],
+       "aws_headline": "10,540 contacts → 5,698 entities",
+       "aws_datasets": [
+        [
+         0,
+         {
+          "class": "record_clusters",
+          "name": "entities",
+          "file": "agent_tools/7dc9605e-6069-47fb-a282-95c5bca509ec/entity_per_contact-20261022-102109214/entities.csv",
+          "format": "csv",
+          "row_count": 10540
+         }
+        ]
+       ],
+       "aws_tables": [
+        {
+         "title": "Entity per contact",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "contacts",
+           "10,540"
+          ],
+          [
+           "entities",
+           "5,698"
+          ],
+          [
+           "contacts merged away",
+           "4,842"
+          ]
+         ]
+        }
+       ],
+       "aws_realizes": [
+        "gives entities",
+        "takes clusters",
+        "takes records",
+        "does"
+       ]
+      },
+      "widgets_values": [
+       ""
+      ],
+      "widgets_values_named": {
+       "table_view": ""
+      }
+     },
+     {
+      "id": 29,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       10,
+       478
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 50
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · entities",
+      "properties": {
+       "aws_watches": "entities",
+       "aws_headline": "✓ passed · Every contact gets an entity id. · 10,540 row(s)"
+      },
+      "widgets_values": [
+       "rows_at_least",
+       "1",
+       "Every contact gets an entity id.",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "rows_at_least",
+       "expect": "1",
+       "says": "Every contact gets an entity id.",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 22,
       "origin_id": -10,
       "origin_slot": 0,
       "target_id": 9,
@@ -4092,7 +4254,7 @@
       "type": "CONTACTS"
      },
      {
-      "id": 39,
+      "id": 44,
       "origin_id": -10,
       "origin_slot": 1,
       "target_id": 9,
@@ -4108,24 +4270,423 @@
       "type": "RECORD_CLUSTERS"
      },
      {
-      "id": 45,
+      "id": 50,
       "origin_id": 9,
       "origin_slot": 0,
-      "target_id": 27,
+      "target_id": 29,
       "target_slot": 0,
       "type": "RECORD_CLUSTERS"
      }
     ],
     "extra": {},
-    "description": "Does: Give every contact its entity id using Entity per contact\nTakes: records from 1 · Read, clusters from 7 · Group\nGives: entities (RECORD_CLUSTERS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every contact gets an entity id: at least 9,000.\nBecause: every contact needs an id, merged or not"
+    "description": "Does: Give every contact its entity id using Entity per contact\nTakes: records from 2 · Read, clusters from 8 · Group\nGives: entities (RECORD_CLUSTERS)\nServes R1 · One entity id per contact: you said “several CONT_IDs can be one person or company; match them with the other columns”\nVerified when: Every contact gets an entity id.\nBecause: every contact needs an id, merged or not"
+   },
+   {
+    "id": "7dc8aa68-436c-4841-ab7d-2d7a5db8e11d",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 31,
+     "lastLinkId": 55,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "10 · Score",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      88
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      48
+     ]
+    },
+    "inputs": [
+     {
+      "id": "7b4edd1b-ba9a-4e6a-9405-0a04ebb16245",
+      "name": "entities",
+      "type": "RECORD_CLUSTERS",
+      "linkIds": [
+       49
+      ],
+      "localized_name": "Entities",
+      "pos": [
+       51,
+       24
+      ]
+     },
+     {
+      "id": "9d1bd3c3-142f-4469-8cd5-ed90824106ef",
+      "name": "answer_key",
+      "type": "STRING",
+      "linkIds": [
+       17
+      ],
+      "localized_name": "Answer key",
+      "pos": [
+       51,
+       44
+      ]
+     }
+    ],
+    "outputs": [],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 11,
+      "type": "AgentWorkflowScoreContacts",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       362
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Entities",
+        "name": "entities",
+        "type": "RECORD_CLUSTERS",
+        "link": 49
+       },
+       {
+        "localized_name": "Answer key",
+        "name": "answer_key",
+        "type": "STRING",
+        "widget": {
+         "name": "answer_key"
+        },
+        "link": 17
+       }
+      ],
+      "outputs": [],
+      "title": "Score contacts",
+      "properties": {
+       "aws_headline": "F1 0.962 · precision 0.99 · recall 0.936",
+       "aws_tables": [
+        {
+         "title": "Score",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "pairwise precision",
+           "0.99"
+          ],
+          [
+           "pairwise recall",
+           "0.936"
+          ],
+          [
+           "pairwise f1",
+           "0.962"
+          ],
+          [
+           "bcubed precision",
+           "0.995"
+          ],
+          [
+           "bcubed recall",
+           "0.967"
+          ],
+          [
+           "bcubed f1",
+           "0.981"
+          ]
+         ]
+        },
+        {
+         "title": "Recall by dirt (first 40 of 65)",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "address_kana_missing",
+           "0.925"
+          ],
+          [
+           "company",
+           "0.987"
+          ],
+          [
+           "kana_missing",
+           "0.884"
+          ],
+          [
+           "gender_missing",
+           "0.879"
+          ],
+          [
+           "no_phone",
+           "0.87"
+          ],
+          [
+           "typo",
+           "0.92"
+          ],
+          [
+           "ocr",
+           "0.92"
+          ],
+          [
+           "no_address",
+           "0.841"
+          ],
+          [
+           "company_branch",
+           "0.988"
+          ],
+          [
+           "loanword_variant",
+           "0.991"
+          ],
+          [
+           "reading_guess",
+           "0.88"
+          ],
+          [
+           "onchu",
+           "0.983"
+          ],
+          [
+           "zengin_kana",
+           "0.987"
+          ],
+          [
+           "legal_form_omitted",
+           "0.984"
+          ],
+          [
+           "wild_gender_code",
+           "0.915"
+          ],
+          [
+           "company_no_date",
+           "0.984"
+          ],
+          [
+           "company_department",
+           "0.984"
+          ],
+          [
+           "long_vowel",
+           "0.868"
+          ],
+          [
+           "kanji_missing",
+           "0.749"
+          ],
+          [
+           "type_flag_wrong",
+           "0.95"
+          ],
+          [
+           "phone_lost_zero",
+           "0.926"
+          ],
+          [
+           "many_values",
+           "0.911"
+          ],
+          [
+           "kana_only",
+           "0.838"
+          ],
+          [
+           "founding_year_only",
+           "0.989"
+          ],
+          [
+           "company_gender_filled",
+           "0.99"
+          ],
+          [
+           "legal_form_moved",
+           "0.985"
+          ],
+          [
+           "itaiji",
+           "0.877"
+          ],
+          [
+           "wild_phone_note",
+           "0.915"
+          ],
+          [
+           "given_missing",
+           "0.895"
+          ],
+          [
+           "address_partial",
+           "0.899"
+          ],
+          [
+           "old_surname",
+           "0.82"
+          ],
+          [
+           "registration_date",
+           "0.961"
+          ],
+          [
+           "same_name_company",
+           "0.989"
+          ],
+          [
+           "phone_placeholder",
+           "0.935"
+          ],
+          [
+           "group_company",
+           "0.989"
+          ],
+          [
+           "fax_in_phone",
+           "0.987"
+          ],
+          [
+           "gender_wrong",
+           "0.866"
+          ],
+          [
+           "recipient_person",
+           "0.988"
+          ],
+          [
+           "wild_one_field",
+           "0.873"
+          ],
+          [
+           "dob_typo",
+           "0.789"
+          ]
+         ]
+        },
+        {
+         "title": "Wrong merges",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "same name and birth date",
+           "31"
+          ],
+          [
+           "same household",
+           "27"
+          ],
+          [
+           "same name",
+           "23"
+          ],
+          [
+           "other",
+           "11"
+          ]
+         ]
+        }
+       ],
+       "aws_realizes": [
+        "takes answer_key",
+        "takes entities",
+        "does"
+       ]
+      },
+      "widgets_values": [
+       "",
+       ""
+      ],
+      "widgets_values_named": {
+       "answer_key": "",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 49,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 11,
+      "target_slot": 0,
+      "type": "RECORD_CLUSTERS"
+     },
+     {
+      "id": 17,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 11,
+      "target_slot": 1,
+      "type": "STRING"
+     }
+    ],
+    "extra": {},
+    "description": "Does: Score the entities against the answer key: precision, recall and F1, totals only using Score contacts\nTakes: entities from 9 · Publish, answer_key from 1 · Generate\nServes R5 · Measured on generated data: you said “we need that data generator”\nVerified when: The score is shown, totals only (nothing flows on, so no step can tune itself to the answer key).\nBecause: the result is measured, not assumed"
    }
   ]
  },
  "config": {},
  "extra": {
+  "linearData": {
+   "inputs": [
+    [
+     "12",
+     "profile",
+     {
+      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once)."
+     }
+    ],
+    [
+     "12",
+     "contacts",
+     {
+      "description": "About how many contacts to generate."
+     }
+    ],
+    [
+     "12",
+     "seed",
+     {
+      "description": "The same seed gives the same data."
+     }
+    ],
+    [
+     "22",
+     "budget",
+     {
+      "description": "How many reviews the simulated reviewer makes (about 1,000 for a good model)."
+     }
+    ]
+   ],
+   "outputs": [
+    "10"
+   ]
+  },
   "aws_verified": {
-   "fingerprint": "7a2d2ae22790dcdc8d0e46c9",
+   "fingerprint": "dc854a4c588f0a1a5c61d058",
    "gates": {
+    "generate": "passed",
     "read": "passed",
     "standardize": "passed",
     "find_candidates": "passed",
@@ -4133,9 +4694,17 @@
     "learn": "passed",
     "decide": "passed",
     "group": "passed",
-    "publish": "passed"
+    "publish": "passed",
+    "score": "needs_user_review"
    },
    "checks": {
+    "generate": [
+     {
+      "title": "Check · folder",
+      "passed": true,
+      "evidence": "contacts_benchmark/company_hard_10000_7"
+     }
+    ],
     "read": [
      {
       "title": "Check · contacts",
@@ -4191,22 +4760,23 @@
       "passed": true,
       "evidence": "10,540 row(s)"
      }
-    ]
+    ],
+    "score": []
    },
    "open": {},
-   "at": "2026-10-22T09:28"
+   "at": "2026-10-22T10:21"
   },
   "ds": {
-   "scale": 0.3125,
+   "scale": 0.2952755905511811,
    "offset": [
-    438,
-    726
+    464.1333333333334,
+    740.9333333333334
    ]
   },
   "aws_contract": {
    "contract": 2,
    "title": "Contact matching benchmark",
-   "purpose": "Measure contact matching on generated contacts with an answer key: the same stages as Contact matching, with a simulated reviewer.",
+   "purpose": "Measure contact matching on generated contacts with an answer key: the same stages as Contact matching, with a reviewer who knows the answers.",
    "requests": [
     {
      "id": "R1",
@@ -4235,16 +4805,70 @@
      "you_said": "the pipeline should work on any data that matches the shape",
      "we_understood": "When the exports name their columns differently, a column map says which column holds what.",
      "priority": "should"
+    },
+    {
+     "id": "R5",
+     "title": "Measured on generated data",
+     "you_said": "we need that data generator",
+     "we_understood": "When the benchmark runs, the workflow generates contacts with an answer key, matches them as Contact matching does with a reviewer who knows the answers, and scores the result.",
+     "priority": "must"
     }
    ],
-   "examples": [],
+   "examples": [
+    {
+     "id": "E1",
+     "covers": [
+      "R1",
+      "R5"
+     ],
+     "given": {
+      "profile": "hard",
+      "contacts": 600,
+      "seed": 5,
+      "budget": 200
+     },
+     "expect": {
+      "entities": "record"
+     },
+     "note": "A small hard set (no downloads needed): every contact gets an entity id and the score is shown."
+    }
+   ],
    "promises": {
-    "inputs": [],
+    "inputs": [
+     {
+      "name": "profile",
+      "kind": "text",
+      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once).",
+      "node": "12",
+      "widget": "profile"
+     },
+     {
+      "name": "contacts",
+      "kind": "integer",
+      "description": "About how many contacts to generate.",
+      "node": "12",
+      "widget": "contacts"
+     },
+     {
+      "name": "seed",
+      "kind": "integer",
+      "description": "The same seed gives the same data.",
+      "node": "12",
+      "widget": "seed"
+     },
+     {
+      "name": "budget",
+      "kind": "integer",
+      "description": "How many reviews the simulated reviewer makes (about 1,000 for a good model).",
+      "node": "22",
+      "widget": "budget"
+     }
+    ],
     "outputs": [
      {
       "name": "entities",
       "kind": "file",
-      "description": "Every contact with its entity id (record, cluster).",
+      "description": "Every generated contact with the entity id the matching gave it.",
       "from": "publish.entities"
      }
     ]
@@ -4281,9 +4905,18 @@
      "instead_of": "auto-deciding everything",
      "by": "agent",
      "pattern": "Human in the loop"
+    },
+    {
+     "id": "D4",
+     "decision": "Its quality comes from your reviews: about 1,000 make it good. Review a round, run again; a larger round (reviews per round 200) means fewer runs.",
+     "why": "measured on the hard 10k benchmark: no reviews F1 0.54 (precision 0.85, recall 0.39); 1,000 reviews F1 0.96 (precision 0.99, recall 0.94)",
+     "instead_of": "fixed weights tuned on synthetic data, which would not fit yours",
+     "by": "agent",
+     "principle": "learn from the data it runs on"
     }
    ],
    "order": [
+    "generate",
     "read",
     "standardize",
     "find_candidates",
@@ -4291,7 +4924,8 @@
     "learn",
     "decide",
     "group",
-    "publish"
+    "publish",
+    "score"
    ],
    "data": {
     "contacts": {

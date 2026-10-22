@@ -72,22 +72,26 @@ def plain(value):
     return file_rows(value) if isinstance(value, Path) and value.is_file() else value
 
 
-def write_outputs(rt: Runtime, out: Path) -> dict[str, Path]:
-    """Each promised output in out/: a data file copied under the output's name, else JSON or text."""
+def write_outputs(rt: Runtime, out: Path) -> dict[str, str]:
+    """Each promised output in out/: a data file copied under the output's name, else JSON or text.
+    Returns what to tell the user: the file, or the text itself (a folder it names, as a real path)."""
     written = {}
     for name, value in rt.outputs.items():
         if isinstance(value, Path) and value.is_file():
             path = out / f"{name}{value.suffix}"
             shutil.copyfile(value, path)
         elif isinstance(value, str):
-            path = out / f"{name}.txt"
-            path.write_text(value, encoding="utf-8")
+            named = rt.input_dir / value if value and (rt.input_dir / value).exists() else None
+            text = str(named or value)
+            (out / f"{name}.txt").write_text(text, encoding="utf-8")
+            written[name] = text
+            continue
         else:
             path = out / f"{name}.json"
             path.write_text(
                 json.dumps(value, ensure_ascii=False, indent=1, default=str), encoding="utf-8"
             )
-        written[name] = path
+        written[name] = str(path)
     return written
 
 

@@ -817,7 +817,7 @@ def generate_contacts(
         src = Sources.load()
         if src is None:
             raise RuntimeError(
-                "Real sources are not cached: run python -m custom_nodes.agent_workflow_studio.nayose_bench.sources"
+                f"Real sources are not cached: run python -m {__package__}.sources (once; it downloads the public data)"
             )
         world = RealWorld(random.Random(seed), src)
     else:

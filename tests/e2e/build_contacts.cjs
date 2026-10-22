@@ -1,8 +1,10 @@
-// Builds example_workflows/Studio - Contact matching benchmark.json and Studio - Contact matching.json in an
-// isolated ComfyUI: the measured contact-matching pipeline (research/contacts_er) as visible stages, run,
-// packed into stage cards with their gates, its key settings on the cards and in App mode.
-// The benchmark generates contacts with an answer key and a simulated reviewer; the production
-// workflow reads your exports and learns from your reviews. Usage: scripts/build_templates.sh
+// Builds the contact-matching templates in an isolated ComfyUI: the measured pipeline (research/contacts_er)
+// as visible stages, run, packed into stage cards with their gates, its key settings on the cards and in
+// App mode, each published as one command of the exported program:
+//   Studio - Contact matching            your exports → entities, review queue        (contacts-nayose)
+//   Studio - Contact matching benchmark  generate → match (simulated reviewer) → score (contacts-nayose-benchmark)
+//   Studio - Contact data generator      generated contacts with an answer key        (contacts-nayose-generate)
+// Usage: scripts/build_templates.sh
 const {chromium} = require('playwright-core');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,24 +13,39 @@ const base = process.env.BASE;
 const folder = path.join(__dirname, '..', '..', 'custom_nodes', 'agent_workflow_studio', 'example_workflows');
 const PROFILE = process.env.PROFILE || 'company_hard', SIZE = Number(process.env.SIZE || 10000), SEED = Number(process.env.SEED || 7);
 const DATA = `contacts_benchmark/${PROFILE}_${SIZE}_${SEED}`;
-const STEPS = [
-  ['read', '1 · Read the exports'], ['standardize', '2 · Standardize'], ['find_candidates', '3 · Find candidates'],
-  ['compare', '4 · Compare'], ['learn', '5 · Learn from your reviews'], ['decide', '6 · Decide'],
-  ['group', '7 · Group into entities'], ['publish', '8 · Publish'],
-].map(([id, title]) => ({id, title}));
+const MATCHING = [
+  ['read', 'Read the exports'], ['standardize', 'Standardize'], ['find_candidates', 'Find candidates'],
+  ['compare', 'Compare'], ['learn', 'Learn from your reviews'], ['decide', 'Decide'],
+  ['group', 'Group into entities'], ['publish', 'Publish'],
+];
+const STEP_LIST = {
+  production: MATCHING,
+  benchmark: [['generate', 'Generate contacts'], ...MATCHING, ['score', 'Score']],
+  generator: [['generate', 'Generate contacts']],
+};
+const STEPS = variant => STEP_LIST[variant].map(([id, title], i) => ({id, title: `${i + 1} · ${title}`}));
+const FILES = {
+  production: 'Studio - Contact matching.json',
+  benchmark: 'Studio - Contact matching benchmark.json',
+  generator: 'Studio - Contact data generator.json',
+};
 // Each gate: an expected count on the default data (company_hard, 10,000 contacts, seed 7), measured, with room.
 const at = (output, kind, value) => ({output, kind, value});
-const STEP_SPECS = (gates, variant) => [
-  {id: 'read', purpose: 'Read your contact exports through the column map: one contact per key, phones and addresses attached.', approach: 'fixed', covers: ['R1', 'R4'], takes: {folder: variant === 'benchmark' ? 'STRING' : 'input.exports'}, gives: {contacts: 'CONTACTS'}, uses: 'Read contacts', why: 'every CRM names its columns its own way', pattern: 'Canonical data model', gate: {says: gates.read.says, check: at('contacts', 'rows_at_least', gates.read.value)}},
+const GENERATE = {id: 'generate', purpose: 'Generate CRM-shaped contacts (contacts, phones and addresses on CONT_ID) with realistic dirt, and their answer key.', approach: 'fixed', covers: ['R5'], gives: {folder: 'STRING', answer_key: 'STRING'}, uses: 'Synthetic contacts', why: 'a measurement needs data whose answers are known', pattern: 'Synthetic data with ground truth', gate: {says: 'The data folder is written (with its answer key beside it).', check: {output: 'folder', kind: 'contains', value: 'contacts_benchmark'}}};
+const SCORE = {id: 'score', purpose: 'Score the entities against the answer key: precision, recall and F1, totals only.', approach: 'fixed', covers: ['R5'], takes: {entities: 'publish.entities', answer_key: 'generate.answer_key'}, uses: 'Score contacts', why: 'the result is measured, not assumed', pattern: 'Evaluation against ground truth', gate: {says: 'The score is shown, totals only (nothing flows on, so no step can tune itself to the answer key).'}};
+const STEP_SPECS = (gates, variant) => variant === 'generator' ? [{...GENERATE, covers: ['R1']}] : [
+  ...(variant === 'benchmark' ? [GENERATE] : []),
+  {id: 'read', purpose: 'Read your contact exports through the column map: one contact per key, phones and addresses attached.', approach: 'fixed', covers: ['R1', 'R4'], takes: {folder: variant === 'benchmark' ? 'generate.folder' : 'input.exports'}, gives: {contacts: 'CONTACTS'}, uses: 'Read contacts', why: 'every CRM names its columns its own way', pattern: 'Canonical data model', gate: {says: gates.read.says, check: at('contacts', 'rows_at_least', gates.read.value)}},
   {id: 'standardize', purpose: 'Make names, phones and addresses comparable.', approach: 'fixed', covers: ['R1'], takes: {contacts: 'read.contacts'}, gives: {records: 'CONTACT_RECORDS'}, uses: 'Standardize contacts', why: 'the same name is typed many ways', pattern: 'Standardization', gate: {says: gates.standardize.says, check: at('records', 'rows_at_least', gates.standardize.value)}},
   {id: 'find_candidates', purpose: 'Pair the contacts worth comparing.', approach: 'fixed', covers: ['R1', 'R2'], takes: {records: 'standardize.records'}, gives: {candidates: 'CANDIDATE_PAIRS'}, uses: 'Find contact candidates', why: 'comparing every pair is too slow', pattern: 'Blocking', gate: {says: gates.find_candidates.says, check: at('candidates', 'rows_at_least', gates.find_candidates.value)}},
   {id: 'compare', purpose: 'Measure how alike the two contacts of each pair are.', approach: 'fixed', covers: ['R1'], takes: {records: 'standardize.records', candidates: 'find_candidates.candidates'}, gives: {pairs: 'RECORD_PAIRS'}, uses: 'Compare contacts', why: 'a model needs measured evidence', pattern: 'Comparison vector', gate: {says: gates.compare.says, check: at('pairs', 'rows_at_least', gates.compare.value)}},
-  {id: 'learn', purpose: 'Score every pair from your reviews, and ask you about the pairs it is least sure of.', approach: 'fixed', covers: ['R3'], takes: variant === 'benchmark' ? {pairs: 'compare.pairs', answer_key_file: 'STRING'} : {pairs: 'compare.pairs'}, gives: {scored: 'RECORD_PAIRS'}, uses: 'Learn from your reviews', why: 'your data, not ours, decides the weights', pattern: 'Active learning', gate: {says: gates.learn.says, check: at('scored', 'rows_at_least', gates.learn.value)}},
-  {id: 'decide', purpose: 'Decide each pair: match, to review, or different.', approach: 'fixed', covers: ['R1', 'R3'], takes: {pairs: 'learn.scored'}, gives: {decisions: 'PAIR_DECISIONS', queue: 'PAIR_DECISIONS'}, uses: 'Decide by score', why: 'the business sets precision against recall', pattern: 'Threshold policy', gate: {says: gates.decide.says, check: at('decisions', 'rows_at_least', gates.decide.value)}},
+  {id: 'learn', purpose: 'Score every pair from your reviews, and ask you about the pairs it is least sure of.', approach: 'fixed', covers: ['R3'], takes: variant === 'benchmark' ? {pairs: 'compare.pairs', answer_key_file: 'generate.answer_key'} : {pairs: 'compare.pairs'}, gives: {scored: 'RECORD_PAIRS'}, uses: 'Learn from your reviews', why: 'your data, not ours, decides the weights', pattern: 'Active learning', gate: {says: gates.learn.says, check: at('scored', 'rows_at_least', gates.learn.value)}},
+  {id: 'decide', purpose: 'Decide each pair: match, to review, or different.', approach: 'fixed', covers: ['R1', 'R3'], takes: {pairs: 'learn.scored'}, gives: variant === 'production' ? {decisions: 'PAIR_DECISIONS', queue: 'PAIR_DECISIONS'} : {decisions: 'PAIR_DECISIONS'}, uses: 'Decide by score', why: 'the business sets precision against recall', pattern: 'Threshold policy', gate: {says: gates.decide.says, check: at('decisions', 'rows_at_least', gates.decide.value)}},
   {id: 'group', purpose: 'Group matched contacts into entities, refusing merges decided different.', approach: 'fixed', covers: ['R1', 'R2'], takes: {data: 'decide.decisions'}, gives: {clusters: 'RECORD_CLUSTERS'}, uses: 'Cluster guard', why: 'one wrong link must not chain many', pattern: 'Guarded clustering', gate: {says: gates.group.says, check: at('clusters', 'rows_at_least', gates.group.value)}},
   {id: 'publish', purpose: 'Give every contact its entity id.', approach: 'fixed', covers: ['R1'], takes: {records: 'read.contacts', clusters: 'group.clusters'}, gives: {entities: 'RECORD_CLUSTERS'}, uses: 'Entity per contact', why: 'every contact needs an id, merged or not', pattern: 'Publish', gate: {says: gates.publish.says, check: at('entities', 'rows_at_least', gates.publish.value)}},
+  ...(variant === 'benchmark' ? [SCORE] : []),
 ];
-// The production workflow runs on anyone's data: its gates say each stage gave data, never a count of ours.
+// Every variant runs on any data or size: its gates say each stage gave data, never a count of ours.
 const ANY_DATA = {
   read: {says: 'The exports are read: at least one contact (10,540 on the benchmark data).', value: 1},
   standardize: {says: 'Every contact read is standardized.', value: 1},
@@ -39,26 +56,20 @@ const ANY_DATA = {
   group: {says: 'The decided pairs are grouped.', value: 1},
   publish: {says: 'Every contact gets an entity id.', value: 1},
 };
-const GATES = JSON.parse(process.env.GATES || 'null') || {
-  read: {says: 'At least 9,000 contacts are read (10,540 on the default data).', value: 9000},
-  standardize: {says: 'Every contact is standardized: at least 9,000.', value: 9000},
-  find_candidates: {says: 'At least 12,000 candidate pairs (15,219 on the default data).', value: 12000},
-  compare: {says: 'Every candidate pair is compared: at least 12,000.', value: 12000},
-  learn: {says: 'Every compared pair gets a score: at least 12,000.', value: 12000},
-  decide: {says: 'Every scored pair is decided: at least 12,000.', value: 12000},
-  group: {says: 'At least 8,000 contacts take part in a decided pair (9,028 on the default data).', value: 8000},
-  publish: {says: 'Every contact gets an entity id: at least 9,000.', value: 9000},
-};
 const REQUESTS = [
   {id: 'R1', title: 'One entity id per contact', you_said: 'several CONT_IDs can be one person or company; match them with the other columns', we_understood: 'When the exports are read, the workflow gives every contact an entity id, the same id for contacts of the same person or company.', priority: 'must'},
   {id: 'R2', title: 'Never merged on a phone alone', you_said: 'a family shares a phone and an address', we_understood: 'When two contacts share only a phone or an address, the workflow compares them but never merges them on that alone.', priority: 'must'},
   {id: 'R3', title: 'You review uncertain pairs', you_said: 'uncertain pairs go to human review', we_understood: 'When a pair is uncertain, the workflow asks you in the Review tab, and learns from your answers.', priority: 'must'},
   {id: 'R4', title: 'Any export with this shape', you_said: 'the pipeline should work on any data that matches the shape', we_understood: 'When the exports name their columns differently, a column map says which column holds what.', priority: 'should'},
 ];
+const MEASURED = {id: 'R5', title: 'Measured on generated data', you_said: 'we need that data generator', we_understood: 'When the benchmark runs, the workflow generates contacts with an answer key, matches them as Contact matching does with a reviewer who knows the answers, and scores the result.', priority: 'must'};
+const GENERATED = {id: 'R1', title: 'Contacts with an answer key', you_said: 'we need that data generator', we_understood: 'When run, the workflow writes CRM-shaped contacts, phones and addresses on CONT_ID with realistic dirt, and the answer key beside them.', priority: 'must'};
+const REQUESTS_OF = {production: REQUESTS, benchmark: [...REQUESTS, MEASURED], generator: [GENERATED]};
 const DECISIONS = [
   {id: 'D1', decision: 'A model learns the weights from your reviews (logistic regression, active learning).', why: 'it beat fixed rules, Fellegi–Sunter and gradient boosting in every trial', instead_of: 'hand-set points', by: 'agent', pattern: 'Active learning'},
   {id: 'D2', decision: 'No embeddings or reranker.', why: 'neither improved the result at 100,000 contacts (research/contacts_er/RESULTS.md)', instead_of: 'a dense index and a cross-encoder', by: 'agent', principle: 'every part earns its place'},
   {id: 'D3', decision: 'Uncertain pairs and disputed reviews go to you.', why: 'a wrong merge costs more than a question', instead_of: 'auto-deciding everything', by: 'agent', pattern: 'Human in the loop'},
+  {id: 'D4', decision: 'Its quality comes from your reviews: about 1,000 make it good. Review a round, run again; a larger round (reviews per round 200) means fewer runs.', why: 'measured on the hard 10k benchmark: no reviews F1 0.54 (precision 0.85, recall 0.39); 1,000 reviews F1 0.96 (precision 0.99, recall 0.94)', instead_of: 'fixed weights tuned on synthetic data, which would not fit yours', by: 'agent', principle: 'learn from the data it runs on'},
 ];
 const DATA_MODEL = {
   contacts: {description: 'One contact per key, as exported, with its phones and addresses', key: ['key']},
@@ -90,6 +101,14 @@ EX12,伊藤,健,イトウ,ケン,ITOU,KEN,1970-10-10,M,1
   'sample/addresses.csv': 'CONT_ID,ADDRESS_KANJI\nEX01,東京都新宿区西新宿2-8-1\nEX02,東京都新宿区西新宿二丁目8番1号\nEX05,神奈川県横浜市港北区日吉1-2-3\nEX06,神奈川県横浜市港北区日吉1-2-3\nEX07,東京都千代田区丸の内1-1-1\nEX08,東京都千代田区丸の内1-1-1\n',
 };
 // App mode and the API: what a business changes, in its words.
+const GEN_KNOBS = [
+  ['AgentWorkflowSyntheticContacts', 'profile', 'profile', 'text', 'How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once).'],
+  ['AgentWorkflowSyntheticContacts', 'contacts', 'contacts', 'integer', 'About how many contacts to generate.'],
+  ['AgentWorkflowSyntheticContacts', 'seed', 'seed', 'integer', 'The same seed gives the same data.'],
+];
+const KNOBS_OF = variant => variant === 'production' ? KNOBS : variant === 'benchmark'
+  ? {generate: GEN_KNOBS, learn: [['AgentWorkflowLearnFromReviews', 'budget', 'budget', 'integer', 'How many reviews the simulated reviewer makes (about 1,000 for a good model).']]}
+  : {generate: GEN_KNOBS};
 const KNOBS = {
   read: [['AgentWorkflowReadContacts', 'columns', 'columns', 'text', 'The column map: which column of your exports holds the key, names, birth date, phones and addresses.']],
   learn: [['AgentWorkflowLearnFromReviews', 'batch', 'batch', 'integer', 'How many pairs to ask you about each run.']],
@@ -107,8 +126,17 @@ const NOTE = {
     'Generated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).',
     '',
     '1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.',
-    '2. Change the profile, size or seed on **Synthetic contacts**. Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.',
+    '2. Change the profile, size, seed or the reviews it makes on the stage cards (or open it as an App). Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.',
     '3. The data lands in input/' + DATA + ' (for Studio - Contact matching to read).',
+  ],
+  generator: [
+    '# Contact data generator',
+    '',
+    'Writes CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.',
+    '',
+    '1. Choose the profile, size and seed, press **Run** (or open it as an App).',
+    '2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).',
+    '3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run.',
   ],
   production: [
     '# Contact matching: one entity id per contact',
@@ -138,30 +166,45 @@ const NOTE = {
   }));
   const python = process.env.PYTHON || path.join(require('node:os').homedir(), '.local/share/agent-workflow-studio/ComfyUI/.venv/bin/python');
   const saved = {};
-  for (const variant of ['benchmark', 'production']) {
+  for (const variant of ['benchmark', 'production', 'generator']) {
+    const knobs = KNOBS_OF(variant);
+    const examples = {
+      production: [{id: 'E1', covers: ['R1', 'R2'], given: {exports: 'sample'}, files: SAMPLE, expect: {entities: 'EX01 EX01, EX02 EX01, EX03 EX03, EX04 EX03, EX05 EX05, EX06 EX06, EX07 EX07, EX08 EX08, EX09 EX09, EX10 EX10'}, note: 'Day 0, no reviews: EX01/02 and EX03/04 merge; a family (EX05/06) and namesakes (EX09/10) stay apart. The company pair EX07/08 merges once reviews teach the model.'}],
+      benchmark: [{id: 'E1', covers: ['R1', 'R5'], given: {profile: 'hard', contacts: 600, seed: 5, budget: 200}, expect: {entities: 'record'}, note: 'A small hard set (no downloads needed): every contact gets an entity id and the score is shown.'}],
+      generator: [{id: 'E1', covers: ['R1'], given: {profile: 'hard', contacts: 300, seed: 3}, expect: {folder: 'contacts_benchmark/hard_300_3'}, note: 'A small hard set (no downloads needed).'}],
+    }[variant];
     const contract = {
       contract: 2,
-      title: variant === 'benchmark' ? 'Contact matching benchmark' : 'Contact matching',
-      purpose: variant === 'benchmark'
-        ? 'Measure contact matching on generated contacts with an answer key: the same stages as Contact matching, with a simulated reviewer.'
-        : 'Give every contact one entity id: contacts of the same person or company share it, and uncertain pairs go to you.',
-      requests: REQUESTS,
-      examples: variant === 'benchmark' ? [] : [{id: 'E1', covers: ['R1', 'R2'], given: {exports: 'sample'}, files: SAMPLE, expect: {entities: 'EX01 EX01, EX02 EX01, EX03 EX03, EX04 EX03, EX05 EX05, EX06 EX06, EX07 EX07, EX08 EX08, EX09 EX09, EX10 EX10'}, note: 'Day 0, no reviews: EX01/02 and EX03/04 merge; a family (EX05/06) and namesakes (EX09/10) stay apart. The company pair EX07/08 merges once reviews teach the model.'}],
+      title: {production: 'Contact matching', benchmark: 'Contact matching benchmark', generator: 'Contact data generator'}[variant],
+      purpose: {
+        production: 'Give every contact one entity id: contacts of the same person or company share it, and uncertain pairs go to you.',
+        benchmark: 'Measure contact matching on generated contacts with an answer key: the same stages as Contact matching, with a reviewer who knows the answers.',
+        generator: 'Generate CRM-shaped contacts with realistic dirt and their answer key, to try or measure contact matching.',
+      }[variant],
+      requests: REQUESTS_OF[variant],
+      examples,
       promises: {
-        inputs: variant === 'benchmark' ? [] : [
-          {name: 'exports', kind: 'folder', description: 'The folder with your contact exports (contacts, phones and addresses CSV files).', example: DATA},
-          ...Object.values(KNOBS).flat().map(([, , name, kind, description]) => ({name, kind, description})),
+        inputs: [
+          ...(variant === 'production' ? [{name: 'exports', kind: 'folder', description: 'The folder with your contact exports (contacts, phones and addresses CSV files).', example: DATA}] : []),
+          ...Object.values(knobs).flat().map(([, , name, kind, description]) => ({name, kind, description})),
         ],
-        outputs: [
-          {name: 'entities', kind: 'file', description: 'Every contact with its entity id (record, cluster).', from: 'publish.entities'},
-          ...(variant === 'benchmark' ? [] : [{name: 'review_queue', kind: 'file', description: 'The pairs for people to decide.', from: 'decide.queue'}]),
-        ],
+        outputs: {
+          production: [
+            {name: 'entities', kind: 'file', description: 'Every contact with its entity id (record, cluster).', from: 'publish.entities'},
+            {name: 'review_queue', kind: 'file', description: 'The pairs for people to decide.', from: 'decide.queue'},
+          ],
+          benchmark: [{name: 'entities', kind: 'file', description: 'Every generated contact with the entity id the matching gave it.', from: 'publish.entities'}],
+          generator: [
+            {name: 'folder', kind: 'text', description: 'The data folder written (contacts, phones and addresses CSV files).', from: 'generate.folder'},
+            {name: 'answer_key', kind: 'text', description: 'The answer key file: which contacts are one entity.', from: 'generate.answer_key'},
+          ],
+        }[variant],
       },
-      steps: STEP_SPECS(variant === 'benchmark' ? GATES : ANY_DATA, variant),
-      decisions: DECISIONS,
-      not_now: ['Embeddings or a reranker (measured: no gain)', 'A registry lookup for merged or renamed companies'],
+      steps: STEP_SPECS(ANY_DATA, variant),
+      decisions: variant === 'generator' ? [] : DECISIONS,
+      not_now: variant === 'generator' ? [] : ['Embeddings or a reranker (measured: no gain)', 'A registry lookup for merged or renamed companies'],
       open_questions: [],
-      data: DATA_MODEL,
+      data: variant === 'generator' ? {} : DATA_MODEL,
     };
     await page.evaluate(async ({variant, data, profile, size, seed}) => {
       const app = window.comfyAPI.app.app, LiteGraph = window.LiteGraph;
@@ -177,12 +220,22 @@ const NOTE = {
       };
       const slot = (node, name) => node.inputs.findIndex(i => i.name === name || i.widget?.name === name);
       const link = (from, output, to, input) => from.connect(output, to, slot(to, input));
+      const answer = (name, from, node, output) => {
+        const out = add('AgentWorkflowApiOutput', null, `Output · ${name}`, {name});
+        out.properties = {...out.properties, aws_output: name, aws_output_from: from};
+        node.connect(output, out, 0);
+      };
       let source;
-      if (variant === 'benchmark') {
-        source = add('AgentWorkflowSyntheticContacts', null, 'Synthetic contacts', {profile, contacts: size, seed});
-      } else {
+      if (variant === 'production') {
         source = add('AgentWorkflowDataFolder', null, 'Input · exports', {folder: data});
         source.properties = {...source.properties, aws_input: 'exports'};
+      } else {
+        source = add('AgentWorkflowSyntheticContacts', 'generate', 'Synthetic contacts', {profile, contacts: size, seed});
+      }
+      if (variant === 'generator') {
+        answer('folder', 'generate.folder', source, 0);
+        answer('answer_key', 'generate.answer_key', source, 1);
+        return;
       }
       const read = add('AgentWorkflowReadContacts', 'read', 'Read contacts');
       link(source, 0, read, 'folder');
@@ -203,13 +256,10 @@ const NOTE = {
       const entity = add('AgentWorkflowEntityPerContact', 'publish', 'Entity per contact');
       link(read, 0, entity, 'records');
       link(guard, 0, entity, 'clusters');
-      for (const [name, from, node, output] of [['entities', 'publish.entities', entity, 0], ...(variant === 'production' ? [['review_queue', 'decide.queue', decide, 1]] : [])]) {
-        const answer = add('AgentWorkflowApiOutput', null, `Output · ${name}`, {name});
-        answer.properties = {...answer.properties, aws_output: name, aws_output_from: from};
-        node.connect(output, answer, 0);
-      }
+      answer('entities', 'publish.entities', entity, 0);
+      if (variant === 'production') answer('review_queue', 'decide.queue', decide, 1);
       if (variant === 'benchmark') {
-        const score = add('AgentWorkflowScoreContacts', null, 'Score contacts');
+        const score = add('AgentWorkflowScoreContacts', 'score', 'Score contacts');
         link(entity, 0, score, 'entities');
         link(source, 1, score, 'answer_key');
       }
@@ -244,8 +294,9 @@ const NOTE = {
       if (variant === 'production') {
         const exports = app.graph.nodes.find(n => n.properties?.aws_input === 'exports');
         Object.assign(contract.promises.inputs.find(i => i.name === 'exports'), {node: exports.id, widget: 'folder'});
-        setSignature(app.graph, [{node: exports.id, widget: 'folder', description: contract.promises.inputs[0].description}, ...inputs], outputs);
+        inputs.unshift({node: exports.id, widget: 'folder', description: contract.promises.inputs[0].description});
       }
+      setSignature(app.graph, inputs, outputs);
       const md = LiteGraph.createNode('MarkdownNote');
       app.graph.add(md);
       md.title = 'How to use this workflow';
@@ -253,7 +304,7 @@ const NOTE = {
       md.widgets[0].value = note.join('\n');
       arrangeGraph(app.graph);
       app.graph.extra = {...app.graph.extra, aws_contract: contract};
-    }, {steps: STEPS, contract, knobs: variant === 'production' ? KNOBS : {}, note: NOTE[variant], variant});
+    }, {steps: STEPS(variant), contract, knobs, note: NOTE[variant], variant});
     const second = await run();
     if (second !== 'success') throw Error(`${variant} second run: ${second}`);
     await page.waitForTimeout(3000);
@@ -275,7 +326,7 @@ const NOTE = {
       graph.extra = {...graph.extra, ds: {scale, offset: [140 / scale - x0, 80 / scale - y0]}};
       return graph;
     });
-    const target = path.join(folder, variant === 'benchmark' ? 'Studio - Contact matching benchmark.json' : 'Studio - Contact matching.json');
+    const target = path.join(folder, FILES[variant]);
     fs.writeFileSync(target, JSON.stringify(workflow, null, 1) + '\n');
     require('node:child_process').execFileSync(python, [path.join(__dirname, 'native_reference.py'), target], {stdio: 'inherit'});
     saved[variant] = {target, gates, score};

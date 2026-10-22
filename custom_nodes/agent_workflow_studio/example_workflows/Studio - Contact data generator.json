@@ -1,0 +1,725 @@
+{
+ "id": "cf89b27f-dec3-4802-b658-fcac73ec7d97",
+ "revision": 0,
+ "last_node_id": 6,
+ "last_link_id": 8,
+ "nodes": [
+  {
+   "id": 2,
+   "type": "AgentWorkflowApiOutput",
+   "pos": [
+    10,
+    360
+   ],
+   "size": [
+    270,
+    58
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Value",
+     "name": "value",
+     "type": "*",
+     "link": 3
+    },
+    {
+     "localized_name": "Name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [],
+   "title": "Output · folder",
+   "properties": {
+    "aws_output": "folder",
+    "aws_output_from": "generate.folder"
+   },
+   "widgets_values": [
+    "folder"
+   ],
+   "widgets_values_named": {
+    "name": "folder"
+   }
+  },
+  {
+   "id": 3,
+   "type": "AgentWorkflowApiOutput",
+   "pos": [
+    10,
+    528
+   ],
+   "size": [
+    270,
+    58
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "Value",
+     "name": "value",
+     "type": "*",
+     "link": 4
+    },
+    {
+     "localized_name": "Name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [],
+   "title": "Output · answer_key",
+   "properties": {
+    "aws_output": "answer_key",
+    "aws_output_from": "generate.answer_key"
+   },
+   "widgets_values": [
+    "answer_key"
+   ],
+   "widgets_values_named": {
+    "name": "answer_key"
+   }
+  },
+  {
+   "id": 4,
+   "type": "e0a358d6-dab4-4c1f-92c8-debcc0c2c45b",
+   "pos": [
+    10,
+    10
+   ],
+   "size": [
+    320,
+    258
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "label": "Profile",
+     "name": "profile",
+     "type": "COMBO",
+     "widget": {
+      "name": "profile"
+     },
+     "link": null
+    },
+    {
+     "label": "Contacts",
+     "name": "contacts",
+     "type": "INT",
+     "widget": {
+      "name": "contacts"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "folder",
+     "name": "folder",
+     "type": "STRING",
+     "links": [
+      3
+     ]
+    },
+    {
+     "localized_name": "answer_key",
+     "name": "answer_key",
+     "type": "STRING",
+     "links": [
+      4
+     ]
+    }
+   ],
+   "title": "1 · Generate contacts",
+   "properties": {
+    "aws_stage": "generate",
+    "aws_stage_order": 1,
+    "aws_card": {
+     "purpose": "",
+     "lines": [],
+     "state": ""
+    },
+    "previewExposures": [],
+    "aws_step": {
+     "id": "generate",
+     "purpose": "Generate CRM-shaped contacts (contacts, phones and addresses on CONT_ID) with realistic dirt, and their answer key.",
+     "approach": "fixed",
+     "covers": [
+      "R1"
+     ],
+     "gives": {
+      "folder": "STRING",
+      "answer_key": "STRING"
+     },
+     "uses": "Synthetic contacts",
+     "why": "a measurement needs data whose answers are known",
+     "pattern": "Synthetic data with ground truth",
+     "gate": {
+      "says": "The data folder is written (with its answer key beside it).",
+      "check": {
+       "output": "folder",
+       "kind": "contains",
+       "value": "contacts_benchmark"
+      }
+     }
+    }
+   },
+   "widgets_values": [
+    7,
+    "company_hard",
+    10000
+   ],
+   "widgets_values_named": {
+    "seed": 7,
+    "profile": "company_hard",
+    "contacts": 10000,
+    "stage_card": ""
+   },
+   "color": "#3d4a5c",
+   "bgcolor": "#2b3340"
+  },
+  {
+   "id": 6,
+   "type": "MarkdownNote",
+   "pos": [
+    10,
+    -440
+   ],
+   "size": [
+    460,
+    340
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "How to use this workflow",
+   "properties": {},
+   "widgets_values": [
+    "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
+   ],
+   "widgets_values_named": {
+    "text": "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  }
+ ],
+ "links": [
+  [
+   3,
+   4,
+   0,
+   2,
+   0,
+   "STRING"
+  ],
+  [
+   4,
+   4,
+   1,
+   3,
+   0,
+   "STRING"
+  ]
+ ],
+ "groups": [],
+ "definitions": {
+  "subgraphs": [
+   {
+    "id": "e0a358d6-dab4-4c1f-92c8-debcc0c2c45b",
+    "version": 1,
+    "state": {
+     "lastGroupId": 0,
+     "lastNodeId": 6,
+     "lastLinkId": 8,
+     "lastRerouteId": 0
+    },
+    "revision": 0,
+    "config": {},
+    "name": "1 · Generate contacts",
+    "inputNode": {
+     "id": -10,
+     "bounding": [
+      -250,
+      10,
+      128,
+      48
+     ]
+    },
+    "outputNode": {
+     "id": -20,
+     "bounding": [
+      650,
+      10,
+      128,
+      88
+     ]
+    },
+    "inputs": [
+     {
+      "id": "3f531386-7426-499c-926c-18a2f82995c5",
+      "name": "seed",
+      "type": "INT",
+      "linkIds": [
+       5
+      ],
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "08b17cfb-ddc8-4c6b-9a88-c1376efee091",
+      "name": "profile",
+      "type": "COMBO",
+      "linkIds": [
+       7
+      ],
+      "label": "Profile",
+      "pos": [
+       0,
+       0
+      ]
+     },
+     {
+      "id": "d008b07b-1bb7-447a-9f09-94da47805fa0",
+      "name": "contacts",
+      "type": "INT",
+      "linkIds": [
+       8
+      ],
+      "label": "Contacts",
+      "pos": [
+       0,
+       0
+      ]
+     }
+    ],
+    "outputs": [
+     {
+      "id": "b1bca3e8-852b-4617-a403-692439e2784e",
+      "name": "folder",
+      "type": "STRING",
+      "linkIds": [
+       1
+      ],
+      "localized_name": "folder",
+      "pos": [
+       24,
+       24
+      ]
+     },
+     {
+      "id": "84b6b7d9-eaec-457e-ae24-234e39b6bce5",
+      "name": "answer_key",
+      "type": "STRING",
+      "linkIds": [
+       2
+      ],
+      "localized_name": "answer_key",
+      "pos": [
+       24,
+       44
+      ]
+     }
+    ],
+    "widgets": [],
+    "nodes": [
+     {
+      "id": 1,
+      "type": "AgentWorkflowSyntheticContacts",
+      "pos": [
+       10,
+       10
+      ],
+      "size": [
+       560,
+       430
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Profile",
+        "name": "profile",
+        "type": "COMBO",
+        "widget": {
+         "name": "profile"
+        },
+        "link": 7
+       },
+       {
+        "localized_name": "Contacts",
+        "name": "contacts",
+        "type": "INT",
+        "widget": {
+         "name": "contacts"
+        },
+        "link": 8
+       },
+       {
+        "localized_name": "Seed",
+        "name": "seed",
+        "type": "INT",
+        "widget": {
+         "name": "seed"
+        },
+        "link": 5
+       }
+      ],
+      "outputs": [
+       {
+        "localized_name": "folder",
+        "name": "folder",
+        "type": "STRING",
+        "links": [
+         1,
+         6
+        ]
+       },
+       {
+        "localized_name": "answer_key",
+        "name": "answer_key",
+        "type": "STRING",
+        "links": [
+         2
+        ]
+       }
+      ],
+      "title": "Synthetic contacts",
+      "properties": {
+       "aws_headline": "company_hard · contacts 10,540 · people 5,457 · phones 14,719 · addresses 16,777",
+       "aws_tables": [
+        {
+         "title": "Synthetic contacts",
+         "columns": [
+          "",
+          "value"
+         ],
+         "rows": [
+          [
+           "contacts",
+           "10540"
+          ],
+          [
+           "people",
+           "5457"
+          ],
+          [
+           "phones",
+           "14719"
+          ],
+          [
+           "addresses",
+           "16777"
+          ]
+         ]
+        }
+       ],
+       "aws_realizes": [
+        "gives answer_key",
+        "gives folder",
+        "does"
+       ]
+      },
+      "widgets_values": [
+       "company_hard",
+       10000,
+       7,
+       ""
+      ],
+      "widgets_values_named": {
+       "profile": "company_hard",
+       "contacts": 10000,
+       "seed": 7,
+       "table_view": ""
+      }
+     },
+     {
+      "id": 5,
+      "type": "AgentWorkflowCheck",
+      "pos": [
+       10,
+       550
+      ],
+      "size": [
+       560,
+       410
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+       {
+        "localized_name": "Value",
+        "name": "value",
+        "type": "*",
+        "link": 6
+       },
+       {
+        "localized_name": "Must hold",
+        "name": "kind",
+        "type": "COMBO",
+        "widget": {
+         "name": "kind"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Expect",
+        "name": "expect",
+        "type": "STRING",
+        "widget": {
+         "name": "expect"
+        },
+        "link": null
+       },
+       {
+        "localized_name": "Says",
+        "name": "says",
+        "type": "STRING",
+        "widget": {
+         "name": "says"
+        },
+        "link": null
+       }
+      ],
+      "outputs": [],
+      "title": "Check · folder",
+      "properties": {
+       "aws_watches": "folder",
+       "aws_headline": "✓ passed · The data folder is written (with its answer key beside it). · contacts_benchmark/company_hard_10000_7"
+      },
+      "widgets_values": [
+       "contains",
+       "contacts_benchmark",
+       "The data folder is written (with its answer key beside it).",
+       ""
+      ],
+      "widgets_values_named": {
+       "kind": "contains",
+       "expect": "contacts_benchmark",
+       "says": "The data folder is written (with its answer key beside it).",
+       "table_view": ""
+      }
+     }
+    ],
+    "groups": [],
+    "links": [
+     {
+      "id": 1,
+      "origin_id": 1,
+      "origin_slot": 0,
+      "target_id": -20,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 2,
+      "origin_id": 1,
+      "origin_slot": 1,
+      "target_id": -20,
+      "target_slot": 1,
+      "type": "STRING"
+     },
+     {
+      "id": 5,
+      "origin_id": -10,
+      "origin_slot": 0,
+      "target_id": 1,
+      "target_slot": 2,
+      "type": "INT"
+     },
+     {
+      "id": 6,
+      "origin_id": 1,
+      "origin_slot": 0,
+      "target_id": 5,
+      "target_slot": 0,
+      "type": "STRING"
+     },
+     {
+      "id": 7,
+      "origin_id": -10,
+      "origin_slot": 1,
+      "target_id": 1,
+      "target_slot": 0,
+      "type": "COMBO"
+     },
+     {
+      "id": 8,
+      "origin_id": -10,
+      "origin_slot": 2,
+      "target_id": 1,
+      "target_slot": 1,
+      "type": "INT"
+     }
+    ],
+    "extra": {},
+    "description": "Does: Generate CRM-shaped contacts (contacts, phones and addresses on CONT_ID) with realistic dirt, and their answer key using Synthetic contacts\nGives: folder (STRING), answer_key (STRING)\nServes R1 · Contacts with an answer key: you said “we need that data generator”\nVerified when: The data folder is written (with its answer key beside it).\nBecause: a measurement needs data whose answers are known"
+   }
+  ]
+ },
+ "config": {},
+ "extra": {
+  "linearData": {
+   "inputs": [
+    [
+     "4",
+     "profile",
+     {
+      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once)."
+     }
+    ],
+    [
+     "4",
+     "contacts",
+     {
+      "description": "About how many contacts to generate."
+     }
+    ],
+    [
+     "4",
+     "seed",
+     {
+      "description": "The same seed gives the same data."
+     }
+    ]
+   ],
+   "outputs": [
+    "2",
+    "3"
+   ]
+  },
+  "aws_verified": {
+   "fingerprint": "18f75ac2a3743eda1d838748",
+   "gates": {
+    "generate": "passed"
+   },
+   "checks": {
+    "generate": [
+     {
+      "title": "Check · folder",
+      "passed": true,
+      "evidence": "contacts_benchmark/company_hard_10000_7"
+     }
+    ]
+   },
+   "open": {},
+   "at": "2026-10-22T10:21"
+  },
+  "ds": {
+   "scale": 0.7922535211267606,
+   "offset": [
+    166.7111111111111,
+    570.9777777777778
+   ]
+  },
+  "aws_contract": {
+   "contract": 2,
+   "title": "Contact data generator",
+   "purpose": "Generate CRM-shaped contacts with realistic dirt and their answer key, to try or measure contact matching.",
+   "requests": [
+    {
+     "id": "R1",
+     "title": "Contacts with an answer key",
+     "you_said": "we need that data generator",
+     "we_understood": "When run, the workflow writes CRM-shaped contacts, phones and addresses on CONT_ID with realistic dirt, and the answer key beside them.",
+     "priority": "must"
+    }
+   ],
+   "examples": [
+    {
+     "id": "E1",
+     "covers": [
+      "R1"
+     ],
+     "given": {
+      "profile": "hard",
+      "contacts": 300,
+      "seed": 3
+     },
+     "expect": {
+      "folder": "contacts_benchmark/hard_300_3"
+     },
+     "note": "A small hard set (no downloads needed)."
+    }
+   ],
+   "promises": {
+    "inputs": [
+     {
+      "name": "profile",
+      "kind": "text",
+      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once).",
+      "node": "4",
+      "widget": "profile"
+     },
+     {
+      "name": "contacts",
+      "kind": "integer",
+      "description": "About how many contacts to generate.",
+      "node": "4",
+      "widget": "contacts"
+     },
+     {
+      "name": "seed",
+      "kind": "integer",
+      "description": "The same seed gives the same data.",
+      "node": "4",
+      "widget": "seed"
+     }
+    ],
+    "outputs": [
+     {
+      "name": "folder",
+      "kind": "text",
+      "description": "The data folder written (contacts, phones and addresses CSV files).",
+      "from": "generate.folder"
+     },
+     {
+      "name": "answer_key",
+      "kind": "text",
+      "description": "The answer key file: which contacts are one entity.",
+      "from": "generate.answer_key"
+     }
+    ]
+   },
+   "not_now": [],
+   "open_questions": [],
+   "decisions": []
+  },
+  "aws_design": {
+   "decisions": [],
+   "order": [
+    "generate"
+   ],
+   "data": {}
+  }
+ },
+ "version": 0.4
+}

@@ -64,7 +64,7 @@ RELEASE = {
     },
     "signature": {
         "inputs": [
-            {"name": "exports", "node": "1", "widget": "folder", "targets": [["1", "folder"]], "type": "COMBO", "default": "sample"},
+            {"name": "exports", "node": "1", "widget": "folder", "targets": [["1", "folder"]], "type": "COMBO", "default": "sample", "choices": ["sample", "other"]},
             {"name": "match_at", "node": "7:1", "widget": "match_at", "targets": [["7:1", "match_at"]], "type": "FLOAT", "default": 0.5},
         ],
         "outputs": [{"name": "entities", "node": "10"}],
@@ -83,6 +83,14 @@ CONTRACT = {
         }
     ],
     "steps": [{"id": "read", "purpose": "Read the exports."}],
+    "decisions": [
+        {
+            "id": "D1",
+            "decision": "A model learns from your reviews.",
+            "why": "it fits your data",
+            "by": "agent",
+        }
+    ],
 }
 
 
@@ -94,7 +102,13 @@ class ExportTests(unittest.TestCase):
             pipeline = (repo / "contact_matching" / "pipeline.py").read_text(encoding="utf-8")
             self.assertIn("steps.read_contacts(rt.ctx('read_contacts'), folder=n1[0]", pipeline)
             self.assertIn("match_at=values['match_at']", pipeline)
-            self.assertIn('"numpy==', (repo / "pyproject.toml").read_text(encoding="utf-8"))
+            project = (repo / "pyproject.toml").read_text(encoding="utf-8")
+            for dependency in ("numpy", "scipy", "pyyaml"):  # scipy is imported inside a function
+                self.assertIn(f'"{dependency}==', project)
+            self.assertIn(
+                "## Decisions\n\n- **A model learns from your reviews.** It fits your data.",
+                (repo / "README.md").read_text(encoding="utf-8"),
+            )
             # Windows: its CI runs there too, and the CLI prints UTF-8 whatever the console's code page.
             self.assertIn(
                 "windows-latest", (repo / ".github/workflows/test.yml").read_text(encoding="utf-8")
@@ -138,6 +152,67 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
             self.assertIn("learned from 1 of your reviews", again.stdout)
             self.assertIn(f"{pair},different", (out / "reviews.csv").read_text(encoding="utf-8"))
+
+    def test_a_companion_release_becomes_a_command_with_the_generator_inside(self) -> None:
+        generator = {
+            "name": "contact-matching-generate",
+            "semver": "1.0.0",
+            "prompt": {
+                "1:1": node("AgentWorkflowSyntheticContacts", "Synthetic contacts", profile="company_hard", contacts=10000, seed=7),
+                "2": node("AgentWorkflowApiOutput", "Output · folder", value=["1:1", 0], name="folder"),
+                "3": node("AgentWorkflowApiOutput", "Output · answer_key", value=["1:1", 1], name="answer_key"),
+            },
+            "workflow": {"extra": {"linearData": {"inputs": [[1, "profile", {"description": "How dirty."}]]}}},
+            "signature": {
+                "inputs": [
+                    {"name": "profile", "node": "1:1", "widget": "profile", "targets": [["1:1", "profile"]], "type": "COMBO", "default": "company_hard", "choices": ["base", "hard", "company_hard"]},
+                    {"name": "contacts", "node": "1:1", "widget": "contacts", "targets": [["1:1", "contacts"]], "type": "INT", "default": 10000},
+                    {"name": "seed", "node": "1:1", "widget": "seed", "targets": [["1:1", "seed"]], "type": "INT", "default": 7},
+                ],
+                "outputs": [{"name": "folder", "node": "2"}, {"name": "answer_key", "node": "3"}],
+            },
+        }  # fmt: skip
+        contract = {
+            "title": "Synthetic contacts",
+            "purpose": "Generate CRM contacts with an answer key.",
+            "examples": [{"id": "E1", "covers": ["R1"], "given": {"profile": "hard", "contacts": 300, "seed": 3}, "expect": {"folder": "contacts_benchmark/hard_300_3"}}],
+        }  # fmt: skip
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = generate(
+                RELEASE,
+                CONTRACT,
+                Path(tmp) / "contact-matching",
+                Path(tmp),
+                [(generator, contract)],
+            )
+            package = repo / "contact_matching"
+            self.assertTrue(
+                (package / "nayose_bench" / "contacts.py").is_file(), "the generator is shipped"
+            )
+            self.assertIn(
+                'real-data = ["pyarrow", "fugashi", "unidic-lite"]',
+                (repo / "pyproject.toml").read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "### `contact-matching generate`", (repo / "README.md").read_text(encoding="utf-8")
+            )
+            cli = [sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(repo)!r}); from contact_matching.cli import main; main(sys.argv[1:])"]  # fmt: skip
+            checked = subprocess.run([*cli, "check"], capture_output=True, text=True, timeout=300)
+            self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
+            self.assertIn("2 example(s): all passed", checked.stdout)
+            out = Path(tmp) / "gen"
+            made = subprocess.run([*cli, "generate", "--profile", "hard", "--contacts", "300", "--seed", "4", "--out", str(out)], capture_output=True, text=True, timeout=300)  # fmt: skip
+            self.assertEqual(made.returncode, 0, made.stdout + made.stderr)
+            self.assertTrue((out / "contacts_benchmark" / "hard_300_4" / "contacts.csv").is_file())
+            self.assertTrue(
+                (
+                    out / "contacts_benchmark" / "hard_300_4_key" / "answer_key_contacts.csv"
+                ).is_file()
+            )
+            refused = subprocess.run(
+                [*cli, "generate", "--profile", "nope"], capture_output=True, text=True, timeout=60
+            )
+            self.assertIn("invalid choice: 'nope'", refused.stderr)
 
     def test_a_node_without_a_python_export_blocks_with_its_name(self) -> None:
         release = json.loads(json.dumps(RELEASE))

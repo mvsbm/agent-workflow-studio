@@ -11,12 +11,12 @@ front and score the result at the end; they are not part of an exported pipeline
 from __future__ import annotations
 
 import csv
-import json
 from pathlib import Path
 from typing import Any
 
 from comfy_api.latest import io
 
+from .core import bench as steps_bench
 from .core import contacts as C
 from .core import steps
 from .core.context import Context
@@ -442,7 +442,39 @@ class EntityPerContact(io.ComfyNode):
 
 
 # --- benchmark ------------------------------------------------------------------------------------
+# An export copies these pack packages beside core, and offers their optional extras.
+BENCH_PACKAGES = ("nayose_bench",)
+BENCH_EXTRAS = {
+    "real-data": {
+        "requires": ["pyarrow", "fugashi", "unidic-lite"],
+        "how": "`python -m {pkg}.nayose_bench.sources` downloads the public data the real and company "
+        "profiles use, once: real names (NVIDIA Nemotron-Personas-Japan, CC BY 4.0), readings (UniDic, "
+        "JMnedict: share-alike), towns (Japan Post) and companies (National Tax Agency corporate numbers: "
+        "出典：国税庁法人番号公表サイト). Their licences apply; nothing is shipped with this package.",
+    }
+}
+
+
+def bench_ctx(name: str) -> Context:
+    """A benchmark step's context: ComfyUI's input folder, a run folder under output/contacts_benchmark."""
+    import time
+
+    import folder_paths
+
+    run = (
+        Path(folder_paths.get_output_directory())
+        / "contacts_benchmark"
+        / "runs"
+        / f"{name}-{time.strftime('%Y%m%d-%H%M%S')}{time.time_ns() % 1000:03d}"
+    )
+    run.mkdir(parents=True, exist_ok=True)
+    return Context(input_dir=Path(folder_paths.get_input_directory()), run_dir=run)
+
+
 class SyntheticContacts(io.ComfyNode):
+    EXPORT = "bench:synthetic_contacts"
+    PACKAGES, EXTRAS = BENCH_PACKAGES, BENCH_EXTRAS
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         from .nayose_bench.contacts import PROFILES
@@ -451,20 +483,20 @@ class SyntheticContacts(io.ComfyNode):
             node_id="AgentWorkflowSyntheticContacts",
             display_name="Synthetic contacts (benchmark)",
             category=CATEGORY,
-            search_aliases=["benchmark", "synthetic", "test data", "answer key"],
+            search_aliases=["benchmark", "synthetic", "test data", "answer key", "generate"],
             description=(
                 "Generates CRM-shaped contact exports (contacts, phones, addresses on CONT_ID) with realistic dirt "
                 "and an answer key, so a matching workflow can be measured. Real profiles use real names, towns "
                 "and companies once their sources are downloaded."
             ),
             inputs=[
-                io.Combo.Input("profile", options=list(PROFILES), default="company_hard", display_name="Profile", tooltip="How dirty and how many companies."),
+                io.Combo.Input("profile", options=list(PROFILES), default="company_hard", display_name="Profile", tooltip="How dirty and how many companies (real and company profiles need the real sources)."),
                 io.Int.Input("contacts", display_name="Contacts", default=10000, min=100, max=2_000_000, tooltip="About how many contacts."),
                 io.Int.Input("seed", display_name="Seed", default=7, min=0, max=2**31 - 1, control_after_generate=False, tooltip="The same seed gives the same data."),
             ],
             outputs=[
                 io.String.Output(display_name="folder", tooltip="The data folder (for Read contacts)."),
-                io.String.Output(display_name="answer key", tooltip="The answer key file (for the simulated reviewer and Score contacts)."),
+                io.String.Output(display_name="answer_key", tooltip="The answer key file (for the simulated reviewer and Score contacts)."),
             ],
         )  # fmt: skip
 
@@ -472,28 +504,24 @@ class SyntheticContacts(io.ComfyNode):
     def execute(cls, profile: str, contacts: int, seed: int) -> io.NodeOutput:
         import folder_paths
 
-        from .nayose_bench.contacts import generate_contacts
-
-        name = f"{profile}_{contacts}_{seed}"
-        data = Path(folder_paths.get_input_directory()) / "contacts_benchmark" / name
-        key = Path(folder_paths.get_output_directory()) / "contacts_benchmark" / name
-        if not (key / "stats.json").exists() or not (data / "contacts.csv").exists():
-            generate_contacts(data, key, contacts, seed, profile=profile)
-        stats = json.loads((key / "stats.json").read_text(encoding="utf-8"))
-        line = " · ".join(f"{k} {v:,}" for k, v in stats.items() if isinstance(v, int))[:160]
+        ctx = bench_ctx("synthetic_contacts")
+        # In the studio the answer key stays out of the input folder the agent reads from.
+        key_dir = Path(folder_paths.get_output_directory()) / "contacts_benchmark"
+        folder, key = steps_bench.synthetic_contacts(ctx, profile, contacts, seed, str(key_dir))
+        facts = [{"": k, "value": v} for k, v in ctx.facts.items()]
+        line = ctx.lines[-1].split(" · ", 1)[-1][:160]
         ui = {
-            "aws_tables": [
-                table("Synthetic contacts", [{"": k, "value": v} for k, v in stats.items()], 30)
-            ],
-            "text": (f"SYNTHETIC CONTACTS · {line}",),
+            "aws_tables": [table("Synthetic contacts", facts, 30)],
+            "text": (ctx.lines[-1],),
             "aws_headline": (line,),
         }
-        return io.NodeOutput(
-            f"contacts_benchmark/{name}", str(key / "answer_key_contacts.csv"), ui=ui
-        )
+        return io.NodeOutput(folder, key, ui=ui)
 
 
 class ScoreContacts(io.ComfyNode):
+    EXPORT = "bench:score_contacts"
+    PACKAGES, EXTRAS = BENCH_PACKAGES, BENCH_EXTRAS
+
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -523,22 +551,14 @@ class ScoreContacts(io.ComfyNode):
 
     @classmethod
     def execute(cls, entities: Any, answer_key: str) -> io.NodeOutput:
-        from .nayose_bench.score import score
-
-        rows = steps.read_csv(dataset_file(entities))
-        truth = Path(dataset_file(entities)).parent / "result_for_score.csv"
-        steps.write_csv(
-            truth,
-            ({"system": "contacts", "record_id": r["record"], "role": "contact", "customer_id": r["cluster"]} for r in rows),
-            ["system", "record_id", "role", "customer_id"],
-        )  # fmt: skip
-        report = score(Path(answer_key).parent, truth)
+        ctx = bench_ctx("score_contacts")
+        steps_bench.score_contacts(ctx, dataset_file(entities), answer_key)
+        report = ctx.extra["report"]
         totals = {
             f"{k} {m}": report[k][m]
             for k in ("pairwise", "bcubed")
             for m in ("precision", "recall", "f1")
         }
-        line = f"F1 {report['pairwise']['f1']} · precision {report['pairwise']['precision']} · recall {report['pairwise']['recall']}"
         tables = [
             table("Score", [{"": k, "value": v} for k, v in totals.items()]),
             table(
@@ -551,8 +571,9 @@ class ScoreContacts(io.ComfyNode):
                 [{"": k, "value": v} for k, v in (report["false_merges"] or {"none": 0}).items()],
             ),
         ]
+        line = ctx.lines[-1].split(" · ", 1)[-1]
         return io.NodeOutput(
-            ui={"aws_tables": tables, "text": (f"SCORE · {line}",), "aws_headline": (line,)}
+            ui={"aws_tables": tables, "text": (ctx.lines[-1],), "aws_headline": (line,)}
         )
 
 
