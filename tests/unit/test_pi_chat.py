@@ -70,6 +70,11 @@ class Transport:
                     "data": {"model": self.model, "thinkingLevel": self.thinking},
                 }
             )
+        if record["type"] == "get_session_stats":
+            stats = {"userMessages": 2, "assistantMessages": 2, "toolCalls": 3, "cost": 0.01}
+            self.records.put(
+                {"type": "response", "id": record["id"], "success": True, "data": stats}
+            )
         if record["type"] == "get_commands":
             self.records.put(
                 {
@@ -754,6 +759,34 @@ class PiChatTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.01)
         self.assertFalse(self.session.busy)
         self.assertTrue(any(event["type"] == "command_handled" for event in self.socket.events))
+
+    async def test_pi_built_in_commands_run_through_rpc_not_the_model(self):
+        ready = next(e for e in self.socket.events if e["type"] == "ready")
+        names = [c["name"] for c in ready["commands"]]
+        self.assertIn("ponytail", names)
+        self.assertIn("compact", names)
+        self.assertNotIn("comfy", names)  # the studio's own check
+        replies = []
+        for text in ("/session", "/thinking high", "/settings"):
+            self.socket.events.clear()
+            await self.session.client_message({"type": "prompt", "message": text})
+            self.assertEqual(self.socket.events[-1], {"type": "command_handled"})
+            replies.append(
+                next(e for e in self.socket.events if e["type"] == "message_end")["message"][
+                    "content"
+                ][0]["text"]
+            )
+        self.assertIn("2 messages from you", replies[0])
+        self.assertEqual(self.session.thinking_level, "high")  # as the picker would set it
+        self.assertIn("thinking high", replies[1])
+        self.assertIn("command of Pi's terminal", replies[2])
+        self.assertFalse(
+            any(
+                c.get("message") in {"/session", "/settings"}
+                for c in self.session.transport.commands
+            )
+        )
+        self.assertFalse(self.session.busy)
 
     async def test_model_configuration_preserves_session_and_checks_profile(self):
         await self.session.start()

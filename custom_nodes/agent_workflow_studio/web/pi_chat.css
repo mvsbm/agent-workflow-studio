@@ -1,82 +1,153 @@
-/* In the look of ComfyUI's own panels: its colour tokens, 8px-rounded gray controls, muted secondary text. */
-.aw-pi-history-dialog{width:min(48rem,88vw);max-height:85vh;box-sizing:border-box;background:var(--interface-panel-surface,var(--comfy-menu-bg));color:var(--base-foreground,#fff);border:1px solid var(--interface-stroke,#505053);border-radius:16px;padding:20px 24px}
+/* The chat takes the look of the harness it talks to (data-agent on .aw-pi-chat), from each one's own site:
+   Pi from pi.dev (evening blue, square panels, mono, the TUI's tinted user and tool blocks),
+   Claude Code from claude.com (warm near-black, clay, rounded, the app's blue user bubble and quiet tool lines). */
+.aw-pi-chat{color-scheme:dark;
+  --aw-bg:#161d27;--aw-surface:#212730;--aw-surface-hover:#252f3d;--aw-line:#49505980;--aw-text:#ebe7e4;--aw-copy:#d5d8db;--aw-muted:#9fa4ab;
+  --aw-accent:#6a9fcc;--aw-accent-hover:#82b0d8;--aw-on-accent:#0d1116;--aw-select:#6a9fcc3d;--aw-thumb:#2f5f8a66;
+  --aw-user-bg:#203742;--aw-user-text:var(--aw-text);--aw-ok:#63b589;--aw-err:#eb7a7c;
+  --aw-tool-bg:#313436;--aw-tool-ok-bg:#223a2c;--aw-tool-err-bg:#4f2526;
+  --aw-radius:0px;--aw-radius-lg:0px;--aw-mono:"Commit Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--aw-font:var(--aw-mono);--aw-size:13px;
+  --aw-display:"Plantin MT Pro",Georgia,serif;--aw-display-style:italic}
+.aw-pi-chat[data-agent=claude]{
+  --aw-bg:#141413;--aw-surface:#1f1e1d;--aw-surface-hover:#262624;--aw-line:#ffffff1a;--aw-text:#faf9f5;--aw-copy:#c3c2b7;--aw-muted:#898781;
+  --aw-accent:#d97757;--aw-accent-hover:#c6613f;--aw-on-accent:#141413;--aw-select:#d977573d;--aw-thumb:#ffffff26;
+  --aw-user-bg:#4d9fff24;--aw-user-text:#4d9fff;--aw-ok:#4cc38a;--aw-err:#ff5a5a;
+  --aw-tool-bg:transparent;--aw-tool-ok-bg:transparent;--aw-tool-err-bg:transparent;
+  --aw-radius:8px;--aw-radius-lg:12px;--aw-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--aw-font:system-ui,-apple-system,"Segoe UI",sans-serif;--aw-size:14px;
+  --aw-display:Georgia,"Times New Roman",serif;--aw-display-style:normal}
+.aw-pi-chat ::selection{background:var(--aw-select)}
+.aw-pi-history-dialog{width:min(48rem,88vw);max-height:85vh;box-sizing:border-box;background:var(--aw-bg);color:var(--aw-text);border:1px solid var(--aw-line);border-radius:var(--aw-radius-lg);padding:20px 24px}
 .aw-pi-history-dialog::backdrop{background:#0008}
-.aw-pi-history-dialog select{width:100%;box-sizing:border-box;height:32px;background:var(--secondary-background,#313235);color:var(--base-foreground,#fff);border:none;border-radius:8px;padding:0 .5rem}
+.aw-pi-history-dialog select{width:100%;box-sizing:border-box;height:32px;background:var(--aw-surface);color:var(--aw-text);border:1px solid var(--aw-line);border-radius:var(--aw-radius);padding:0 .5rem;font:inherit}
 .aw-pi-history-messages{overflow:auto;max-height:60vh;overflow-wrap:anywhere}
 .aw-pi-history-status{overflow-wrap:anywhere}
 .aw-pi-host{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
-.aw-pi-chat{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;min-height:0;color:var(--base-foreground,#fff);background:var(--comfy-menu-bg);font:inherit}
-.aw-pi-chat header{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:12px 12px 12px 16px;border-bottom:1px solid var(--interface-stroke,#505053)}
+.aw-pi-chat{flex:1;min-width:0;display:flex;flex-direction:column;height:100%;min-height:0;color:var(--aw-text);background:var(--aw-bg);font-family:var(--aw-font);font-size:var(--aw-size)}
+.aw-pi-chat header{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:12px 12px 12px 16px;border-bottom:1px solid var(--aw-line)}
 .aw-pi-chat h2{font-size:14px;font-weight:600;margin:0;flex:1}
+.aw-pi-chat header h2{display:flex;align-items:center;gap:.45rem}
 .aw-pi-chat h3{font-size:.85rem;font-weight:600;margin:0 0 .4rem}
-.aw-pi-model{flex-basis:100%;margin:0;overflow-wrap:anywhere;color:var(--muted-foreground,#8a8a8a);font-size:12px}
-.aw-pi-model-picker{position:relative;flex-basis:100%;min-width:0}
-.aw-pi-model-picker>summary{cursor:pointer;color:var(--base-foreground,#fff)}
-.aw-pi-config{position:absolute;z-index:3;top:calc(100% + .35rem);left:0;right:0;max-height:65vh;overflow:auto;padding:.75rem;background:var(--comfy-menu-bg);color:var(--base-foreground,#fff);border:1px solid var(--interface-stroke,#505053);border-radius:.4rem;box-shadow:0 .4rem 1rem #0006;display:flex;flex-direction:column;gap:.5rem}
+/* The harness's mark before "Agent": Claude Code's ✻ in clay; Pi's panel title, a blue stripe and spaced capitals. */
+.aw-pi-chat[data-agent=claude] header h2{font-family:var(--aw-display);font-size:16px;font-weight:400}
+.aw-pi-chat[data-agent=claude] header h2::before{content:'✻';color:var(--aw-accent);font-size:18px;line-height:1}
+.aw-pi-chat:not([data-agent=claude]) header h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;border-left:2px solid var(--aw-accent);padding-left:8px}
+.aw-pi-model{flex-basis:100%;margin:0;overflow-wrap:anywhere;color:var(--aw-muted);font-size:12px}
+/* The connection's settings: a panel over the chat, open only when asked for. */
+.aw-pi-settings{position:absolute;z-index:3;top:calc(100% + 6px);left:0;right:0;max-height:70vh;overflow:auto;padding:.75rem;background:var(--aw-surface);color:var(--aw-text);border:1px solid var(--aw-line);border-radius:var(--aw-radius-lg);box-shadow:0 12px 40px #00000073;display:flex;flex-direction:column;gap:.5rem}
+.aw-pi-settings hr{width:100%;border:none;border-top:1px solid var(--aw-line);margin:.25rem 0}
+.aw-pi-settings>.p-button{align-self:flex-start}
+.aw-pi-config{display:flex;flex-direction:column;gap:.5rem}
+.aw-pi-form-buttons{display:flex;gap:.4rem}
+.aw-pi-chat .aw-pi-config .p-button[type=submit]{background:var(--aw-accent);border-color:var(--aw-accent);color:var(--aw-on-accent);font-weight:600}
 .aw-pi-config label{display:flex;flex-direction:column;gap:.2rem;font-size:.8rem}
-.aw-pi-config select{width:100%;min-width:0;height:32px;background:var(--secondary-background,#313235);color:var(--base-foreground,#fff);border:none;border-radius:8px;padding:0 .5rem}
-.aw-pi-config small{font-size:.75rem}
+.aw-pi-config select{width:100%;min-width:0;height:32px;background:var(--aw-bg);color:var(--aw-text);border:1px solid var(--aw-line);border-radius:var(--aw-radius);padding:0 .5rem;font:inherit}
+.aw-pi-config small{font-size:.75rem;color:var(--aw-muted)}
 .aw-pi-run-option{display:flex;align-items:center;gap:.35rem;font-size:.75rem;cursor:pointer}
-.aw-pi-chat .aw-pi-run-option input[type=checkbox]{width:1rem;height:1rem;min-height:0;flex:none;padding:0;margin:0}
+.aw-pi-chat .aw-pi-run-option input[type=checkbox]{width:1rem;height:1rem;min-height:0;flex:none;padding:0;margin:0;accent-color:var(--aw-accent)}
 .aw-pi-controls{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
-.aw-pi-chat .p-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;height:32px;box-sizing:border-box;padding:0 10px;cursor:pointer;color:var(--base-foreground,#fff);background:var(--secondary-background,#313235);border:none;border-radius:8px;font:inherit;font-size:14px}
-.aw-pi-chat .p-button:hover{background:var(--secondary-background-hover,#3c3d42)}
-.aw-pi-controls .p-button{background:transparent;color:var(--muted-foreground,#8a8a8a)}
-.aw-pi-controls .p-button:hover{color:var(--base-foreground,#fff)}
-.aw-pi-chat .p-button[aria-label=Send]{background:var(--primary-background,#0b8ce9);color:#fff}
-.aw-pi-chat .p-button[aria-label=Send]:hover{background:var(--primary-background-hover,#31a2f5)}
-.aw-pi-chat .p-button:disabled{opacity:.5;cursor:default}
+.aw-pi-chat .p-button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;height:32px;box-sizing:border-box;padding:0 10px;cursor:pointer;color:var(--aw-text);background:var(--aw-surface);border:1px solid var(--aw-line);border-radius:var(--aw-radius);font:inherit;font-size:13px;transition:background .15s,color .15s,border-color .15s}
+.aw-pi-chat .p-button:hover{background:var(--aw-surface-hover)}
+.aw-pi-controls .p-button{background:transparent;border-color:transparent;color:var(--aw-muted)}
+.aw-pi-controls .p-button:hover{background:var(--aw-surface);color:var(--aw-text)}
+.aw-pi-chat .p-button[aria-label=Send]{background:var(--aw-accent);border-color:var(--aw-accent);color:var(--aw-on-accent);font-weight:600}
+.aw-pi-chat .p-button[aria-label=Send]:hover{background:var(--aw-accent-hover);border-color:var(--aw-accent-hover)}
+.aw-pi-chat .p-button:disabled{opacity:.45;cursor:default}
 .aw-pi-chat [hidden]{display:none!important}
-.aw-pi-chat :focus-visible{outline:1px solid var(--primary-background,#0b8ce9);outline-offset:1px}
-.aw-pi-messages{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 16px}
-.aw-pi-message{padding:.6rem 0;border-bottom:1px solid var(--interface-stroke,#505053)}
-.aw-pi-message-text,.aw-pi-permission p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem;line-height:1.55}
-.aw-pi-assistant .aw-pi-message-text{white-space:normal}
-.aw-pi-message-text pre{overflow:auto;padding:.5rem;background:var(--secondary-background,#313235);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere}
+.aw-pi-chat :focus-visible{outline:2px solid var(--aw-accent);outline-offset:1px}
+.aw-pi-messages{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px 16px;scrollbar-width:thin;scrollbar-color:var(--aw-thumb) transparent}
+.aw-pi-message{padding:.5rem 0}
+.aw-pi-message-text,.aw-pi-permission p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.aw-pi-assistant .aw-pi-message-text{white-space:normal;color:var(--aw-copy)}
+.aw-pi-assistant .aw-pi-message-text :is(strong,h1,h2,h3,h4){color:var(--aw-text)}
+.aw-pi-message-text a{color:var(--aw-accent)}
+.aw-pi-message-text code{font-family:var(--aw-mono);font-size:.9em;padding:.1em .35em;background:var(--aw-surface);border:1px solid var(--aw-line);border-radius:calc(var(--aw-radius) / 2)}
+.aw-pi-message-text pre{overflow:auto;padding:.6rem .75rem;background:var(--aw-surface);border:1px solid var(--aw-line);border-radius:var(--aw-radius);white-space:pre-wrap;overflow-wrap:anywhere}
+.aw-pi-message-text pre code{padding:0;background:none;border:none}
 .aw-pi-message-text p{margin:.35rem 0}
-.aw-pi-user{border-left:2px solid var(--primary-background,#0b8ce9);padding-left:.6rem}
-.aw-pi-notice{color:var(--muted-foreground,#8a8a8a)}
-.aw-pi-tool{margin:.5rem 0;padding:.5rem .65rem;background:var(--secondary-background,#313235);border:none;border-radius:8px;font-size:13px}
+.aw-pi-message-text table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;font-size:12px;margin:.5rem 0}
+.aw-pi-message-text :is(th,td){padding:3px 10px 3px 0;text-align:left;white-space:nowrap;border-bottom:1px solid var(--aw-line)}
+/* No "You" / agent name over each message: the user's own block says who wrote it (kept for screen readers). */
+.aw-pi-user>h3,.aw-pi-assistant>h3{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.aw-pi-user{margin:.6rem 0;padding:.6rem .8rem;background:var(--aw-user-bg);color:var(--aw-user-text);border-radius:var(--aw-radius-lg)}
+.aw-pi-chat[data-agent=claude] .aw-pi-user{width:fit-content;max-width:90%;box-sizing:border-box;border-radius:10px;padding:10px 14px}
+.aw-pi-notice{color:var(--aw-muted);font-size:12px}
+.aw-pi-notice>h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 .2rem}
+/* Tool steps: Pi's TUI tints the block by state; Claude Code shows one quiet line with a status dot. */
+.aw-pi-tool{margin:.35rem 0;padding:.45rem .65rem;background:var(--aw-tool-bg);border-radius:var(--aw-radius);font-size:12px;font-family:var(--aw-mono)}
+.aw-pi-tool[data-state=done]{background:var(--aw-tool-ok-bg)}
+.aw-pi-tool[data-state=failed]{background:var(--aw-tool-err-bg)}
+.aw-pi-chat[data-agent=claude] .aw-pi-tool{padding:.2rem 0;font-family:var(--aw-font);font-size:13px}
+.aw-pi-tool>summary{cursor:pointer;overflow-wrap:anywhere;color:var(--aw-muted);list-style:none;display:flex;align-items:baseline;gap:.5rem}
+.aw-pi-tool>summary::-webkit-details-marker{display:none}
+.aw-pi-tool>summary::before{content:'';flex:none;width:7px;height:7px;border-radius:50%;background:var(--aw-muted);transform:translateY(-1px)}
+.aw-pi-tool[data-state=running]>summary::before{animation:aw-pi-pulse 1.2s ease-in-out infinite}
+.aw-pi-tool[data-state=done]>summary::before{background:var(--aw-ok)}
+.aw-pi-tool[data-state=failed]>summary::before{background:var(--aw-err)}
+.aw-pi-tool[data-state=failed]>summary{color:var(--aw-err)}
+.aw-pi-tool>summary:hover{color:var(--aw-text)}
+.aw-pi-chat:not([data-agent=claude]) .aw-pi-tool>summary::before{border-radius:0}
+@keyframes aw-pi-pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.aw-pi-tool[data-state=running]>summary::before{animation:none}}
+.aw-pi-native-files{background:var(--aw-surface);border:1px solid var(--aw-line)}
+.aw-pi-chat[data-agent=claude] .aw-pi-native-files{padding:.6rem .75rem}
 .aw-pi-native-files>strong,.aw-pi-native-files>small{display:block;overflow-wrap:anywhere}
 .aw-pi-native-files a{max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;margin-top:.4rem}
-.aw-pi-tool summary{cursor:pointer;overflow-wrap:anywhere}
-.aw-pi-tool pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:16rem;overflow:auto;font-size:.75rem;margin:.5rem 0 0}
-.aw-pi-permission{margin:.6rem 0;padding:.75rem;border:1px solid var(--primary-background,#0b8ce9);border-radius:8px}
+.aw-pi-tool pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:16rem;overflow:auto;font-family:var(--aw-mono);font-size:11px;margin:.5rem 0 0;padding:.5rem;background:var(--aw-bg);border:1px solid var(--aw-line);border-radius:var(--aw-radius);color:var(--aw-copy)}
+.aw-pi-permission{margin:.6rem 0;padding:.75rem;background:var(--aw-surface);border:1px solid var(--aw-accent);border-radius:var(--aw-radius-lg)}
+.aw-pi-permission h3{color:var(--aw-text)}
+.aw-pi-permission .aw-pi-controls .p-button{border-color:var(--aw-line);color:var(--aw-text)}
+.aw-pi-permission:not([data-method=select]) .aw-pi-controls .p-button:first-child{background:var(--aw-accent);border-color:var(--aw-accent);color:var(--aw-on-accent);font-weight:600}/* Allow / Submit; a choice's options stay equal */
 .aw-pi-permission .aw-pi-summary{margin:0 0 .5rem}
 .aw-pi-full{margin:0 0 .5rem;font-size:13px}
-.aw-pi-full>summary{cursor:pointer;color:var(--muted-foreground,#8a8a8a)}
-.aw-pi-full>summary:hover{color:var(--base-foreground,#fff)}
-.aw-pi-full p{max-height:20rem;overflow:auto;margin:.4rem 0 0;padding:.5rem;background:var(--secondary-background,#313235);border-radius:8px;font-size:.78rem}
+.aw-pi-full>summary{cursor:pointer;color:var(--aw-muted)}
+.aw-pi-full>summary:hover{color:var(--aw-text)}
+.aw-pi-full p{max-height:20rem;overflow:auto;margin:.4rem 0 0;padding:.5rem;background:var(--aw-bg);border:1px solid var(--aw-line);border-radius:var(--aw-radius);font-size:.78rem}
 .aw-pi-permission>p{max-height:12rem;overflow:auto}
-.aw-pi-connection{flex-basis:100%;min-width:0;font-size:12px;color:var(--muted-foreground,#8a8a8a)}
+.aw-pi-connection{flex-basis:100%;min-width:0;font-size:12px;color:var(--aw-muted)}
 .aw-pi-connection>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:.4rem}
 .aw-pi-connection>summary::-webkit-details-marker{display:none}
-.aw-pi-connection>summary::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--muted-foreground,#8a8a8a)}
-.aw-pi-connection>summary[data-state=on]::before{background:var(--success-background,#00a63e)}
-.aw-pi-connection[open]{display:flex;flex-direction:column;gap:.4rem}
-.aw-pi-connection[open]>summary{margin-bottom:.2rem}
+.aw-pi-connection>summary::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--aw-muted)}
+.aw-pi-connection>summary[data-state=on]::before{background:var(--aw-ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--aw-ok) 25%,transparent)}
 .aw-pi-connection>summary i{margin-left:auto;font-size:10px;transition:transform .15s}
 .aw-pi-connection[open]>summary i{transform:rotate(180deg)}
 .aw-pi-chip i{margin-right:.35rem;font-size:11px}
 .aw-pi-notices small{display:block;overflow-wrap:anywhere}
 .aw-pi-attached{display:flex;flex-wrap:wrap;gap:.35rem}
-.aw-pi-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 8px;border-radius:999px;background:var(--secondary-background,#313235);font-size:12px;overflow-wrap:anywhere}
-.aw-pi-chat.aw-pi-drop{outline:2px dashed var(--primary-background,#0b8ce9);outline-offset:-6px}
-.aw-pi-tool summary{color:var(--muted-foreground,#8a8a8a)}
-.aw-pi-files{flex-basis:100%;border:none;border-top:1px solid var(--interface-stroke,#505053);margin:0 -12px 0 -16px;padding:8px 12px 0 16px;max-height:24vh;overflow:auto;flex-shrink:0;font-size:13px}
+.aw-pi-chip{display:inline-flex;align-items:center;max-width:100%;padding:2px 8px;border-radius:var(--aw-radius-lg);background:var(--aw-surface-hover);border:1px solid var(--aw-line);font-size:12px;overflow-wrap:anywhere}
+.aw-pi-chat[data-agent=claude] .aw-pi-chip{border-radius:999px}
+.aw-pi-chat.aw-pi-drop{outline:2px dashed var(--aw-accent);outline-offset:-6px}
+.aw-pi-files{flex-basis:100%;border:none;border-top:1px solid var(--aw-line);margin:0 -12px 0 -16px;padding:8px 12px 0 16px;max-height:24vh;overflow:auto;flex-shrink:0;font-size:13px}
 .aw-pi-files summary{cursor:pointer;font-weight:600;min-height:24px}
-.aw-pi-files small{display:block}
+.aw-pi-files small{display:block;color:var(--aw-muted)}
 .aw-pi-file{display:flex;gap:.35rem;align-items:center;padding:.25rem 0}
 .aw-pi-file span{min-width:0;overflow-wrap:anywhere;flex:1}
 .aw-pi-file button{flex-shrink:0}
-.aw-pi-status{margin:0;padding:8px 16px;font-size:12px;color:var(--muted-foreground,#8a8a8a);border-top:1px solid var(--interface-stroke,#505053);overflow-wrap:anywhere}
-.aw-pi-composer{padding:12px 16px;display:flex;flex-direction:column;gap:.5rem;border-top:1px solid var(--interface-stroke,#505053)}
-.aw-pi-chat textarea,.aw-pi-chat input{width:100%;box-sizing:border-box;resize:vertical;min-height:3rem;max-height:12rem;padding:.5rem .65rem;border:none;border-radius:8px;background:var(--secondary-background,#313235);color:var(--base-foreground,#fff);font:inherit;font-size:.85rem}
-.aw-pi-composer small{flex:1;color:var(--muted-foreground,#8a8a8a);font-size:12px}
-.aw-pi-empty{padding:1rem 0;font-size:.85rem;line-height:1.6}
-.aw-pi-empty p{color:var(--muted-foreground,#8a8a8a)}
-.aw-pi-suggestions{display:flex;flex-direction:column;align-items:flex-start;gap:.4rem;margin-top:.75rem}
-.aw-pi-chat .aw-pi-suggestions .p-button{height:auto;min-height:32px;padding:6px 10px;text-align:left;justify-content:flex-start;line-height:1.35}
+.aw-pi-status{margin:0;padding:6px 16px 0;font-size:12px;color:var(--aw-muted);overflow-wrap:anywhere}
+.aw-pi-chat:not([data-agent=claude]) .aw-pi-status{font-family:var(--aw-mono);font-size:11px}
+/* The composer is one card: the box, the attachments and the buttons inside it. */
+.aw-pi-composer{position:relative;margin:8px 12px 12px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:.35rem;background:var(--aw-surface);border:1px solid var(--aw-line);border-radius:var(--aw-radius-lg);transition:border-color .15s}
+.aw-pi-composer:focus-within{border-color:var(--aw-accent)}
+.aw-pi-chat:not([data-agent=claude]) .aw-pi-composer{border-width:1px 0 0;border-top:2px solid var(--aw-accent);margin:8px 0 0}
+.aw-pi-chat textarea,.aw-pi-chat input{width:100%;box-sizing:border-box;resize:vertical;min-height:3rem;max-height:12rem;padding:.5rem .65rem;border:1px solid var(--aw-line);border-radius:var(--aw-radius);background:var(--aw-bg);color:var(--aw-text);font:inherit;font-size:.9em;line-height:1.5}
+.aw-pi-chat textarea::placeholder,.aw-pi-chat input::placeholder{color:var(--aw-muted);opacity:.8}
+.aw-pi-composer textarea{border:none;background:transparent;padding:.35rem .4rem;resize:none}
+.aw-pi-chat .aw-pi-composer textarea:focus-visible{outline:none}
+.aw-pi-composer small{flex:1;color:var(--aw-muted);font-size:11px;white-space:nowrap}
+.aw-pi-composer .p-button[aria-label="Attach files"]>span{display:none}/* the paperclip; its name stays for screen readers and in the tooltip */
+.aw-pi-empty{padding:1.5rem 0 1rem;line-height:1.6}
+.aw-pi-empty h3{font-family:var(--aw-display);font-style:var(--aw-display-style);font-weight:400;font-size:22px;line-height:1.25;margin:0 0 .6rem;color:var(--aw-text)}
+.aw-pi-empty p{color:var(--aw-muted)}
+.aw-pi-suggestions{display:flex;flex-direction:column;align-items:stretch;gap:.4rem;margin-top:1rem}
+.aw-pi-chat .aw-pi-suggestions .p-button{height:auto;min-height:36px;padding:8px 12px;text-align:left;justify-content:flex-start;line-height:1.35;background:transparent;color:var(--aw-copy)}
+.aw-pi-chat .aw-pi-suggestions .p-button:hover{background:var(--aw-surface);border-color:var(--aw-accent);color:var(--aw-text)}
+.aw-pi-chat .aw-pi-suggestions .p-button i{color:var(--aw-accent)}
 .aw-pi-status:empty{display:none}
-.aw-pi-chat{font-size:14px}
 .aw-pi-chat textarea:disabled{opacity:.6}
+/* The / menu: the agent's commands, above the box. */
+.aw-pi-commands{position:absolute;z-index:3;left:0;right:0;bottom:calc(100% + 6px);max-height:min(18rem,50vh);overflow:auto;padding:4px;background:var(--aw-surface);border:1px solid var(--aw-line);border-radius:var(--aw-radius-lg);box-shadow:0 12px 40px #00000073}
+.aw-pi-command{display:flex;flex-direction:column;gap:1px;padding:6px 8px;border-radius:var(--aw-radius);cursor:pointer}
+.aw-pi-command strong{font-family:var(--aw-mono);font-size:12px;font-weight:600;color:var(--aw-text)}
+.aw-pi-command small{color:var(--aw-muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aw-pi-command[aria-selected=true],.aw-pi-command:hover{background:var(--aw-surface-hover)}
+.aw-pi-command[aria-selected=true] strong{color:var(--aw-accent)}
+.aw-pi-command-note{display:block;padding:6px 8px;color:var(--aw-muted);font-size:11px}

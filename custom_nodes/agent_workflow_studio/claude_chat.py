@@ -2,7 +2,9 @@
 
 Claude Code runs headless (`claude -p`, stream-json in and out) on the user's own Claude login,
 locked down: no built-in tools (no shell, no host files), none of the user's settings, hooks,
-plugins or CLAUDE.md, and only the studio's tools from claude_mcp.py. Those reach this session's
+plugins or CLAUDE.md, and only the studio's tools from claude_mcp.py. The one exception, by the
+user's choice: their installed Ponytail plugin, so its commands work as in the Pi chat (its hooks
+run on this machine; it starts in the Pi chat's mode). The studio's tools reach this session's
 bridge, so the contract gate, approvals and workspace confinement are the Pi session's, unchanged.
 Its stream events are translated into the events the chat panel already shows.
 """
@@ -21,7 +23,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from .pi_chat import MAX_TURNS, REQUIRED_SKILLS, PiChatSession
+from .pi_chat import MAX_TURNS, PONYTAIL_MODE, REQUIRED_SKILLS, PiChatSession
 from .pi_cli import PiCLIError, _pi_environment, _PiRPCProcess
 
 HERE = Path(__file__).resolve().parent
@@ -32,6 +34,20 @@ PREFIX = "mcp__studio__"
 
 def claude_cli() -> str | None:
     return os.environ.get("AGENT_WORKFLOW_STUDIO_CLAUDE_CLI") or shutil.which("claude")
+
+
+def ponytail_plugin() -> tuple[str, str] | None:
+    """The user's installed Ponytail plugin for Claude Code (folder, version), if any."""
+    home = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    try:
+        entry = json.loads((home / "plugins" / "installed_plugins.json").read_text())["plugins"][
+            "ponytail@ponytail"
+        ][0]
+        folder = Path(entry["installPath"])
+        manifest = json.loads((folder / ".claude-plugin" / "plugin.json").read_text())
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return None
+    return str(folder), str(manifest.get("version", ""))
 
 
 def validate_claude_config(config) -> dict:
@@ -139,6 +155,10 @@ class ClaudeChatSession(PiChatSession):
             command += ["--effort", self.config["effort"]]
         environment = _pi_environment()
         environment.update(self.bridge_environment(origin))
+        self.ponytail = ponytail_plugin()
+        if self.ponytail:  # only this plugin: not the user's settings, other hooks or CLAUDE.md
+            command += ["--plugin-dir", self.ponytail[0]]
+            environment["PONYTAIL_DEFAULT_MODE"] = PONYTAIL_MODE  # not the user's saved default
         self.command, self.environment = command, environment
         self.model = {"provider": "claude-code", "id": self.config["model"]}
 
@@ -149,7 +169,12 @@ class ClaudeChatSession(PiChatSession):
         await asyncio.to_thread(self.workspace.perform, "workspace_info", {})
         self.transport = _PiRPCProcess(self.command, self.environment, cwd=self.profile.name)
         self.reader = asyncio.create_task(self.read_events())
-        await asyncio.wait_for(self.control("initialize"), timeout=60)
+        init = await asyncio.wait_for(self.control("initialize"), timeout=60)
+        self.commands = [
+            {"name": c["name"], "description": c.get("description", "")}
+            for c in init.get("commands", [])
+            if c.get("name") and not c["name"].startswith("__")  # internal
+        ]
         status = await asyncio.wait_for(self.control("mcp_status"), timeout=60)
         studio = next((s for s in status.get("mcpServers", []) if s.get("name") == "studio"), {})
         have = {tool.get("name") for tool in studio.get("tools", [])}
@@ -161,7 +186,9 @@ class ClaudeChatSession(PiChatSession):
                 "type": "ready",
                 "agent": "claude_code",
                 "agent_name": "Claude",
-                "extensions": {},
+                "extensions": {"ponytail": {"version": self.ponytail[1], "mode": PONYTAIL_MODE}}
+                if self.ponytail
+                else {},
                 "skills": {"names": sorted(REQUIRED_SKILLS), "default_loaded": True},
                 "schema_only_prompt": False,
                 "workspace_files_ui": True,
@@ -176,6 +203,7 @@ class ClaudeChatSession(PiChatSession):
                 "auth_source": self.auth_source,
                 "pi_config": self.configuration(),
                 "mcp_tool_count": len(have),
+                "commands": self.commands,
             }
         )
         self.initialized.set()
@@ -210,6 +238,13 @@ class ClaudeChatSession(PiChatSession):
                 raise ValueError("Send 1–16,000 characters.")
             if self.busy:
                 raise ValueError("Stop or wait for the current reply first.")
+            model = text.strip().removeprefix("/model ").strip()
+            if text.startswith("/model ") and model:  # as the picker does, so its label stays true
+                await self.client_message(
+                    {"type": "configure", "pi_config": {**self.config, "model": model}}
+                )
+                await self.reply_locally(f"Model: {model}")
+                return
             self.busy, self.turns, self.aborting = True, 0, False
             await self.socket.send_json({"type": "agent_start"})
             await self.send({"type": "user", "message": {"role": "user", "content": text}})
@@ -399,5 +434,12 @@ class ClaudeChatSession(PiChatSession):
                         )[:2000],
                     }
                 )
+            elif self.turns == 0 and event.get("result"):
+                # A local command's output (/context, /usage): no model turn streamed it.
+                text = [{"type": "text", "text": str(event["result"])}]
+                out += [
+                    {"type": "message_start", "message": {"role": "assistant"}},
+                    {"type": "message_end", "message": {"role": "assistant", "content": text}},
+                ]
             return [*out, {"type": "agent_settled"}]
         return []

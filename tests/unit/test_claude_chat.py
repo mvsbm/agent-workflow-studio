@@ -118,6 +118,33 @@ class ClaudeSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(str(self.session.workspace.path), prompt)
         self.assertIn("comfyui-workflow-contracts", prompt)
 
+    async def test_only_the_users_ponytail_plugin_is_loaded(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            with patch.dict("os.environ", {"CLAUDE_CONFIG_DIR": home}):
+                self.assertIsNone(claude_chat.ponytail_plugin())  # not installed: nothing loads
+                folder = Path(home) / "plugins" / "cache" / "ponytail" / "9.9.0"
+                (folder / ".claude-plugin").mkdir(parents=True)
+                (folder / ".claude-plugin" / "plugin.json").write_text('{"version": "9.9.0"}')
+                (Path(home) / "plugins" / "installed_plugins.json").write_text(
+                    json.dumps({"plugins": {"ponytail@ponytail": [{"installPath": str(folder)}]}})
+                )
+                self.assertEqual(claude_chat.ponytail_plugin(), (str(folder), "9.9.0"))
+                with patch.object(claude_chat, "claude_cli", return_value="/usr/bin/claude"):
+                    session = claude_chat.ClaudeChatSession(
+                        self.socket,
+                        "http://127.0.0.1:8189",
+                        {"agent": "claude_code", "model": "haiku"},
+                        workflow_id=str(uuid.uuid4()),
+                        workspace_root=Path(self.temp.name) / "workspaces",
+                    )
+        command = session.command
+        self.assertEqual(command[command.index("--plugin-dir") + 1], str(folder))
+        self.assertEqual(
+            command[command.index("--setting-sources") + 1], ""
+        )  # still none of theirs
+        self.assertEqual(session.environment["PONYTAIL_DEFAULT_MODE"], "ultra")  # as in the Pi chat
+        await session.close()
+
     def test_stream_events_become_the_panels_events(self) -> None:
         events = [
             {"type": "stream_event", "event": {"type": "message_start"}},
@@ -179,6 +206,27 @@ class ClaudeSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(out[2]["toolName"], "comfy_read_workflow")
         self.assertEqual(out[3]["toolName"], "comfy_read_workflow")
         self.assertEqual(out[4]["message"]["content"][0]["text"], "Hi")
+
+    def test_a_local_commands_output_is_shown_as_the_reply(self) -> None:
+        # /context, /usage: Claude Code answers in the result alone, with no model turn.
+        self.session.turns = 0
+        out = self.session.translate(
+            {
+                "type": "result",
+                "subtype": "success",
+                "is_error": False,
+                "result": "## Context Usage",
+            }
+        )
+        self.assertEqual(
+            [e["type"] for e in out], ["message_start", "message_end", "agent_settled"]
+        )
+        self.assertEqual(out[1]["message"]["content"][0]["text"], "## Context Usage")
+        self.session.turns = 1  # a model reply was streamed already: not shown twice
+        out = self.session.translate(
+            {"type": "result", "subtype": "success", "is_error": False, "result": "Hi"}
+        )
+        self.assertEqual([e["type"] for e in out], ["agent_settled"])
 
     async def test_ask_user_and_confirm_are_answered_in_the_panel(self) -> None:
         task = asyncio.create_task(

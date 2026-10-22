@@ -175,6 +175,19 @@ MAX_MESSAGE = 1_048_576
 MAX_TOOL_LINES = 500
 # Agent turns per user message: room for a contract-gated multi-step build, still a loop guard.
 MAX_TURNS = 60
+# Pi's built-in commands run only in its terminal UI; over RPC these have equivalents (see builtin()).
+PI_BUILTINS = [
+    {"name": "compact", "description": "Compact the conversation, optionally with instructions"},
+    {"name": "session", "description": "Messages, tokens, cost and context use of this chat"},
+    {"name": "model", "description": "Show the model, or switch: /model provider/model"},
+    {"name": "thinking", "description": "Show the thinking level, or set it: /thinking high"},
+]
+# The rest need Pi's terminal, or the studio does them its own way.
+PI_TERMINAL_ONLY = {
+    "settings", "scoped-models", "login", "logout", "llama", "resume", "name", "tree", "fork",
+    "clone", "import", "copy", "export", "share", "bug", "trust", "reload", "hotkeys",
+    "changelog", "quit",
+}  # fmt: skip
 
 
 def _decode(head: bytes) -> tuple[str, str]:
@@ -288,6 +301,7 @@ class PiChatSession:
         self.model = {}
         self.thinking_level = "off"
         self.ponytail = False
+        self.commands = []
         self.initialized = asyncio.Event()
         self.turns = 0
         self.send_lock = asyncio.Lock()
@@ -378,6 +392,10 @@ class PiChatSession:
                 raise ValueError("Send 1–16,000 characters.")
             if self.busy:
                 raise ValueError("Stop or wait for the current reply first.")
+            reply = await self.builtin(text.strip()) if text.startswith("/") else None
+            if reply is not None:
+                await self.reply_locally(reply)
+                return
             self.busy, self.agent_running, self.turns = True, False, 0
             await self.send({"type": "prompt", "message": text, "id": secrets.token_hex(8)})
         elif kind == "configure":
@@ -465,13 +483,61 @@ class PiChatSession:
                 await self.socket.send_json({"type": "workspace_saved", "path": args["path"]})
         return result
 
-    async def rpc(self, command):
+    async def reply_locally(self, text):
+        """A command's answer, shown as a reply; the turn ends without the model."""
+        message = {"role": "assistant", "content": [{"type": "text", "text": text}]}
+        await self.socket.send_json({"type": "message_end", "message": message})
+        await self.socket.send_json({"type": "command_handled"})
+
+    async def builtin(self, text):
+        """The reply to a Pi built-in command, run through its RPC equivalent; None: send it to Pi."""
+        name, _, arg = text[1:].partition(" ")
+        arg = arg.strip()
+        if name == "compact":
+            data = await self.rpc(
+                {"type": "compact", **({"customInstructions": arg} if arg else {})}, timeout=300
+            )
+            return f"Compacted the conversation: about {data.get('tokensBefore', 0):,} → {data.get('estimatedTokensAfter', 0):,} tokens."
+        if name == "session":
+            data = await self.rpc({"type": "get_session_stats"})
+            tokens, context = data.get("tokens", {}), data.get("contextUsage") or {}
+            lines = [
+                f"**This chat** · {data.get('userMessages', 0)} messages from you, {data.get('assistantMessages', 0)} replies, {data.get('toolCalls', 0)} tool calls",
+                f"Tokens: {tokens.get('total', 0):,} (input {tokens.get('input', 0):,}, output {tokens.get('output', 0):,}, cache read {tokens.get('cacheRead', 0):,}) · cost ${data.get('cost', 0):.4f}",
+            ]
+            if context.get("percent") is not None:
+                lines.append(
+                    f"Context: {context['tokens']:,} of {context['contextWindow']:,} tokens ({context['percent']}%)"
+                )
+            return "\n\n".join(lines)
+        if name in {"model", "thinking"}:
+            if arg:
+                config = self.configuration()
+                if name == "model":
+                    provider, _, model = arg.rpartition("/")
+                    config.update(provider=provider or config["provider"], model=model)
+                else:
+                    config["thinking_level"] = arg
+                await self.client_message({"type": "configure", "pi_config": config})
+            return f"Model: {self.model.get('provider')}/{self.model.get('id')} · thinking {self.thinking_level}"
+        if name in PI_TERMINAL_ONLY:
+            where = (
+                "Use Credentials in the agent settings."
+                if name in {"login", "logout"}
+                else "Use New chat."
+                if name == "quit"
+                else "It doesn't run in the studio's chat."
+            )
+            return f"`/{name}` is a command of Pi's terminal. {where}"
+        return None
+
+    async def rpc(self, command, timeout=25):
         id = secrets.token_hex(16)
         future = asyncio.get_running_loop().create_future()
         self.rpc_pending[id] = future
         try:
             await self.send({**command, "id": id})
-            response = await asyncio.wait_for(future, timeout=25)
+            response = await asyncio.wait_for(future, timeout=timeout)
             if not response.get("success"):
                 raise PiCLIError(str(response.get("error", "Pi configuration failed.")))
             return response.get("data", {})
@@ -502,9 +568,16 @@ class PiChatSession:
                     await self.send({"type": "get_commands", "id": "chat_extension"})
                     continue
                 if event.get("type") == "response" and event.get("id") == "chat_extension":
-                    names = {item.get("name") for item in event.get("data", {}).get("commands", [])}
+                    found = event.get("data", {}).get("commands", [])
+                    names = {item.get("name") for item in found}
                     if not event.get("success") or "comfy" not in names:
                         raise PiCLIError("Pi could not load its native ComfyUI extension.")
+                    # The chat's / menu: Pi's own (extensions, templates, skills) and the built-ins it maps.
+                    self.commands = [
+                        {"name": item["name"], "description": item.get("description", "")}
+                        for item in found
+                        if item.get("name") and item["name"] != "comfy"  # the studio's own check
+                    ] + PI_BUILTINS
                     # Ponytail is optional; when installed, use its own command, not copied prompt text.
                     self.ponytail = "ponytail" in names
                     await self.send(
@@ -592,6 +665,7 @@ class PiChatSession:
                                 "auth_source": self.auth_source,
                                 "pi_config": self.configuration(),
                                 "mcp_tool_count": len(tools.get("mcp", [])),
+                                "commands": self.commands,
                             }
                         )
                         self.initialized.set()
