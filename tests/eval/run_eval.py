@@ -328,7 +328,9 @@ def main() -> int:
     for task in tasks:
         with Studio() if args.studio else isolated(ComfyFixture(env)) as comfy:
             key_dir = out / f"{task['id']}-key"
-            if task.get("template"):  # the template's own export nodes write the data and key
+            if task.get("template") and task.get(
+                "dataset"
+            ):  # the template's export nodes write data and key
                 key_dir = comfy.output / "nayose_benchmark" / task["dataset"] / "key"
             elif task.get("dataset") == "nayose":
                 stats = nayose_data.generate(comfy.input / "nayose", key_dir)

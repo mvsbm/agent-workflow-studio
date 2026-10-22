@@ -58,6 +58,14 @@ const SETTLED = ['No native workflow was submitted by Pi this turn.', 'No native
         localStorage.setItem(`agent-workflow-studio:pi-chat:${app.rootGraph.id}`, JSON.stringify({pi_config: config}));
       }, config);
       await page.waitForFunction(async () => Object.values(await (await fetch('/history')).json()).some(h => h.status?.status_str === 'success'), null, {timeout: 180000, polling: 2000});
+      // A released workflow: its checks run and it is published, as the user would before exporting it.
+      if (task.publish) result.published = await page.evaluate(async name => {
+        const app = window.comfyAPI.app.app, api = window.comfyAPI.api.api;
+        const {runChecks, publishWorkflow} = await import('/extensions/agent_workflow_studio/publish.js');
+        const checks = await runChecks(app, api, 'user');
+        if (!checks.green) return {error: checks.summary};
+        return (await publishWorkflow(app, api, name)).semver;
+      }, task.publish);
     }
     result.workflow_id = await page.evaluate(() => window.comfyAPI.app.app.rootGraph.id);
     // Visible mode: save the workflow to the library now, so the user can open it and watch

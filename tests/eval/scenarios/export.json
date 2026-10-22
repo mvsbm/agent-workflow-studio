@@ -1,0 +1,25 @@
+[
+ {
+  "id": "export_unpublished",
+  "timeout_minutes": 8,
+  "template": "Studio - Contact matching.json",
+  "input_files": {
+   "contacts_benchmark/company_hard_10000_7/contacts.csv": "CONT_ID,LAST_NAME_KANJI,FIRST_NAME_KANJI,LAST_NAME_KANA,FIRST_NAME_KANA,LAST_NAME_ROMAJI,FIRST_NAME_ROMAJI,BIRTH_DATE,GENDER,CONT_TYPE\nEX01,山田,太郎,ヤマダ,タロウ,YAMADA,TAROU,1980-01-02,M,1\nEX02,山田,太郎,ﾔﾏﾀﾞ,ﾀﾛｳ,YAMADA,TAROU,1980-01-02,M,1\nEX03,髙橋,花子,タカハシ,ハナコ,TAKAHASHI,HANAKO,1975-05-05,F,1\nEX04,高橋,花子,タカハシ,ハナコ,TAKAHASHI,HANAKO,1975-05-05,F,1\nEX05,佐藤,次郎,サトウ,ジロウ,SATOU,JIROU,1990-03-03,M,1\nEX06,佐藤,花子,サトウ,ハナコ,SATOU,HANAKO,1992-07-07,F,1\nEX07,株式会社サンプル,,サンプル,,SANPURU,,1999-04-01,,2\nEX08,(株)サンプル 東京支店,,カ)サンプル,,KA)SANPURU,,1999-04-01,,2\nEX09,鈴木,一郎,スズキ,イチロウ,SUZUKI,ICHIROU,1985-12-12,M,1\nEX10,鈴木,一郎,スズキ,イチロウ,SUZUKI,ICHIROU,1960-02-02,M,1\nEX11,田中,美咲,タナカ,ミサキ,TANAKA,MISAKI,2000-08-08,F,1\nEX12,伊藤,健,イトウ,ケン,ITOU,KEN,1970-10-10,M,1\n",
+   "contacts_benchmark/company_hard_10000_7/phones.csv": "CONT_ID,PHONE\nEX01,03-1234-5678\nEX02,0312345678\nEX03,090-1111-2222\nEX04,09011112222\nEX05,045-111-2222\nEX06,045-111-2222\nEX07,03-5555-6666\nEX08,0355556666\nEX09,06-1234-0000\nEX10,06-9876-0000\n",
+   "contacts_benchmark/company_hard_10000_7/addresses.csv": "CONT_ID,ADDRESS_KANJI\nEX01,東京都新宿区西新宿2-8-1\nEX02,東京都新宿区西新宿二丁目8番1号\nEX05,神奈川県横浜市港北区日吉1-2-3\nEX06,神奈川県横浜市港北区日吉1-2-3\nEX07,東京都千代田区丸の内1-1-1\nEX08,東京都千代田区丸の内1-1-1\n"
+  },
+  "prompt": "Export this workflow as a Python program I can run without ComfyUI: check it is ready (published, every step exportable), tell me what blocks it, then export it, test it and give me the package."
+ },
+ {
+  "id": "export_published",
+  "timeout_minutes": 10,
+  "template": "Studio - Contact matching.json",
+  "input_files": {
+   "contacts_benchmark/company_hard_10000_7/contacts.csv": "CONT_ID,LAST_NAME_KANJI,FIRST_NAME_KANJI,LAST_NAME_KANA,FIRST_NAME_KANA,LAST_NAME_ROMAJI,FIRST_NAME_ROMAJI,BIRTH_DATE,GENDER,CONT_TYPE\nEX01,山田,太郎,ヤマダ,タロウ,YAMADA,TAROU,1980-01-02,M,1\nEX02,山田,太郎,ﾔﾏﾀﾞ,ﾀﾛｳ,YAMADA,TAROU,1980-01-02,M,1\nEX03,髙橋,花子,タカハシ,ハナコ,TAKAHASHI,HANAKO,1975-05-05,F,1\nEX04,高橋,花子,タカハシ,ハナコ,TAKAHASHI,HANAKO,1975-05-05,F,1\nEX05,佐藤,次郎,サトウ,ジロウ,SATOU,JIROU,1990-03-03,M,1\nEX06,佐藤,花子,サトウ,ハナコ,SATOU,HANAKO,1992-07-07,F,1\nEX07,株式会社サンプル,,サンプル,,SANPURU,,1999-04-01,,2\nEX08,(株)サンプル 東京支店,,カ)サンプル,,KA)SANPURU,,1999-04-01,,2\nEX09,鈴木,一郎,スズキ,イチロウ,SUZUKI,ICHIROU,1985-12-12,M,1\nEX10,鈴木,一郎,スズキ,イチロウ,SUZUKI,ICHIROU,1960-02-02,M,1\nEX11,田中,美咲,タナカ,ミサキ,TANAKA,MISAKI,2000-08-08,F,1\nEX12,伊藤,健,イトウ,ケン,ITOU,KEN,1970-10-10,M,1\n",
+   "contacts_benchmark/company_hard_10000_7/phones.csv": "CONT_ID,PHONE\nEX01,03-1234-5678\nEX02,0312345678\nEX03,090-1111-2222\nEX04,09011112222\nEX05,045-111-2222\nEX06,045-111-2222\nEX07,03-5555-6666\nEX08,0355556666\nEX09,06-1234-0000\nEX10,06-9876-0000\n",
+   "contacts_benchmark/company_hard_10000_7/addresses.csv": "CONT_ID,ADDRESS_KANJI\nEX01,東京都新宿区西新宿2-8-1\nEX02,東京都新宿区西新宿二丁目8番1号\nEX05,神奈川県横浜市港北区日吉1-2-3\nEX06,神奈川県横浜市港北区日吉1-2-3\nEX07,東京都千代田区丸の内1-1-1\nEX08,東京都千代田区丸の内1-1-1\n"
+  },
+  "publish": "contacts-nayose",
+  "prompt": "Export this workflow as a Python program I can run without ComfyUI: check it is ready (published, every step exportable), tell me what blocks it, then export it, test it and give me the package."
+ }
+]

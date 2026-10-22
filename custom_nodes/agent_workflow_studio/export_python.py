@@ -79,7 +79,9 @@ def readiness(release: dict | None, contract: dict | None, current_hash: str = "
         return {
             "ready": False,
             "blockers": [
-                "Not published yet: run the checks (Contract tab → Run checks), then Publish."
+                "Not published yet. Publishing needs only green checks (comfy_run_examples: design, stage "
+                "Checks, examples, no regression); an unproven request does not block it. Only the user "
+                "publishes: Contract tab → API → Publish as API, which says why if it refuses."
             ],
             "todo": [],
         }
@@ -434,6 +436,7 @@ def export(release: dict, contract: dict | None, output_dir: Path, input_dir: Pa
         **result,
         "folder": str(home.relative_to(output_dir)),
         "repo": str(repo.relative_to(output_dir)),
+        "where": f"in ComfyUI's output folder, under {repo.relative_to(output_dir)} (not the workflow's files)",
     }
 
 
