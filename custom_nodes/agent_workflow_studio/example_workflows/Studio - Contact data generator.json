@@ -1,5 +1,5 @@
 {
- "id": "cf89b27f-dec3-4802-b658-fcac73ec7d97",
+ "id": "93a807e7-5571-4846-ba91-f96a167d4545",
  "revision": 0,
  "last_node_id": 6,
  "last_link_id": 8,
@@ -94,7 +94,7 @@
   },
   {
    "id": 4,
-   "type": "e0a358d6-dab4-4c1f-92c8-debcc0c2c45b",
+   "type": "61d2f1bf-dc61-4ade-a7e6-ceab85c445a8",
    "pos": [
     10,
     10
@@ -219,10 +219,10 @@
    "title": "How to use this workflow",
    "properties": {},
    "widgets_values": [
-    "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
+    "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Lifelike and company profiles draw names, towns and companies from public lists: download them once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply). Every contact is synthetic.\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
    ],
    "widgets_values_named": {
-    "text": "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
+    "text": "# Contact data generator\n\nWrites CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.\n\n1. Choose the profile, size and seed, press **Run** (or open it as an App).\n2. Lifelike and company profiles draw names, towns and companies from public lists: download them once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply). Every contact is synthetic.\n3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run."
    },
    "color": "#432",
    "bgcolor": "#653"
@@ -250,7 +250,7 @@
  "definitions": {
   "subgraphs": [
    {
-    "id": "e0a358d6-dab4-4c1f-92c8-debcc0c2c45b",
+    "id": "61d2f1bf-dc61-4ade-a7e6-ceab85c445a8",
     "version": 1,
     "state": {
      "lastGroupId": 0,
@@ -281,7 +281,7 @@
     },
     "inputs": [
      {
-      "id": "3f531386-7426-499c-926c-18a2f82995c5",
+      "id": "62cff62f-9600-4e64-a447-8eb2493f97f0",
       "name": "seed",
       "type": "INT",
       "linkIds": [
@@ -293,7 +293,7 @@
       ]
      },
      {
-      "id": "08b17cfb-ddc8-4c6b-9a88-c1376efee091",
+      "id": "ec6d3672-75a0-4b34-93d6-9736871111df",
       "name": "profile",
       "type": "COMBO",
       "linkIds": [
@@ -306,7 +306,7 @@
       ]
      },
      {
-      "id": "d008b07b-1bb7-447a-9f09-94da47805fa0",
+      "id": "ea2e79dd-69dd-4403-bc75-0756468e94ac",
       "name": "contacts",
       "type": "INT",
       "linkIds": [
@@ -321,7 +321,7 @@
     ],
     "outputs": [
      {
-      "id": "b1bca3e8-852b-4617-a403-692439e2784e",
+      "id": "9053cbce-3daa-48c2-a3fa-04f5ee0d6d0c",
       "name": "folder",
       "type": "STRING",
       "linkIds": [
@@ -334,7 +334,7 @@
       ]
      },
      {
-      "id": "84b6b7d9-eaec-457e-ae24-234e39b6bce5",
+      "id": "f3f6a975-a787-49a7-9c6d-2bc27f2ad5a5",
       "name": "answer_key",
       "type": "STRING",
       "linkIds": [
@@ -593,7 +593,7 @@
      "4",
      "profile",
      {
-      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once)."
+      "description": "How dirty. Lifelike and company profiles take names from public lists (downloaded once). All contacts are synthetic."
      }
     ],
     [
@@ -631,7 +631,7 @@
     ]
    },
    "open": {},
-   "at": "2026-10-22T10:21"
+   "at": "2026-10-22T14:22"
   },
   "ds": {
    "scale": 0.7922535211267606,
@@ -675,7 +675,7 @@
      {
       "name": "profile",
       "kind": "text",
-      "description": "How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once).",
+      "description": "How dirty. Lifelike and company profiles take names from public lists (downloaded once). All contacts are synthetic.",
       "node": "4",
       "widget": "profile"
      },

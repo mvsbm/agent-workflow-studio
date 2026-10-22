@@ -190,12 +190,14 @@ class ExportTests(unittest.TestCase):
                 (package / "nayose_bench" / "contacts.py").is_file(), "the generator is shipped"
             )
             self.assertIn(
-                'real-data = ["pyarrow", "fugashi", "unidic-lite"]',
+                'synthetic-data = ["pyarrow", "fugashi", "unidic-lite"]',
                 (repo / "pyproject.toml").read_text(encoding="utf-8"),
             )
-            self.assertIn(
-                "### `contact-matching generate`", (repo / "README.md").read_text(encoding="utf-8")
-            )
+            readme = (repo / "README.md").read_text(encoding="utf-8")
+            self.assertIn("### `contact-matching generate`", readme)
+            self.assertIn("[How it works](#how-it-works)", readme)  # the nodes' DOCS, linked on top
+            self.assertIn("\n# How the synthetic data is made\n", readme)
+            self.assertIn("`contact-matching generate` writes them", readme)
             cli = [sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(repo)!r}); from contact_matching.cli import main; main(sys.argv[1:])"]  # fmt: skip
             checked = subprocess.run([*cli, "check"], capture_output=True, text=True, timeout=300)
             self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)

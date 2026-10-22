@@ -1,12 +1,12 @@
 # Synthetic contacts (benchmark)
 
-Generates CRM-shaped contact exports (contacts, phones, addresses on CONT_ID) with realistic dirt and an answer key, so a matching workflow can be measured. Real profiles use real names, towns and companies once their sources are downloaded.
+Generates synthetic CRM-shaped contact exports (contacts, phones, addresses on CONT_ID) with realistic dirt and an answer key, so a matching workflow can be measured. Lifelike profiles draw names, towns and companies from public lists once those are downloaded; every contact is synthetic.
 
 ## Inputs
 
 | Input | Type | What it is |
 | --- | --- | --- |
-| Profile | `COMBO` | How dirty and how many companies (real and company profiles need the real sources). Default: `company_hard`. |
+| Profile | `COMBO` | How dirty and how many companies (lifelike and company profiles need the public lists downloaded once). Default: `company_hard`. |
 | Contacts | `INT` | About how many contacts. Default: `10000`. |
 | Seed | `INT` | The same seed gives the same data. Default: `7`. |
 

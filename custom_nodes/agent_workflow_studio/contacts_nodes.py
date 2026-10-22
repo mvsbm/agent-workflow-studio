@@ -88,6 +88,7 @@ def ensure_towns(input_dir: Path, name: str) -> None:
 
 class ReadContacts(io.ComfyNode):
     EXPORT = "steps:read_contacts"
+    DOCS = ("contact_matching.md",)  # how the matching works, in the exported README
 
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -445,12 +446,13 @@ class EntityPerContact(io.ComfyNode):
 # An export copies these pack packages beside core, and offers their optional extras.
 BENCH_PACKAGES = ("nayose_bench",)
 BENCH_EXTRAS = {
-    "real-data": {
+    "synthetic-data": {
         "requires": ["pyarrow", "fugashi", "unidic-lite"],
-        "how": "`python -m {pkg}.nayose_bench.sources` downloads the public data the real and company "
-        "profiles use, once: real names (NVIDIA Nemotron-Personas-Japan, CC BY 4.0), readings (UniDic, "
-        "JMnedict: share-alike), towns (Japan Post) and companies (National Tax Agency corporate numbers: "
-        "出典：国税庁法人番号公表サイト). Their licences apply; nothing is shipped with this package.",
+        "how": "`python -m {pkg}.nayose_bench.sources` downloads, once, the public lists the lifelike and "
+        "company profiles draw their synthetic contacts from: name frequencies (NVIDIA "
+        "Nemotron-Personas-Japan, CC BY 4.0), readings (UniDic, JMnedict: share-alike), towns (Japan Post) "
+        "and company names (National Tax Agency corporate numbers: 出典：国税庁法人番号公表サイト). Their "
+        "licences apply; nothing is shipped with this package.",
     }
 }
 
@@ -474,6 +476,7 @@ def bench_ctx(name: str) -> Context:
 class SyntheticContacts(io.ComfyNode):
     EXPORT = "bench:synthetic_contacts"
     PACKAGES, EXTRAS = BENCH_PACKAGES, BENCH_EXTRAS
+    DOCS = ("synthetic_contacts.md",)
 
     @classmethod
     def define_schema(cls) -> io.Schema:
@@ -485,12 +488,12 @@ class SyntheticContacts(io.ComfyNode):
             category=CATEGORY,
             search_aliases=["benchmark", "synthetic", "test data", "answer key", "generate"],
             description=(
-                "Generates CRM-shaped contact exports (contacts, phones, addresses on CONT_ID) with realistic dirt "
-                "and an answer key, so a matching workflow can be measured. Real profiles use real names, towns "
-                "and companies once their sources are downloaded."
+                "Generates synthetic CRM-shaped contact exports (contacts, phones, addresses on CONT_ID) with "
+                "realistic dirt and an answer key, so a matching workflow can be measured. Lifelike profiles draw "
+                "names, towns and companies from public lists once those are downloaded; every contact is synthetic."
             ),
             inputs=[
-                io.Combo.Input("profile", options=list(PROFILES), default="company_hard", display_name="Profile", tooltip="How dirty and how many companies (real and company profiles need the real sources)."),
+                io.Combo.Input("profile", options=list(PROFILES), default="company_hard", display_name="Profile", tooltip="How dirty and how many companies (lifelike and company profiles need the public lists downloaded once)."),
                 io.Int.Input("contacts", display_name="Contacts", default=10000, min=100, max=2_000_000, tooltip="About how many contacts."),
                 io.Int.Input("seed", display_name="Seed", default=7, min=0, max=2**31 - 1, control_after_generate=False, tooltip="The same seed gives the same data."),
             ],

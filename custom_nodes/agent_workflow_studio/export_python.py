@@ -26,6 +26,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 CORE = HERE / "core"
+DOCS = HERE / "export_docs"  # what a node's DOCS name: markdown the exported README ends with
 # ComfyUI's own nodes that only show something: an export leaves them out.
 UI_ONLY = {"PreviewAny", "Note", "MarkdownNote", "PrimitiveNode"}
 DEPENDENCIES = {"numpy": "numpy", "scipy": "scipy", "yaml": "pyyaml"}
@@ -170,7 +171,7 @@ def program(
         raise ValueError(
             f"{release['name']}: the export handles one data folder input; it has several."
         )
-    lines, packages, extras, used = [], set(), {}, {"runner"}
+    lines, packages, extras, used, docs = [], set(), {}, {"runner"}, []
     for node_id in order(prompt):
         node = prompt[node_id]
         cls = nodes.get(node["class_type"])
@@ -178,6 +179,7 @@ def program(
             continue
         packages |= set(getattr(cls, "PACKAGES", ()))
         extras |= getattr(cls, "EXTRAS", {})
+        docs += [d for d in getattr(cls, "DOCS", ()) if d not in docs]
         step_module, function = cls.EXPORT.split(":")
         used.add(step_module)
         accepts = inspect.signature(
@@ -265,6 +267,7 @@ def program(
         "examples": examples,
         "packages": packages,
         "extras": extras,
+        "docs": docs,
         "release": release,
         "contract": contract,
     }
@@ -297,10 +300,11 @@ def generate(
         commands[command] = program(
             other, other_contract or {}, package, input_dir, f"pipeline_{slug(command)}", command
         )
-    packages, extras = set(main["packages"]), dict(main["extras"])
+    packages, extras, docs = set(main["packages"]), dict(main["extras"]), list(main["docs"])
     for part in commands.values():
         packages |= part["packages"]
         extras |= part["extras"]
+        docs += [d for d in part["docs"] if d not in docs]
     for part_name in sorted(packages):  # pack code a step needs, copied as it is
         shutil.copytree(
             HERE / part_name, package / part_name, ignore=shutil.ignore_patterns("__pycache__")
@@ -349,7 +353,7 @@ def generate(
         encoding="utf-8",
     )
     (target / "README.md").write_text(
-        readme(main, commands, extras, pkg, package), encoding="utf-8"
+        readme(main, commands, extras, pkg, package, docs), encoding="utf-8"
     )
     (target / ".gitignore").write_text(
         "out/\n*.egg-info/\n__pycache__/\ndist/\nbuild/\n.venv/\n", encoding="utf-8"
@@ -409,9 +413,21 @@ def sentence(text: str) -> str:
     return text[:1].upper() + text[1:] if text else ""
 
 
-def readme(main: dict, commands: dict, extras: dict, pkg: str, package: Path) -> str:
+def anchor(heading: str) -> str:
+    """GitHub's link to a heading: lower case, punctuation dropped, spaces as hyphens."""
+    return re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
+
+
+def readme(
+    main: dict, commands: dict, extras: dict, pkg: str, package: Path, docs: list = ()
+) -> str:
     release, contract = main["release"], main["contract"]
     name = release["name"]
+    texts = [
+        (DOCS / d).read_text(encoding="utf-8").replace("{name}", name).replace("{pkg}", pkg)
+        for d in docs
+    ]
+    headings = [h for t in texts for h in re.findall(r"^# (.+)$", t, re.M)]
     steps = "\n".join(
         f"{i + 1}. **{s['id']}**: {s['purpose']}" for i, s in enumerate(contract.get("steps") or [])
     )
@@ -428,6 +444,9 @@ def readme(main: dict, commands: dict, extras: dict, pkg: str, package: Path) ->
     files = sorted(p.name for p in (package / "reference").glob("*"))
     return README.format(
         title=contract.get("title") or name, purpose=contract.get("purpose") or release.get("description") or "",
+        guide="\n\nHow it works and why: " + " · ".join(f"[{h}](#{anchor(h)})" for h in headings) + "."
+        if headings else "",
+        docs="".join(f"\n---\n\n{t.strip()}\n" for t in texts),
         name=name, pkg=pkg, semver=release["semver"], rows=options_table(main["inputs"]), steps=steps or "(no contract)",
         outputs=", ".join(f"`{o['name']}`" for o in release["signature"]["outputs"]),
         commands=f"\n## More commands\n{more}" if more else "",
@@ -747,7 +766,7 @@ include = ["{pkg}*"]
 
 README = """# {title}
 
-{purpose}
+{purpose}{guide}
 
 Exported from Agent Workflow Studio (release {semver} of the workflow API `{name}`). It is the same
 logic the studio runs (`{pkg}/core/`), without ComfyUI. Regenerate it from the studio rather than
@@ -777,7 +796,7 @@ Results go to `out/`: {outputs}. When the workflow asks you to review pairs, it 
 ## Steps
 
 {steps}
-{decisions}{extras}{reference}"""
+{decisions}{extras}{reference}{docs}"""
 
 CI = """name: test
 on: [push, pull_request]

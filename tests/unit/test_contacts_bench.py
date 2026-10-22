@@ -69,7 +69,7 @@ class ContactsBenchTests(unittest.TestCase):
         variants = {loanword(random.Random(s), "コンピューター・サービス") for s in range(40)}
         self.assertIn("コンピューター・サービス".replace("・", ""), variants)
         self.assertGreater(len(variants), 1)
-        self.assertTrue({"real", "company", "company_hard"} <= set(PROFILES))
+        self.assertTrue({"lifelike", "company", "company_hard"} <= set(PROFILES))
 
 
 if __name__ == "__main__":

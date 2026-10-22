@@ -687,9 +687,10 @@ PROFILES = {
         "common_names": True,
         "wild": 1.0,
     },
-    # Real names (Nemotron-Personas-Japan + JMnedict), real towns (Japan Post), real companies (NTA)
-    # and sole proprietors; needs `python -m ...nayose_bench.sources` run once.
-    "real": {"real": True, "companies": 0.12, "shops": 0.08},
+    # Lifelike: names (Nemotron-Personas-Japan + JMnedict), towns (Japan Post) and companies (NTA) drawn
+    # from public lists, and sole proprietors; the contacts stay synthetic. Needs
+    # `python -m ...nayose_bench.sources` run once.
+    "lifelike": {"real": True, "companies": 0.12, "shops": 0.08},
     # Company-heavy: about a third of contacts are companies, with the registry's real events.
     "company": {"real": True, "companies": 0.35, "shops": 0.08},
     "company_hard": {
@@ -700,7 +701,7 @@ PROFILES = {
         "missing": 2.0,
         "wild": 1.0,
     },
-    "real_hard": {
+    "lifelike_hard": {
         "real": True,
         "companies": 0.12,
         "shops": 0.08,

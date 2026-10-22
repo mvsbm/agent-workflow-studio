@@ -1,6 +1,6 @@
 """The benchmark around contact matching: synthetic CRM contacts with an answer key, and how well a
-result matches it. Uses the pack's nayose_bench generator (an export copies it beside core); real
-names, towns and companies need its public sources downloaded once (nayose_bench.sources)."""
+result matches it. Uses the pack's nayose_bench generator (an export copies it beside core); the
+lifelike profiles need its public lists downloaded once (nayose_bench.sources)."""
 
 from __future__ import annotations
 

@@ -1,8 +1,9 @@
-"""Real names, towns and companies for the contacts benchmark, from sources.py's local cache.
+"""Names, towns and companies from public lists, for the lifelike synthetic profiles (sources.py's
+local cache).
 
-RealWorld draws surnames and given names by their real frequency (Nemotron-Personas-Japan) with
+RealWorld draws surnames and given names by their frequency (Nemotron-Personas-Japan) with
 dictionary readings (JMnedict: a name's other readings are what a clerk guesses), prefectures as the
-census has them, and real towns with their kana (Japan Post) at synthetic block numbers. Companies
+census has them, and towns with their kana (Japan Post) at synthetic block numbers. Companies
 come from the National Tax Agency's registry (name, furigana, head-office address); some people run
 a shop under a trade name (sole proprietors). Without the cache, the built-in pools are used.
 """

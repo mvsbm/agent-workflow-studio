@@ -323,7 +323,7 @@ name-frequency features.
 | National Tax Agency corporate numbers | 300,000 active companies with furigana and real head offices (193k 株式会社, 41k 有限会社, 33k 合同会社, 32k other) | Public Data License 1.0; 出典：国税庁法人番号公表サイト（国税庁） |
 
 Built by `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; used by the `real` and
-`real_hard` profiles. People's block numbers stay synthetic (real towns, invented houses); company
+`real_hard` profiles (now named `lifelike` and `lifelike_hard`). People's block numbers stay synthetic (real towns, invented houses); company
 head offices are the registry's public addresses.
 
 ## Companies and sole proprietors in the generator

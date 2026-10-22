@@ -69,7 +69,7 @@ const DECISIONS = [
   {id: 'D1', decision: 'A model learns the weights from your reviews (logistic regression, active learning).', why: 'it beat fixed rules, Fellegi–Sunter and gradient boosting in every trial', instead_of: 'hand-set points', by: 'agent', pattern: 'Active learning'},
   {id: 'D2', decision: 'No embeddings or reranker.', why: 'neither improved the result at 100,000 contacts (research/contacts_er/RESULTS.md)', instead_of: 'a dense index and a cross-encoder', by: 'agent', principle: 'every part earns its place'},
   {id: 'D3', decision: 'Uncertain pairs and disputed reviews go to you.', why: 'a wrong merge costs more than a question', instead_of: 'auto-deciding everything', by: 'agent', pattern: 'Human in the loop'},
-  {id: 'D4', decision: 'Its quality comes from your reviews: about 1,000 make it good. Review a round, run again; a larger round (reviews per round 200) means fewer runs.', why: 'measured on the hard 10k benchmark: no reviews F1 0.54 (precision 0.85, recall 0.39); 1,000 reviews F1 0.96 (precision 0.99, recall 0.94)', instead_of: 'fixed weights tuned on synthetic data, which would not fit yours', by: 'agent', principle: 'learn from the data it runs on'},
+  {id: 'D4', decision: 'Its quality comes from your reviews: about 1,000 make it good. Review a round, run again; a larger round (reviews per round 200) means fewer runs.', why: 'measured on the company_hard 10k synthetic benchmark: no reviews F1 0.54 (precision 0.85, recall 0.39); 1,000 reviews F1 0.96 (precision 0.98, recall 0.93)', instead_of: 'fixed weights tuned on synthetic data, which would not fit yours', by: 'agent', principle: 'learn from the data it runs on'},
 ];
 const DATA_MODEL = {
   contacts: {description: 'One contact per key, as exported, with its phones and addresses', key: ['key']},
@@ -102,7 +102,7 @@ EX12,伊藤,健,イトウ,ケン,ITOU,KEN,1970-10-10,M,1
 };
 // App mode and the API: what a business changes, in its words.
 const GEN_KNOBS = [
-  ['AgentWorkflowSyntheticContacts', 'profile', 'profile', 'text', 'How dirty, and with real names and companies or not (real and company profiles need the public sources downloaded once).'],
+  ['AgentWorkflowSyntheticContacts', 'profile', 'profile', 'text', 'How dirty. Lifelike and company profiles take names from public lists (downloaded once). All contacts are synthetic.'],
   ['AgentWorkflowSyntheticContacts', 'contacts', 'contacts', 'integer', 'About how many contacts to generate.'],
   ['AgentWorkflowSyntheticContacts', 'seed', 'seed', 'integer', 'The same seed gives the same data.'],
 ];
@@ -126,7 +126,7 @@ const NOTE = {
     'Generated CRM contacts (contacts, phones and addresses on CONT_ID) with realistic dirt and an answer key; the same stages as **Studio - Contact matching**, with a reviewer who knows the answers in place of you (1,000 reviews).',
     '',
     '1. Press **Run**. **Score contacts** shows precision, recall and F1 against the answer key, totals only.',
-    '2. Change the profile, size, seed or the reviews it makes on the stage cards (or open it as an App). Profiles with real names and companies need their sources downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.',
+    '2. Change the profile, size, seed or the reviews it makes on the stage cards (or open it as an App). Lifelike and company profiles draw names and companies from public lists, downloaded once: `python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`.',
     '3. The data lands in input/' + DATA + ' (for Studio - Contact matching to read).',
   ],
   generator: [
@@ -135,7 +135,7 @@ const NOTE = {
     'Writes CRM-shaped contacts (contacts.csv, phones.csv, addresses.csv on CONT_ID) with realistic dirt into input/contacts_benchmark/<profile>_<contacts>_<seed>, and the answer key beside them in output/. The same seed gives the same data.',
     '',
     '1. Choose the profile, size and seed, press **Run** (or open it as an App).',
-    '2. Real and company profiles use real names, towns and companies: download their public sources once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply).',
+    '2. Lifelike and company profiles draw names, towns and companies from public lists: download them once (`python -m custom_nodes.agent_workflow_studio.nayose_bench.sources`; their licences apply). Every contact is synthetic.',
     '3. Point **Studio - Contact matching** at the folder it wrote; **Studio - Contact matching benchmark** generates and scores in one run.',
   ],
   production: [
