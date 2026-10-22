@@ -95,6 +95,12 @@ class ExportTests(unittest.TestCase):
             self.assertIn("steps.read_contacts(rt.ctx('read_contacts'), folder=n1[0]", pipeline)
             self.assertIn("match_at=values['match_at']", pipeline)
             self.assertIn('"numpy==', (repo / "pyproject.toml").read_text(encoding="utf-8"))
+            # Windows: its CI runs there too, and the CLI prints UTF-8 whatever the console's code page.
+            self.assertIn(
+                "windows-latest", (repo / ".github/workflows/test.yml").read_text(encoding="utf-8")
+            )
+            cli_text = (repo / "contact_matching" / "cli.py").read_text(encoding="utf-8")
+            self.assertIn('stream.reconfigure(encoding="utf-8", errors="replace")', cli_text)
             # The generated package runs on its own: its CLI checks the examples (no ComfyUI on the path).
             done = subprocess.run(
                 [sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(repo)!r}); from contact_matching.cli import main; main(['check'])"],

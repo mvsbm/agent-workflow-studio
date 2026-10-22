@@ -14,6 +14,7 @@ import importlib
 import inspect
 import json
 import keyword
+import os
 import pprint
 import re
 import shutil
@@ -296,8 +297,20 @@ def generate(release: dict, contract: dict | None, target: Path, input_dir: Path
         "out/\n*.egg-info/\n__pycache__/\ndist/\nbuild/\n.venv/\n", encoding="utf-8"
     )
     (target / ".github" / "workflows").mkdir(parents=True)
+    # CI also runs the program the way a user does, on the first example's data (init, then run).
+    folders_given = [
+        f"--{k.replace('_', '-')} {v.replace('@examples', f'{pkg}/examples')}"
+        for k, v in (examples[0]["given"].items() if examples else [])
+        if isinstance(v, str) and v.startswith("@examples")
+    ]
+    as_user = (
+        f"      - run: {name} init config.yaml\n"
+        f"      - run: {name} run --config config.yaml {' '.join(folders_given)} --out out\n"
+        if folders_given
+        else ""
+    )
     (target / ".github" / "workflows" / "test.yml").write_text(
-        CI.replace("{prog}", name), encoding="utf-8"
+        CI.replace("{prog}", name) + as_user, encoding="utf-8"
     )
     (target / "EXPORT.json").write_text(
         json.dumps(
@@ -356,6 +369,11 @@ def run(command: list, cwd: Path | None = None, timeout: int = 900) -> subproces
     return subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout)
 
 
+def venv_bin(venv: Path, program: str) -> Path:
+    """A program in a virtual environment: Scripts\\<name>.exe on Windows, bin/<name> elsewhere."""
+    return venv / "Scripts" / f"{program}.exe" if os.name == "nt" else venv / "bin" / program
+
+
 def install(target: Path, venv: Path) -> tuple[bool, str]:
     """A fresh environment with `target` (the built wheel, or the repo) installed: uv, offline from
     its cache first."""
@@ -372,7 +390,7 @@ def install(target: Path, venv: Path) -> tuple[bool, str]:
         )
         if made.returncode:
             return False, made.stderr[-800:]
-        python = venv / "bin" / "python"
+        python = venv_bin(venv, "python")
         for extra in (["--offline"], []):
             done = run([uv, "pip", "install", "--python", str(python), *extra, str(target)])
             if done.returncode == 0:
@@ -380,7 +398,7 @@ def install(target: Path, venv: Path) -> tuple[bool, str]:
         return False, done.stderr[-800:]
     made = run([sys.executable, "-m", "venv", str(venv)])
     done = (
-        run([str(venv / "bin" / "python"), "-m", "pip", "install", str(target)])
+        run([str(venv_bin(venv, "python")), "-m", "pip", "install", str(target)])
         if not made.returncode
         else made
     )
@@ -405,7 +423,7 @@ def test_and_package(repo: Path, dist: Path, name: str) -> dict:
     ok, how = install(wheel or repo, venv)
     result |= {"installed": ok, "install": how}
     if ok:
-        checked = run([str(venv / "bin" / name), "check"], cwd=repo.parent)
+        checked = run([str(venv_bin(venv, name)), "check"], cwd=repo.parent)
         result |= {
             "check_passed": checked.returncode == 0,
             "check": (checked.stdout + checked.stderr)[-3000:],
@@ -576,6 +594,9 @@ def init(args) -> int:
 
 
 def main(argv=None) -> None:
+    for stream in (sys.stdout, sys.stderr):  # Windows writes a pipe or file in its code page otherwise
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(prog=PROG, description=pipeline.PURPOSE.replace("%", "%%"))
     sub = parser.add_subparsers(dest="command", required=True)
     go = sub.add_parser("run", help="run on your data")
@@ -606,7 +627,7 @@ PYPROJECT = """[project]
 name = "{name}"
 version = "{version}"
 description = {description}
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [{deps}]
 
 [project.scripts]
@@ -640,6 +661,9 @@ pip install .                          # or the wheel the studio built
 {name} check                   # the examples and every stage Check
 ```
 
+The same commands work on Windows, macOS and Linux (Python 3.12 or later; on Windows, in
+PowerShell or cmd, with `py -m pip install .`).
+
 Results go to `out/`: {outputs}. When the workflow asks you to review pairs, it writes
 `out/review_batch.csv`: fill its `decision` column (same / different), then run again with
 `--reviews out/review_batch.csv`. Every decision so far is kept in `out/reviews.csv`.
@@ -659,7 +683,11 @@ CI = """name: test
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
